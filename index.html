@@ -278,7 +278,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v7</span>
+  <span id="verBadge">バージョン v8</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button><button class="difficultyBtn" id="endlessBtn" aria-pressed="false">エンドレス</button></div>
@@ -340,19 +340,8 @@ function scoreOn(){ return SCORE_MODE && !isTutorial() && !endless; }
 // エンドレスのスコア（試し）：ゴールするたびに「判定精度点」＋「早着ボーナス」を累計。進むだけでは点は入らない
 const ENDLESS_BREAK_PTS = { PERFECT: 100, GREAT: 80, GOOD: 50, MISS: 0 }; // エンドレス：有効なブレイク1回ごとの点（仮）
 let endlessTotal = 0, endlessGoals = 0;
-// ===== アンチ（エンドレス）：後ろからコースに沿って迫る危険領域。飲み込まれたらゲームオーバー =====
-// 位置は「その周の経過拍数」から計算する（処理落ち・加速・ポーズで速さが変わらない）。以下は未調整の仮設定
-const ANTI_START = -6;           // 各周の開始位置（スタート地点から何マス後ろか。マイナス＝後ろ）
-const ANTI_GRACE_BEATS = 8;      // 各周の開始から止まっている拍数
-const ANTI_BPC_FIRST = 4;        // 1周目：何拍で1マス進むか（ゆっくり始める）
-const ANTI_BPC_STEP = 0.5;       // 1周ごとに何拍ぶん速くするか
-const ANTI_BPC_MIN = { normal: 2, hard: 3 }; // これより速くはしない（HARDはノーツが密なので少しゆっくり）
-function antiBeatsPerCell(){ return Math.max(ANTI_BPC_MIN[runDifficulty] || 2, ANTI_BPC_FIRST - lap * ANTI_BPC_STEP); }
-const ANTI_WARN_CELLS = 2;       // この距離以下になったら色と音で警告を強める
-let antiIdx = ANTI_START, antiStepAt = -9, endReason = null, missBeat = -999, collisionBeat = -999;
-function antiOn(){ return endlessScoreOn(); }
-function antiAt(n){ return ANTI_START + Math.floor(Math.max(0, n - ANTI_GRACE_BEATS) / antiBeatsPerCell()); }
-const END_REASON = { anti: 'アンチに飲み込まれた', hp: 'ライフがなくなった', song_end: 'ゴール前に曲が終わった' };
+let endReason = null;
+const END_REASON = { hp: 'ライフがなくなった', song_end: 'ゴール前に曲が終わった' };
 function endlessScoreOn(){ return endless && !isTutorial(); }
 function showLapBanner(text){
   const el = document.getElementById('lapGain');
@@ -591,7 +580,7 @@ function reset(){
   hp = MAX_HP; player = { idx: 0, from: 0, at: 0 }; moveLocked = true;
   runScore = 0; movePrice = 0; runSteps = 0; courseLap = 0;
   endlessTotal = 0; endlessGoals = 0; document.getElementById('lapGain').classList.remove('show');
-  antiIdx = ANTI_START; antiStepAt = -9; endReason = null; missBeat = -999; collisionBeat = -999;
+  endReason = null;
   document.getElementById('scoreNum').textContent = '0'; document.getElementById('scoreHud').classList.toggle('hide', !(scoreOn() || endlessScoreOn()));
   notes = []; effects = []; texts = []; fx = [];
   setLockUI(true); tutClearUI();
@@ -793,25 +782,11 @@ function updateSpot(t){
 }
 
 function onBeat(n, t){
-  // アンチ：拍で進む。プレイヤーのマスまで来たら、ライフに関係なくゲームオーバー
-  if (antiOn()){
-    const a = antiAt(n);
-    if (a !== antiIdx){
-      antiIdx = a; antiStepAt = t;
-      const d = player.idx - antiIdx;
-      if (d > 0 && d <= ANTI_WARN_CELLS) uiTone(d === 1 ? 392 : 330, .06); // 近いときだけ控えめな警告音
-    }
-    if (antiIdx >= player.idx){
-      endReason = 'anti'; texts.push({ s: '飲み込まれた…', idx: player.idx, t, col: '#ff8be8', big: true });
-      end(false); return;
-    }
-  }
   // 赤いブロックが残っている間は全部その場で足踏み。ただし1拍だけ。
   const red = notes.find(nt => nt.hit);
   if (red && n > (red.hitBeat ?? n) + 1 && !tutSafe()){     // 1拍待っても壊せてない → ダメージ
     notes.splice(notes.indexOf(red), 1);
-    if (red.missCharged){ diagEv('damage_merged', { reason: 'この失敗は受付時間外MISSで減算済み', noteId: red.id, causeInputId: red.missCharged, ...diagCtx() }); }
-    else damage(t, '赤ノーツを1拍以内に壊せなかった', red, null);
+    damage(t, '赤ノーツを1拍以内に壊せなかった', red, null);
   }
   // 練習中は、ブロックが目の前に来たらプレイヤーが押すまで待つ
   const frozen = notes.some(nt => nt.hit) || tutFreeze() || (tutWait() && notes.some(nt => nt.idx <= player.idx));
@@ -847,16 +822,13 @@ function checkHit(t, reason, inputId, beat){
   for (const nt of [...notes]){
     if (nt.idx <= player.idx && !nt.hit){
       notes.splice(notes.indexOf(nt), 1);
-      // 同じ失敗を「受付時間外MISS」と「被弾」で二重に減らさない
-      if (nt.missCharged){ diagEv('damage_merged', { reason: 'この失敗は受付時間外MISSで減算済み', noteId: nt.id, causeInputId: nt.missCharged, ...diagCtx() }); continue; }
-      if (beat != null) collisionBeat = beat;
       damage(t, reason || 'ノーツが自分のマスに来て、受付時間内に壊せなかった', nt, inputId ?? null);
     }
   }
 }
 
 function damage(t, reason, nt, inputId, sub){
-  diagEv('damage', { reason: reason || null, causeInputId: inputId ?? null, noteId: nt?.id ?? null, noteIdx: nt?.idx ?? null, noteHp: nt?.hp ?? null, playerIdx: player.idx, hpBefore: hp, ...diagCtx() });
+  diagEv('damage', { lifeLoss: true, reason: reason || null, causeInputId: inputId ?? null, noteId: nt?.id ?? null, noteIdx: nt?.idx ?? null, noteHp: nt?.hp ?? null, playerIdx: player.idx, hpBefore: hp, ...diagCtx() });
   hp--; drawHud(); damageAt = t;
   const veil = document.getElementById('impactVeil');
   veil.classList.remove('hit'); void veil.offsetWidth; veil.classList.add('hit');
@@ -970,19 +942,7 @@ function input(type, e, device){
   const diff = t - beatTime(n);
   diagTarget(rec, n, t, diff);
   if (Math.abs(diff) > WINDOW || n < 0){
-    // エンドレス：受付時間外のブレイクはライフ−1（同じ拍では1回まで。準備の拍は対象外）
-    if (endlessScoreOn() && n >= INTRO_BEATS){
-      if (missBeat === n){ diagInputEnd(rec, { status: 'invalid', reason: '同じ拍ですでに受付時間外MISS（減算は1拍1回まで）', offsetMs: r2(diff * 1000) }); diagShow('無効：同じ拍ですでにMISS'); return; }
-      missBeat = n;
-      if (collisionBeat === n){ diagInputEnd(rec, { status: 'miss_merged', reason: 'この拍はノーツの被弾で減算済み（二重に数えない）', offsetMs: r2(diff * 1000) }); diagShow('MISS：この拍は被弾で減算済み'); return; }
-      const cand = notes.filter(x => !x.missCharged && x.idx <= player.idx + (x.hit || n < nextBeat ? 0 : 1)).sort((a, b) => a.idx - b.idx)[0];
-      if (cand) cand.missCharged = rec?.inputId || true; // このノーツの後続の被弾は減算しない
-      diagInputEnd(rec, { status: 'miss', judge: 'MISS', reason: '受付時間外（ライフ−1）', offsetMs: r2(diff * 1000), chargedNoteId: cand?.id ?? null });
-      damage(tNow, '受付時間外のブレイク', cand || null, rec?.inputId ?? null, 'タイミングずれ');
-      diagShow('MISS：受付時間外（' + msText(diff * 1000) + '）');
-      return;
-    }
-    diagInputEnd(rec, { status: 'miss', judge: 'MISS', reason: n < 0 ? '最初の拍より前' : '受付時間外', offsetMs: r2(diff * 1000) });
+    diagInputEnd(rec, { status: 'miss', judge: 'MISS', lifeLoss: false, reason: (n < 0 ? '最初の拍より前' : '受付時間外') + '（加点なし・ライフは減らない・ノーツはそのまま）', offsetMs: r2(diff * 1000) });
     showJudge('MISS', 'タイミングずれ');
     diagShow('MISS：受付時間外（' + msText(diff * 1000) + '）');
     return;
@@ -1082,7 +1042,7 @@ function captureResult(clear){
   if(endlessScoreOn()){
     // エンドレス：ゴールで確定した累計点が最終スコア。自己ベストは曲・難易度ごとにエンドレス専用で保存
     Object.assign(result,{endless:true,score:endlessTotal,rank:'—',badge:'',goals:endlessGoals,speed:rate,endReason,reasonText:END_REASON[endReason]||''});
-    const ekey=`neon-blade-endless-best-v2:${song.file}:${runDifficulty}`; // v2＝ブレイク即加点（旧方式v1とは別）
+    const ekey=`neon-blade-endless-best-v3:${song.file}:${runDifficulty}`; // v3＝ブレイク即加点・アンチなし（v1旧方式・v2アンチありとは別）
     let prev=0;try{const v=Number(localStorage.getItem(ekey));if(Number.isInteger(v)&&v>=0)prev=v;}catch(e){}
     result.newBest=result.score>prev;result.best=result.newBest?result.score:prev;
     if(result.newBest){try{localStorage.setItem(ekey,String(result.score));}catch(e){}}
@@ -1126,7 +1086,7 @@ function renderResult(result){
   const label=ov.querySelector('.scoreLabel span'),help=ov.querySelector('.scoreHelp p');
   label.dataset.orig??=label.textContent;help.dataset.orig??=help.innerHTML;
   label.textContent=result.endless?'ENDLESS SCORE':label.dataset.orig;
-  help.innerHTML=result.endless?`ブレイクが成功するたびに、その場で点が入ります（PERFECT ${ENDLESS_BREAK_PTS.PERFECT}／GREAT ${ENDLESS_BREAK_PTS.GREAT}／GOOD ${ENDLESS_BREAK_PTS.GOOD}／MISS 0）。青ノーツは2回とも採点します。進むだけでは点は入りません。後ろから迫るアンチに飲み込まれるとゲームオーバー。ゴール前に曲が終わってもゲームオーバーです。負けてもそれまでの点は残ります。自己ベストは曲・難易度ごとに保存します。`:help.dataset.orig;
+  help.innerHTML=result.endless?`ブレイクが成功するたびに、その場で点が入ります（PERFECT ${ENDLESS_BREAK_PTS.PERFECT}／GREAT ${ENDLESS_BREAK_PTS.GREAT}／GOOD ${ENDLESS_BREAK_PTS.GOOD}／MISS 0）。青ノーツは2回とも採点します。進むだけでは点は入りません。ライフがなくなるか、ゴール前に曲が終わるとゲームオーバーです。負けてもそれまでの点は残ります。自己ベストは曲・難易度ごとに保存します。`:help.dataset.orig;
   text('reason',result.endless&&!result.clear?result.reasonText:'');
   if(result.endless){text('badge',`ゴール ${result.goals}回`);text('foot',`到達速度 ×${result.speed.toFixed(1)}`);}
   renderHeroCanvas(ov.querySelector('canvas'),result.heroId);
@@ -1353,7 +1313,6 @@ function floorTile(p,i,t){
 }
 function drawCourse(t){
   for(let i=0;i<=revealEnd;i++)floorTile(cellXY(i),i,t);
-  drawAnti(t);
   const s=cellXY(0);g.save();g.strokeStyle='#071423';g.lineWidth=4;
   g.beginPath();g.arc(s.x,s.y,cell*.30,0,Math.PI*2);g.stroke();g.strokeStyle='#e1ffff';g.lineWidth=2;g.stroke();g.restore();
   if(revealEnd>=GOAL_INDEX){
@@ -1367,37 +1326,6 @@ function drawCourse(t){
   }
 }
 
-// アンチ：侵食済みのマスは暗い紫＋マゼンタの斜線。先端は光る境界線（ここまで来たら飲み込まれる）
-function drawAnti(t){
-  if(!antiOn()||antiIdx<0)return;
-  const last=Math.min(antiIdx,path.length-1),s=cell*.96,d=player.idx-antiIdx,near=d<=ANTI_WARN_CELLS;
-  for(let i=0;i<=last;i++){
-    const p=cellXY(i);if(p.y<-cell||p.y>boardH+cell)continue;
-    const k=i===antiIdx&&!reduceMotion.matches?Math.min(1,Math.max(0,(t-antiStepAt)/.12)):1;
-    g.save();g.translate(p.x,p.y);g.globalAlpha=.94*k;
-    rr(g,-s/2,-s/2,s,s,cell*.075);g.fillStyle='#1c0730';g.fill();
-    g.save();g.clip();g.strokeStyle='#ff2bd670';g.lineWidth=Math.max(1.5,cell*.06);
-    for(let x=-s;x<s;x+=cell*.22){g.beginPath();g.moveTo(x,s/2);g.lineTo(x+s,-s/2);g.stroke();}
-    g.restore();
-    rr(g,-s/2,-s/2,s,s,cell*.075);g.strokeStyle='#081221';g.lineWidth=Math.max(2,cell*.055);g.stroke();
-    g.restore();
-  }
-  // 境界：侵食済みの先端マスと次のマスの間に、道を横切る光る線
-  if(antiIdx+1<path.length){
-    const a=cellXY(antiIdx),b=cellXY(antiIdx+1),mx=(a.x+b.x)/2,my=(a.y+b.y)/2,dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy)||1,nx=-dy/L,ny=dx/L,h=cell*.46;
-    g.save();g.lineCap='round';g.beginPath();g.moveTo(mx+nx*h,my+ny*h);g.lineTo(mx-nx*h,my-ny*h);
-    g.strokeStyle='#081221';g.lineWidth=Math.max(5,cell*.16);g.stroke();
-    g.strokeStyle=near?'#ff4fe0':'#c45cff';g.shadowColor='#ff2bd6';g.shadowBlur=near?10:6;g.lineWidth=Math.max(3,cell*.1);g.stroke();
-    g.shadowBlur=0;g.strokeStyle='#ffe6fb';g.lineWidth=Math.max(1,cell*.03);g.stroke();g.restore();
-  }
-}
-// アンチが2マス以内に来たときだけ、プレイヤーのまわりに細い輪を出す（常時表示はしない）
-function drawAntiGauge(t){
-  if(!antiOn()||state==='ready')return;
-  const d=player.idx-antiIdx;if(d<=0||d>ANTI_WARN_CELLS)return;
-  const p=cellXY(tween(player.from,player.idx,player.at,t));
-  g.save();g.strokeStyle='#ff4fe0aa';g.lineWidth=1.5;g.beginPath();g.arc(p.x,p.y,cell*.47,0,Math.PI*2);g.stroke();g.restore();
-}
 function beatPulse(t){return t>=lastBeatAt&&lastBeatAt>=0?Math.max(0,1-(t-lastBeatAt)/.17)*lastBeatStrength:0;}
 function impactOffset(t){
   if(reduceMotion.matches||state!=='play')return 0;
@@ -1499,7 +1427,6 @@ function draw(t){
   }
   if(drawn)diagLastDraw={perf:r2(performance.now()),songT:r4(t),playerDrawnIdx:r4(vp),notes:drawn};
   drawChar(t);
-  drawAntiGauge(t);
   updateSpot(t);
   if(document.getElementById('judge').classList.contains('pop'))placeJudge(t);
   texts=texts.filter(x=>t-x.t<.5);g.textAlign='center';g.font=`600 ${Math.max(10,Math.round(cell*.26))}px sans-serif`;
@@ -1620,7 +1547,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v7', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v8', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -1655,7 +1582,7 @@ function clockInfo(now){
   c.songTimeFormula = '出力時刻−songStart−手動補正÷1000。押した時刻は、そこから（処理開始−イベント発生）を引く';
   return c;
 }
-function diagCtx(){ const c = { rate, bpm: r2(BPM), lap: lap + 1, attempt: diagAttempt, lapBeat: nextBeat }; if (antiOn()){ c.antiBeatsPerCell = antiBeatsPerCell(); c.antiIdx = antiIdx; c.antiDistance = player ? player.idx - antiIdx : null; } return c; }
+function diagCtx(){ return { rate, bpm: r2(BPM), lap: lap + 1, attempt: diagAttempt, lapBeat: nextBeat }; }
 function diagStart(){
   diagAttempt = 1; diagLastDraw = null; resumePerf = -Infinity; lastBeatLagMs = null;
   if (!diagOn){ diagRun = null; return; }
@@ -1719,7 +1646,7 @@ function stats(a){
 }
 function diagSummary(run){
   const E = run.events, judged = E.filter(e => e.type === 'input_result' && e.status === 'judged');
-  const timingMiss = E.filter(e => e.type === 'input' && e.status === 'miss'), dmg = E.filter(e => e.type === 'damage');
+  const timingMiss = E.filter(e => e.type === 'input' && e.status === 'miss'), dmg = E.filter(e => e.type === 'damage' && e.reason !== '受付時間外のブレイク'); // 旧ログ（v5）の入力MISS由来の減算は被弾に数えない
   const invalid = E.filter(e => e.type === 'input' && e.status === 'invalid').length + E.filter(e => e.type === 'input_result' && e.status === 'invalid').length;
   const off = judged.map(e => e.offsetMs), delays = E.filter(e => e.type === 'input' && typeof e.queueDelayMs === 'number').map(e => e.queueDelayMs);
   const group = key => { const m = new Map(); for (const e of judged){ const k = key(e); if (!m.has(k)) m.set(k, []); m.get(k).push(e); } return [...m].map(([k, es]) => ({ k, ...stats(es.map(e => e.offsetMs)), P: es.filter(e => e.judge === 'PERFECT').length, G: es.filter(e => e.judge === 'GREAT').length, D: es.filter(e => e.judge === 'GOOD').length })); };
@@ -1737,7 +1664,7 @@ function diagRender(){
   const head = '<tr><th></th><th>数</th><th>中央値</th><th>ばらつき</th><th>P/G/GOOD</th></tr>';
   body.innerHTML = `<p class="diagNote">${run.song.name}／${run.settings.mode === 'endless' ? 'エンドレス' : '通常'}／${String(run.settings.difficulty).toUpperCase()}／音の出力：${run.device.audioOutputLabel}／${run.appVersion}</p>
     <table><tr><th>PERFECT</th><th>GREAT</th><th>GOOD</th><th>MISS</th></tr><tr><td style="text-align:left">${S.counts.PERFECT}</td><td>${S.counts.GREAT}</td><td>${S.counts.GOOD}</td><td>${S.counts.MISS}</td></tr></table>
-    <p class="diagNote">MISSの内訳：受付時間外 ${S.counts.missTiming}／被弾 ${S.counts.missDamage}</p>
+    <p class="diagNote">MISSの内訳：入力MISS（受付時間外・ライフは減らない）${S.counts.missTiming}／被弾（ライフ−1）${S.counts.missDamage}</p>
     <table><tr><td>早押し／遅押し／ぴったり</td><td>${S.early}／${S.late}／${S.exact}</td></tr><tr><td>ズレの中央値</td><td>${ms(S.offset.median)}</td></tr><tr><td>ばらつき（標準偏差）</td><td>${v(S.offset.sd)}ms</td></tr><tr><td>ばらつき（四分位範囲）</td><td>${v(S.offset.iqr)}ms</td></tr><tr><td>入力処理待ち（中央値／最大）</td><td>${v(S.delay.median)}ms／${v(S.delayMax)}ms</td></tr><tr><td>無効入力（統計には含めない）</td><td>${S.invalid}</td></tr></table>
     <h3>速度別</h3><table>${head}${rows(S.bySpeed)}</table>
     <h3>周回別</h3><table>${head}${rows(S.byLap)}</table>
@@ -1815,7 +1742,6 @@ function nextLap(t, songEnded){
   // 周回突破と速度アップを伝える（点のボーナスはなし）
   showLapBanner(`LAP ${lap + 1} 突破！　SPEED ×${rate.toFixed(1)}`);
   [784, 988, 1175].forEach((f, i) => uiTone(f, .12, i * .05));
-  antiIdx = ANTI_START; antiStepAt = -9; missBeat = -999; collisionBeat = -999; // 拍を数え直すので、アンチも開始位置へ
   player = { idx: 0, from: 0, at: 0 }; notes = []; effects = []; texts = []; fx = [];
   nextBeat = 0; acted = -1; pendingCheck = []; nextGap = 4; runLen = 1;
   lineK = 0; gIdx = gIndexFor(0); gFrom = gIdx; gMoveAt = -9;
