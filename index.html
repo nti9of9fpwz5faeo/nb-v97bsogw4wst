@@ -299,7 +299,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v30</span>
+  <span id="verBadge">バージョン v31</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -650,7 +650,7 @@ function reset(){
   runScore = 0; movePrice = 0; runSteps = 0; courseLap = 0;
   secPerfect = 0; warpReady = false; sectionNo = 1; termWaitLogged = false; document.getElementById('lapGain').classList.remove('show');
   endReason = null;
-  elScore = 0; moveSteps = 0; recordSteps = 0; elLastMult = 1; stepBonus = null; rushUnits = 0; rushAnim = null;
+  elScore = 0; moveSteps = 0; recordSteps = 0; elLastMult = 1; stepBonus = null; rushUnits = 0; rushAnim = null; rushGuardUntil = -9;
   document.getElementById('scoreNum').textContent = endlessScoreOn() ? '0マス' : rushOn() ? '0歩' : '0'; updateWarpHud(); document.getElementById('scoreHud').classList.toggle('hide', !(scoreOn() || endlessScoreOn() || speedOn()));
   notes = []; effects = []; texts = []; fx = [];
   setLockUI(true); tutClearUI();
@@ -1818,6 +1818,7 @@ function drawChar(t){
 // ラインに着いたか調べる。エンドレスで周回したら true
 function checkLines(t){
   if (!(state==='play' && player.idx >= LINES[lineK] && hp > 0)) return false;
+  if (lineK === LINES.length - 1 && rushGuard(t)) return false; // 必殺技の駆け抜け・着地が終わってからワープ
   if (lineK === LINES.length - 1 && speedOn()){ // エンドレス：終端に着いたら条件なしでワープ（曲は頭から次の速度で）
     diagEv('warp', { fromRate: rate, toRate: Math.min(SPEED_MAX, rate + SPEED_STEP), combo, ...diagCtx() });
     nextLap(t, false); updateWarpHud(); return true; // 曲は頭から、次の速度で
@@ -1867,7 +1868,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v30', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v31', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2084,7 +2085,7 @@ function nextLap(t, songEnded){
   [784, 988, 1175].forEach((f, i) => uiTone(f, .12, i * .05));
   player = { idx: 0, from: 0, at: 0 }; notes = []; effects = []; texts = []; fx = [];
   nextBeat = 0; acted = -1; pendingCheck = []; earlyInput = null; nextGap = 4; runLen = 1;
-  rushAnim = null;
+  rushAnim = null; rushGuardUntil = -9; // 前の曲の時刻で残った無敵を消す
   charState = 'idle'; charUntil = 0; damageAt = -9; lastBeatAt = -9; hideJudge(); // 曲が頭に戻るので、前の曲の時刻で残っている表示を消す
   lineK = 0; gIdx = gIndexFor(0); gFrom = gIdx; gMoveAt = -9;
   cameraRow=0;cameraFrom=0;cameraTarget=0;cameraAt=-9;setPalette(0);
