@@ -301,7 +301,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v32</span>
+  <span id="verBadge">バージョン v33</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -1058,7 +1058,8 @@ function playerVis(t){
 const SHARD_COLS = { pink: ['#ff19b8', '#ff72e0', '#ffd0f3'], hard: ['#19b6ff', '#7be9ff', '#dff8ff'], purple: ['#8a3dff', '#c59bff', '#efe4ff'], red: ['#ff2f2f', '#ff8a6b', '#ffe0d6'] };
 function spawnShards(idx, t, kind){
   const p = cellXY(idx), cols = SHARD_COLS[kind] || SHARD_COLS.pink;
-  for (let i = 0; i < 16; i++){
+  if (shards.length > 110) shards.splice(0, shards.length - 110);
+  for (let i = 0; i < 10; i++){
     const a = Math.random() * Math.PI * 2, sp = cell * (2.4 + Math.random() * 3.4);
     shards.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - cell * 2.2, rot: Math.random() * 6, vr: (Math.random() - .5) * 22, s: cell * (.07 + Math.random() * .15), col: cols[i % 3], t0: t, life: .5 + Math.random() * .3 });
   }
@@ -1070,21 +1071,20 @@ function drawShards(t){
   for (const q of shards){
     const dt = t - q.t0, x = q.x + q.vx * dt, y = q.y + q.vy * dt + cell * 7 * dt * dt;
     g.save(); g.globalAlpha = Math.max(0, 1 - dt / q.life); g.translate(x, y); g.rotate(q.rot + q.vr * dt);
-    g.fillStyle = q.col; g.strokeStyle = '#081221'; g.lineWidth = 1.5;
-    g.beginPath(); g.moveTo(-q.s, -q.s * .5); g.lineTo(q.s * .8, -q.s); g.lineTo(q.s, q.s * .6); g.lineTo(-q.s * .4, q.s * .8); g.closePath(); g.fill(); g.stroke(); g.restore();
+    g.fillStyle = q.col;
+    g.beginPath(); g.moveTo(-q.s, -q.s * .5); g.lineTo(q.s * .8, -q.s); g.lineTo(q.s, q.s * .6); g.lineTo(-q.s * .4, q.s * .8); g.closePath(); g.fill(); g.restore();
   }
 }
 // 光の軌跡：キャラの通った道に沿って光の線（頭ほど明るい）
 function drawLightTrail(from, head, alpha){
   const tail = Math.max(from, head - 4); if (head - tail < .05) return;
-  const pts = []; for (let x = tail; x < head; x += .1) pts.push(cellXY(x)); pts.push(cellXY(head));
   g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
-  for (let i = 1; i < pts.length; i++){
-    const f = i / (pts.length - 1);
-    g.globalAlpha = alpha * f * .55; g.strokeStyle = '#c6ff44'; g.lineWidth = cell * (.1 + .22 * f); g.shadowColor = '#c6ff44'; g.shadowBlur = 14;
-    g.beginPath(); g.moveTo(pts[i - 1].x, pts[i - 1].y); g.lineTo(pts[i].x, pts[i].y); g.stroke();
-    g.globalAlpha = alpha * f; g.strokeStyle = '#ffffff'; g.lineWidth = cell * (.03 + .06 * f); g.shadowBlur = 0;
-    g.beginPath(); g.moveTo(pts[i - 1].x, pts[i - 1].y); g.lineTo(pts[i].x, pts[i].y); g.stroke();
+  const seg = (a, b) => { g.beginPath(); let q = cellXY(a); g.moveTo(q.x, q.y); for (let x = a + .25; x < b; x += .25){ q = cellXY(x); g.lineTo(q.x, q.y); } q = cellXY(b); g.lineTo(q.x, q.y); };
+  const L = head - tail;
+  for (let k = 0; k < 3; k++){ // 後ろ→先頭へ、だんだん太く明るく
+    const a = tail + L * k / 3, b = tail + L * (k + 1) / 3, f = (k + 1) / 3;
+    seg(a, b); g.globalAlpha = alpha * .35 * f; g.strokeStyle = '#c6ff44'; g.lineWidth = cell * (.18 + .2 * f); g.stroke();
+    g.globalAlpha = alpha * f; g.strokeStyle = '#ffffff'; g.lineWidth = cell * (.04 + .05 * f); g.stroke();
   }
   g.restore();
 }
@@ -1114,7 +1114,7 @@ function drawRushAnim(t){
   const v = playerVis(t), spin = Math.max(0, t - A.t0), pc = cellXY(v);
   // 溜め：光の粒がキャラに吸い込まれる＋キャラの光がふくらむ
   if (!A.moved){
-    const k = Math.min(1, (t - A.t0) / RUSH_WINDUP_SEC);
+    const k = Math.min(1, Math.max(0, (t - A.t0) / RUSH_WINDUP_SEC));
     g.save();
     for (let i = 0; i < 28; i++){
       const o = (i % 7) / 7 * .45, q = Math.min(1, Math.max(0, (k - o) / (1 - o)));
@@ -1725,7 +1725,6 @@ function noteView(nt,t,pre,nb,vp){
 }
 function draw(t){
   g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,boardW,boardH);
-  const rDim=rushDimAmount(t);g.filter=rDim>0?`brightness(${(1-.5*rDim).toFixed(3)})`:'none';
   // 音の時計を基準に表示だけ動かす。入力ボタンと当たり判定の座標は固定。
   cv.style.transform=`translateY(${impactOffset(t).toFixed(2)}px)`;
   cameraRow=cameraAtTime(t);
@@ -1795,7 +1794,8 @@ function draw(t){
     g.beginPath();g.moveTo(p.x-r,p.y+r*.72);g.lineTo(p.x+r,p.y-r*.72);g.stroke();g.restore();
   }
   if(drawn)diagLastDraw={perf:r2(performance.now()),songT:r4(t),playerDrawnIdx:r4(vp),notes:drawn};
-  g.filter='none';
+  const rDim=rushDimAmount(t);
+  if(rDim>0){g.save();g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-atop';g.globalAlpha=.5*rDim;g.fillStyle='#050b18';g.fillRect(0,0,g.canvas.width,g.canvas.height);g.restore();}
   drawRushAnim(t);
   drawChar(t);
   drawRushOk(t);
@@ -1936,7 +1936,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v32', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v33', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
