@@ -78,10 +78,6 @@
   #fieldWrap{display:flex;align-items:center;justify-content:center;width:100%;flex:1;min-height:0;padding:12px 0;position:relative}
   canvas{display:block;will-change:transform}
   #controls{flex:none;width:min(100%,460px);display:flex;gap:18px;height:96px;margin-top:8px;position:relative}
-  #bRush{position:absolute;left:50%;top:-34px;transform:translateX(-50%);width:66px;height:66px;border-radius:50%;border:3px solid #081221;background:#1b3a6e;color:#8aa3c9;font-size:15px;font-weight:900;z-index:5;display:flex;align-items:center;justify-content:center;touch-action:manipulation}
-  #bRush.hide{display:none}
-  #bRush.ready{background:#c6ff44;color:#081221;box-shadow:0 0 0 3px #eaffb8}
-  #bRush.press{transform:translateX(-50%) scale(.94)}
   .btn{position:relative;overflow:hidden;display:flex;justify-content:center;align-items:center;gap:6px;flex:1;min-width:0;height:100%;border:1.5px solid var(--accent);border-radius:19px;color:#f1fbfc;background:linear-gradient(155deg,#183d4499,#0d181dcc 65%,#18505b66);padding:8px;touch-action:none;box-shadow:0 0 15px #4be3ef12,inset 0 0 22px #77eefa09;transition:opacity .2s,transform .06s,filter .12s;--accent:#8af3fa}
   #bBreak{--accent:#ff3550;background:linear-gradient(155deg,#4a0e1b99,#220b12cc 65%,#64132066);box-shadow:0 0 15px #ff163a15,inset 0 0 22px #ff355009}
   .btn:before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 3px,#ffffff03 3px 4px)}
@@ -291,7 +287,6 @@
   </div>
   <div id="spot" class="hide"></div><div id="fieldWrap"><canvas id="cv"></canvas><div id="tip" class="hide"></div><div id="judge"><span id="jWord"></span><small id="jSub"></small></div><div id="diagLine" class="hide" aria-hidden="true"></div></div>
   <div id="controls">
-    <button id="bRush" class="hide" aria-label="解放"><span>解放</span></button>
     <button class="btn" id="bMove" aria-label="進む"><svg class="icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 8 9 31q-2 3 2 3h11v21h20V34h11q4 0 2-3Z" fill="#66dfe21a" stroke="#b6fbff" stroke-width="2.5" stroke-linejoin="round"/></svg><span>進む</span><svg class="bubbles" viewBox="0 0 50 50" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width=".8"><circle cx="36" cy="31" r="7"/><circle cx="23" cy="41" r="3.5"/><circle cx="42" cy="44" r="2"/><circle cx="32" cy="17" r="2.4"/><circle cx="16" cy="33" r="1.4"/><circle cx="42" cy="9" r="1"/></g></svg></button>
     <button class="btn" id="bBreak" aria-label="ブレイク"><svg class="icon" viewBox="0 0 64 64" aria-hidden="true"><rect x="16" y="17" width="35" height="35" rx="3" fill="#920d2588" stroke="#ff3550" stroke-width="2"/><path d="M33 20v29M19 34h29" stroke="#c01c93" stroke-width="1"/><path d="m6 57 13-22L59 6 47 29Z" fill="#b5fbff" stroke="#62eafa" stroke-width="1.5"/><path d="m9 54 43-34" stroke="#fff" stroke-width="1.5"/></svg><span>ブレイク</span><svg class="bubbles" viewBox="0 0 50 50" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width=".8"><circle cx="36" cy="31" r="7"/><circle cx="23" cy="41" r="3.5"/><circle cx="42" cy="44" r="2"/><circle cx="32" cy="17" r="2.4"/><circle cx="16" cy="33" r="1.4"/><circle cx="42" cy="9" r="1"/></g></svg></button>
   </div>
@@ -304,7 +299,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v28</span>
+  <span id="verBadge">バージョン v29</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -655,7 +650,7 @@ function reset(){
   runScore = 0; movePrice = 0; runSteps = 0; courseLap = 0;
   secPerfect = 0; warpReady = false; sectionNo = 1; termWaitLogged = false; document.getElementById('lapGain').classList.remove('show');
   endReason = null;
-  elScore = 0; moveSteps = 0; recordSteps = 0; elLastMult = 1; stepBonus = null; rushUnits = 0; rushAnim = null; updateRushBtn();
+  elScore = 0; moveSteps = 0; recordSteps = 0; elLastMult = 1; stepBonus = null; rushUnits = 0; rushAnim = null;
   document.getElementById('scoreNum').textContent = endlessScoreOn() ? '0マス' : rushOn() ? '0歩' : '0'; updateWarpHud(); document.getElementById('scoreHud').classList.toggle('hide', !(scoreOn() || endlessScoreOn() || speedOn()));
   notes = []; effects = []; texts = []; fx = [];
   setLockUI(true); tutClearUI();
@@ -873,8 +868,9 @@ function onBeat(n, t){
   const red = notes.find(nt => nt.hit);
   if (red && n > (red.hitBeat ?? n) + 1 && !tutSafe()){     // 1拍待っても壊せてない → ダメージ
     notes.splice(notes.indexOf(red), 1);
+    if (rushGuard(t)){ blastNote(red, t); } else {
     rememberHit((red.hitBeat ?? n - 2) + 1, red); // 2回目は hitBeat+1 の拍で壊す予定だった
-    damage(t, '赤ノーツを1拍以内に壊せなかった', red, null);
+    damage(t, '赤ノーツを1拍以内に壊せなかった', red, null); }
   }
   // 練習中は、ブロックが目の前に来たらプレイヤーが押すまで待つ
   const frozen = notes.some(nt => nt.hit) || tutFreeze() || (tutWait() && notes.some(nt => nt.idx <= player.idx));
@@ -910,6 +906,7 @@ function checkHit(t, reason, inputId, beat){
   if (tutSafe()) return;   // 練習中はダメージなし
   for (const nt of [...notes]){
     if (nt.idx <= player.idx && !nt.hit){
+      if (rushGuard(t)){ blastNote(nt, t); diagEv('rush_guard', { noteId: nt.id }); continue; } // 解放中・着地直後は当たらずに吹き飛ばす
       notes.splice(notes.indexOf(nt), 1);
       if (beat != null) rememberHit(beat, nt); // 受付期限切れの被弾だけ（進んでぶつかった被弾は巻き戻さない）
       damage(t, reason || 'ノーツが自分のマスに来て、受付時間内に壊せなかった', nt, inputId ?? null);
@@ -986,7 +983,7 @@ function showJudge(word, sub, display){
 // エンドレス：ブレイクの点（コンボ更新後の倍率。GOODは先にコンボが切れているので×1）。点・コンボ・倍率を判定の下に1行で出す
 let elLastMult = 1;
 function elBreak(word, sub){
-  if (EL_SCORING === 'rush'){ rushUnits = Math.min(RUSH_MAX_CELLS * RUSH_UNITS_PER_CELL, rushUnits + (RUSH_GAIN[word] || 0)); updateRushBtn(); showElLine(0, sub); return 0; } // 点は入らない。キャラにためる
+  if (EL_SCORING === 'rush'){ rushUnits = Math.min(RUSH_MAX_CELLS * RUSH_UNITS_PER_CELL, rushUnits + (RUSH_GAIN[word] || 0)); showElLine(0, sub); return 0; } // 点は入らない。キャラにためる
   const m = word === 'GOOD' ? 1 : comboMult(combo), pts = (EL_BREAK_PTS[word] || 0) * m;
   if (pts) elAdd(pts, 0);
   let gained = null;
@@ -1037,10 +1034,13 @@ function freeMove(t, rec){
   checkHit(t, '進んだ先にノーツがあった', rec?.inputId); // ブロックに突っ込んだらその場で当たり
 }
 function flashBtn(id){ const b = document.getElementById(id); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); setTimeout(() => b.classList.remove('flash'), 160); }
-function setLockUI(on){ setTimeout(updateRushBtn, 0); const b = document.getElementById('bMove'); b.classList.toggle('locked', on); if (!on) flashBtn('bMove'); }
+function setLockUI(on){ const b = document.getElementById('bMove'); b.classList.toggle('locked', on); if (!on) flashBtn('bMove'); }
 
-const RUSH_CELL_SEC = 0.05; // 解放で1マス駆け抜ける時間
-let rushAnim = null;
+const RUSH_CELL_SEC = 0.05;   // 解放で1マス駆け抜ける時間
+const RUSH_GUARD_SEC = 0.15;  // 着地のあと、ダメージを受けない時間
+let rushAnim = null, rushGuardUntil = -9;
+function rushGuard(t){ return !!rushAnim || t < rushGuardUntil; }
+function blastNote(nt, t){ const i = notes.indexOf(nt); if (i >= 0) notes.splice(i, 1); effects.push({ idx: nt.idx, t, purple: !!nt.purple }); }
 // 画面上のキャラの位置（解放中は道を1マスずつ駆け抜ける）
 function playerVis(t){
   if (rushAnim){ const k = Math.min(1, Math.max(0, (t - rushAnim.t0) / rushAnim.dur)); if (k < 1) return rushAnim.from + (rushAnim.to - rushAnim.from) * k; }
@@ -1058,6 +1058,7 @@ function drawRushAnim(t){
   }
   while (rushAnim.trail < Math.floor(v)){ fx.push({ type: 'ghost', idx: rushAnim.trail, t, d: .22, flip: facesRight(rushAnim.trail) }); rushAnim.trail++; }
   if (t >= rushAnim.t0 + rushAnim.dur){
+    for (const b of rushAnim.blown) if (!b.done){ b.done = true; effects.push({ idx: b.idx, t, purple: b.purple }); }
     fx.push({ type: 'stomp', idx: rushAnim.to, t, d: .3, strong: true });
     texts.push({ s: '+' + (rushAnim.to - rushAnim.from) + '歩', idx: rushAnim.to, t, col: '#c6ff44', big: true });
     rushAnim = null;
@@ -1076,13 +1077,13 @@ function drawRushOk(t){
 function doRush(t, rec, auto){
   const cells = Math.min(rushCells(), GOAL_INDEX - player.idx);
   if (cells <= 0 || moveLocked) return false;
-  const P = player.idx, to = P + cells, blown = notes.filter(x => x.idx <= to);
+  const P = player.idx, to = P + cells, blown = notes.filter(x => x.idx <= to + 1); // 着地の目の前の1個も吹き飛ばして、着いた瞬間に当たらないようにする
   for (const nt of blown) notes.splice(notes.indexOf(nt), 1); // 当たり判定からはすぐ外す（見た目はキャラが届くまで残す）
   const dur = cells * RUSH_CELL_SEC;
   rushAnim = { from: P, to, t0: t, dur, blown: blown.map(nt => ({ idx: nt.idx, purple: !!nt.purple, hard: (nt.hp || 1) > 1, hit: !!nt.hit })), trail: P };
   player.from = to; player.idx = to; player.at = t; // 論理上はすぐ到着。見た目は rushAnim で駆け抜ける
-  charState = 'move'; charUntil = t + dur + 0.12;
-  rushUnits = 0; updateRushBtn();
+  charState = 'move'; charUntil = t + dur + 0.12; rushGuardUntil = t + dur + RUSH_GUARD_SEC;
+  rushUnits = 0;
   moveSteps += cells; recordSteps += cells; setStepsHud();
   [660, 880, 1320].forEach((f, i) => uiTone(f, .07, i * .03));
   diagEv('rush', { inputId: rec?.inputId ?? null, auto: !!auto, cells, from: P, to, blown: blown.map(x => x.id), moveSteps, recordSteps });
@@ -1360,7 +1361,7 @@ function renderResult(result){
   const label=ov.querySelector('.scoreLabel span'),help=ov.querySelector('.scoreHelp p');
   label.dataset.orig??=label.textContent;help.dataset.orig??=help.innerHTML;
   label.textContent=result.mode==='endless'?(result.scoring==='rush'?'進んだ距離':'ENDLESS SCORE'):result.endless?'到達距離':label.dataset.orig;
-  help.innerHTML=result.mode==='endless'?(result.scoring==='rush'?`記録は進んだ距離（歩数）です。PERFECT・GREATで壊すとキャラに力がたまり、${result.rushRelease==='auto'?'満タンになると自動で':'3マス分以上たまったら（キャラの横に「OK」）「解放」ボタンで'}解放して、ためた分だけ一気に突き進みます（最大8マス）。途中のブロックは全部吹き飛ばします。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`:result.scoring==='stepBonus'?`ブレイク（PERFECT 100／GREAT 80／GOOD 30）と前進（50）で点が入ります。PERFECT・GREATで壊すと、次の一歩が強くなります（PERFECTなら＋100、GREATなら＋50。持てるのは1回分）。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`:`進むとブレイクで点が入ります。PERFECT・GREATでコンボがつながり、10コンボで×2、25コンボで×3。倍率は点と歩数の両方にかかります（キャラが進むのは1マスずつ）。GOOD・受付時間外の入力・被弾でコンボは0に戻ります。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`):result.endless?`曲が終わるまでに進んだマス数が記録です（判定で増えたり減ったりしません）。コースの終わりでワープするには、そのコースでPERFECTを${WARP_PERFECT}回取る必要があります。足りないときは終わりで待ち、ブレイクを続けて達成すると自動でワープします。ライフがなくなると、その時点の距離が記録になります。`:help.dataset.orig;
+  help.innerHTML=result.mode==='endless'?(result.scoring==='rush'?`記録は進んだ距離（歩数）です。PERFECT・GREATで壊すとキャラに力がたまり、${result.rushRelease==='auto'?'満タンになると自動で':'3マス分以上たまったら（キャラの横に「OK」）ブレイクボタンを長押しで'}解放して、ためた分だけ一気に突き進みます（最大8マス）。途中のブロックは全部吹き飛ばします。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`:result.scoring==='stepBonus'?`ブレイク（PERFECT 100／GREAT 80／GOOD 30）と前進（50）で点が入ります。PERFECT・GREATで壊すと、次の一歩が強くなります（PERFECTなら＋100、GREATなら＋50。持てるのは1回分）。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`:`進むとブレイクで点が入ります。PERFECT・GREATでコンボがつながり、10コンボで×2、25コンボで×3。倍率は点と歩数の両方にかかります（キャラが進むのは1マスずつ）。GOOD・受付時間外の入力・被弾でコンボは0に戻ります。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`):result.endless?`曲が終わるまでに進んだマス数が記録です（判定で増えたり減ったりしません）。コースの終わりでワープするには、そのコースでPERFECTを${WARP_PERFECT}回取る必要があります。足りないときは終わりで待ち、ブレイクを続けて達成すると自動でワープします。ライフがなくなると、その時点の距離が記録になります。`:help.dataset.orig;
   text('reason',result.endless?result.reasonText:'');
   if(result.mode==='endless'){text('badge',`ワープ ${result.warps}回　到達 ×${result.speed.toFixed(1)}`);text('foot',result.scoring==='rush'?`解放：${result.rushRelease==='auto'?'自動':'自分で'}`:result.scoring==='stepBonus'?`${result.moveSteps}歩`:`記録 ${result.recordSteps}歩（実移動 ${result.moveSteps}マス）`);}
   else if(result.endless)text('badge',`ワープ ${result.warps}回`);
@@ -1851,7 +1852,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v28', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v29', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2015,24 +2016,26 @@ window.addEventListener('pagehide', () => { if (diagRun && state !== 'ready') di
   paint(); }
 
 // ===== 操作 =====
-function updateRushBtn(){
-  const b = document.getElementById('bRush'); if (!b) return;
-  const show = rushOn() && rushRelease === 'manual';
-  b.classList.toggle('hide', !show);
-  b.classList.toggle('ready', show && rushCells() >= RUSH_MIN_CELLS && !moveLocked);
+const RUSH_HOLD_MS = 350; // ブレイクをこの長さ押し続けると、ため解放
+let holdTimer = null;
+function startRushHold(device){
+  clearTimeout(holdTimer); holdTimer = null;
+  if (!rushOn() || rushRelease !== 'manual') return;
+  holdTimer = setTimeout(() => { holdTimer = null; input('rush', { timeStamp: performance.now() }, device + '-hold'); }, RUSH_HOLD_MS);
 }
+function stopRushHold(){ clearTimeout(holdTimer); holdTimer = null; }
 function bindBtn(id, type){
   const el = document.getElementById(id);
-  el.addEventListener('pointerdown', e => { e.preventDefault(); el.classList.add('press'); input(type, e, e.pointerType || 'unknown'); });
-  ['pointerup','pointercancel','pointerleave'].forEach(ev => el.addEventListener(ev, () => el.classList.remove('press')));
+  el.addEventListener('pointerdown', e => { e.preventDefault(); el.classList.add('press'); input(type, e, e.pointerType || 'unknown'); if (type === 'break') startRushHold(e.pointerType || 'touch'); });
+  ['pointerup','pointercancel','pointerleave'].forEach(ev => el.addEventListener(ev, () => { el.classList.remove('press'); if (type === 'break') stopRushHold(); }));
 }
-bindBtn('bBreak', 'break'); bindBtn('bRush', 'rush'); bindBtn('bMove', 'move');
+bindBtn('bBreak', 'break'); bindBtn('bMove', 'move');
 window.addEventListener('keydown', e => {
   if (e.repeat) return;
-  if (e.key === 'ArrowRight' || e.key === 'k') input('break', e, 'keyboard');
+  if (e.key === 'ArrowRight' || e.key === 'k'){ input('break', e, 'keyboard'); startRushHold('keyboard'); }
   if (e.key === 'ArrowLeft' || e.key === ' ' || e.key === 'j') input('move', e, 'keyboard');
-  if (e.key === 'ArrowUp' || e.key === 'l') input('rush', e, 'keyboard');
 });
+window.addEventListener('keyup', e => { if (e.key === 'ArrowRight' || e.key === 'k') stopRushHold(); });
 
 let pausedAt=null,resumeTimer=null,resumeToken=0,resumeFloor=-Infinity;
 function cancelResume(){clearTimeout(resumeTimer);resumeTimer=null;resumeToken++;}
