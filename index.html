@@ -302,7 +302,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v39</span>
+  <span id="verBadge">バージョン v40</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -663,7 +663,7 @@ function reset(){
   runScore = 0; movePrice = 0; runSteps = 0; courseLap = 0;
   secPerfect = 0; warpReady = false; sectionNo = 1; termWaitLogged = false; document.getElementById('lapGain').classList.remove('show');
   endReason = null;
-  elScore = 0; moveSteps = 0; recordSteps = 0; elLastMult = 1; stepBonus = null; rushUnits = 0; rushAnim = null; rushGuardUntil = -9; rushFade = null; shards = []; slashMarks = []; mists = []; rushPoseUntil = -9;
+  elScore = 0; moveSteps = 0; recordSteps = 0; elLastMult = 1; stepBonus = null; rushUnits = 0; rushAnim = null; rushGuardUntil = -9; hurtGuardUntil = -9; rushFade = null; shards = []; slashMarks = []; mists = []; rushPoseUntil = -9;
   document.getElementById('scoreNum').textContent = endlessScoreOn() ? '0マス' : '0'; if (rushOn()) setStepsHud(); updateWarpHud(); document.getElementById('scoreHud').classList.toggle('hide', !(scoreOn() || endlessScoreOn() || speedOn()));
   notes = []; effects = []; texts = []; fx = [];
   setLockUI(true); tutClearUI();
@@ -881,7 +881,7 @@ function onBeat(n, t){
   const red = notes.find(nt => nt.hit);
   if (red && n > (red.hitBeat ?? n) + 1 && !tutSafe()){     // 1拍待っても壊せてない → ダメージ
     notes.splice(notes.indexOf(red), 1);
-    if (rushGuard(t)){ blastNote(red, t); } else {
+    if (hitGuard(t)){ blastNote(red, t); } else {
     rememberHit((red.hitBeat ?? n - 2) + 1, red); // 2回目は hitBeat+1 の拍で壊す予定だった
     damage(t, '赤ノーツを1拍以内に壊せなかった', red, null); }
   }
@@ -919,7 +919,7 @@ function checkHit(t, reason, inputId, beat){
   if (tutSafe()) return;   // 練習中はダメージなし
   for (const nt of [...notes]){
     if (nt.idx <= player.idx && !nt.hit){
-      if (rushGuard(t)){ blastNote(nt, t); diagEv('rush_guard', { noteId: nt.id }); continue; } // 解放中・着地直後は当たらずに吹き飛ばす
+      if (hitGuard(t)){ blastNote(nt, t); diagEv('hit_guard', { noteId: nt.id, rush: rushGuard(t) }); continue; } // 解放中・着地直後は当たらずに吹き飛ばす
       notes.splice(notes.indexOf(nt), 1);
       if (beat != null) rememberHit(beat, nt); // 受付期限切れの被弾だけ（進んでぶつかった被弾は巻き戻さない）
       damage(t, reason || 'ノーツが自分のマスに来て、受付時間内に壊せなかった', nt, inputId ?? null);
@@ -950,7 +950,7 @@ function tryRevertLateHit(n, evPerf, handlerPerf, rec){
 }
 function damage(t, reason, nt, inputId, sub){
   diagEv('damage', { lifeLoss: true, reason: reason || null, causeInputId: inputId ?? null, noteId: nt?.id ?? null, noteIdx: nt?.idx ?? null, noteHp: nt?.hp ?? null, playerIdx: player.idx, hpBefore: hp, ...diagCtx() });
-  hp--; drawHud(); damageAt = t;
+  hp--; drawHud(); damageAt = t; hurtGuardUntil = t + HURT_GUARD_SEC;
   const veil = document.getElementById('impactVeil');
   veil.classList.remove('hit'); void veil.offsetWidth; veil.classList.add('hit');
   charState = 'damage'; charUntil = t + 0.4;
@@ -1056,6 +1056,10 @@ const RUSH_LAND_CLEAR = 3;     // 着地したとき、いちばん近いブロ�
 let rushAnim = null, rushGuardUntil = -9, rushFade = null, shards = [], slashMarks = [], mists = [], rushPoseUntil = -9;
 function poisonHero(){ return !!heroInfo().poison; }
 function rushGuard(t){ return !!rushAnim || t < rushGuardUntil; }
+// エンドレス：被弾したあと少しの間は無敵（連続ブロックで続けてライフを削られないように）。当たるブロックは壊れる
+const HURT_GUARD_SEC = 0.6;
+let hurtGuardUntil = -9;
+function hitGuard(t){ return rushGuard(t) || (speedOn() && t < hurtGuardUntil); }
 function blastNote(nt, t){ const i = notes.indexOf(nt); if (i >= 0) notes.splice(i, 1); spawnShards(nt.idx, t, nt.purple ? 'purple' : (nt.hp || 1) > 1 ? 'hard' : 'pink'); }
 function takeBlown(to){ const b = notes.filter(x => x.idx <= to + 1); for (const nt of b) notes.splice(notes.indexOf(nt), 1); return b.map(nt => ({ idx: nt.idx, purple: !!nt.purple, hard: (nt.hp || 1) > 1, hit: !!nt.hit })); }
 // 画面上のキャラの位置（発動中は溜め→道を1マスずつ駆け抜ける）
@@ -2027,7 +2031,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v39', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v40', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2244,7 +2248,7 @@ function nextLap(t, songEnded){
   [784, 988, 1175].forEach((f, i) => uiTone(f, .12, i * .05));
   player = { idx: 0, from: 0, at: 0 }; notes = []; effects = []; texts = []; fx = [];
   nextBeat = 0; acted = -1; pendingCheck = []; earlyInput = null; nextGap = 4; runLen = 1;
-  rushAnim = null; rushGuardUntil = -9; rushFade = null; shards = []; slashMarks = []; mists = []; rushPoseUntil = -9; // 前の曲の時刻で残った無敵・演出を消す
+  rushAnim = null; rushGuardUntil = -9; hurtGuardUntil = -9; rushFade = null; shards = []; slashMarks = []; mists = []; rushPoseUntil = -9; // 前の曲の時刻で残った無敵・演出を消す
   charState = 'idle'; charUntil = 0; damageAt = -9; lastBeatAt = -9; hideJudge(); // 曲が頭に戻るので、前の曲の時刻で残っている表示を消す
   lineK = 0; gIdx = gIndexFor(0); gFrom = gIdx; gMoveAt = -9;
   cameraRow=0;cameraFrom=0;cameraTarget=0;cameraAt=-9;setPalette(0);
