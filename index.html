@@ -77,7 +77,11 @@
   #progress i{display:block;height:100%;width:0;background:#8af3fa;box-shadow:0 0 8px #7ff7ff;border-radius:4px}
   #fieldWrap{display:flex;align-items:center;justify-content:center;width:100%;flex:1;min-height:0;padding:12px 0;position:relative}
   canvas{display:block;will-change:transform}
-  #controls{flex:none;width:min(100%,460px);display:flex;gap:18px;height:96px;margin-top:8px}
+  #controls{flex:none;width:min(100%,460px);display:flex;gap:18px;height:96px;margin-top:8px;position:relative}
+  #bRush{position:absolute;left:50%;top:-34px;transform:translateX(-50%);width:66px;height:66px;border-radius:50%;border:3px solid #081221;background:#1b3a6e;color:#8aa3c9;font-size:15px;font-weight:900;z-index:5;display:flex;align-items:center;justify-content:center;touch-action:manipulation}
+  #bRush.hide{display:none}
+  #bRush.ready{background:#c6ff44;color:#081221;box-shadow:0 0 0 3px #eaffb8}
+  #bRush.press{transform:translateX(-50%) scale(.94)}
   .btn{position:relative;overflow:hidden;display:flex;justify-content:center;align-items:center;gap:6px;flex:1;min-width:0;height:100%;border:1.5px solid var(--accent);border-radius:19px;color:#f1fbfc;background:linear-gradient(155deg,#183d4499,#0d181dcc 65%,#18505b66);padding:8px;touch-action:none;box-shadow:0 0 15px #4be3ef12,inset 0 0 22px #77eefa09;transition:opacity .2s,transform .06s,filter .12s;--accent:#8af3fa}
   #bBreak{--accent:#ff3550;background:linear-gradient(155deg,#4a0e1b99,#220b12cc 65%,#64132066);box-shadow:0 0 15px #ff163a15,inset 0 0 22px #ff355009}
   .btn:before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 3px,#ffffff03 3px 4px)}
@@ -287,6 +291,7 @@
   </div>
   <div id="spot" class="hide"></div><div id="fieldWrap"><canvas id="cv"></canvas><div id="tip" class="hide"></div><div id="judge"><span id="jWord"></span><small id="jSub"></small></div><div id="diagLine" class="hide" aria-hidden="true"></div></div>
   <div id="controls">
+    <button id="bRush" class="hide" aria-label="解放"><span>解放</span></button>
     <button class="btn" id="bMove" aria-label="進む"><svg class="icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 8 9 31q-2 3 2 3h11v21h20V34h11q4 0 2-3Z" fill="#66dfe21a" stroke="#b6fbff" stroke-width="2.5" stroke-linejoin="round"/></svg><span>進む</span><svg class="bubbles" viewBox="0 0 50 50" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width=".8"><circle cx="36" cy="31" r="7"/><circle cx="23" cy="41" r="3.5"/><circle cx="42" cy="44" r="2"/><circle cx="32" cy="17" r="2.4"/><circle cx="16" cy="33" r="1.4"/><circle cx="42" cy="9" r="1"/></g></svg></button>
     <button class="btn" id="bBreak" aria-label="ブレイク"><svg class="icon" viewBox="0 0 64 64" aria-hidden="true"><rect x="16" y="17" width="35" height="35" rx="3" fill="#920d2588" stroke="#ff3550" stroke-width="2"/><path d="M33 20v29M19 34h29" stroke="#c01c93" stroke-width="1"/><path d="m6 57 13-22L59 6 47 29Z" fill="#b5fbff" stroke="#62eafa" stroke-width="1.5"/><path d="m9 54 43-34" stroke="#fff" stroke-width="1.5"/></svg><span>ブレイク</span><svg class="bubbles" viewBox="0 0 50 50" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width=".8"><circle cx="36" cy="31" r="7"/><circle cx="23" cy="41" r="3.5"/><circle cx="42" cy="44" r="2"/><circle cx="32" cy="17" r="2.4"/><circle cx="16" cy="33" r="1.4"/><circle cx="42" cy="9" r="1"/></g></svg></button>
   </div>
@@ -299,7 +304,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v27</span>
+  <span id="verBadge">バージョン v28</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -650,7 +655,7 @@ function reset(){
   runScore = 0; movePrice = 0; runSteps = 0; courseLap = 0;
   secPerfect = 0; warpReady = false; sectionNo = 1; termWaitLogged = false; document.getElementById('lapGain').classList.remove('show');
   endReason = null;
-  elScore = 0; moveSteps = 0; recordSteps = 0; elLastMult = 1; stepBonus = null; rushUnits = 0;
+  elScore = 0; moveSteps = 0; recordSteps = 0; elLastMult = 1; stepBonus = null; rushUnits = 0; rushAnim = null; updateRushBtn();
   document.getElementById('scoreNum').textContent = endlessScoreOn() ? '0マス' : rushOn() ? '0歩' : '0'; updateWarpHud(); document.getElementById('scoreHud').classList.toggle('hide', !(scoreOn() || endlessScoreOn() || speedOn()));
   notes = []; effects = []; texts = []; fx = [];
   setLockUI(true); tutClearUI();
@@ -981,7 +986,7 @@ function showJudge(word, sub, display){
 // エンドレス：ブレイクの点（コンボ更新後の倍率。GOODは先にコンボが切れているので×1）。点・コンボ・倍率を判定の下に1行で出す
 let elLastMult = 1;
 function elBreak(word, sub){
-  if (EL_SCORING === 'rush'){ rushUnits = Math.min(RUSH_MAX_CELLS * RUSH_UNITS_PER_CELL, rushUnits + (RUSH_GAIN[word] || 0)); showElLine(0, sub); return 0; } // 点は入らない。キャラにためる
+  if (EL_SCORING === 'rush'){ rushUnits = Math.min(RUSH_MAX_CELLS * RUSH_UNITS_PER_CELL, rushUnits + (RUSH_GAIN[word] || 0)); updateRushBtn(); showElLine(0, sub); return 0; } // 点は入らない。キャラにためる
   const m = word === 'GOOD' ? 1 : comboMult(combo), pts = (EL_BREAK_PTS[word] || 0) * m;
   if (pts) elAdd(pts, 0);
   let gained = null;
@@ -1032,23 +1037,54 @@ function freeMove(t, rec){
   checkHit(t, '進んだ先にノーツがあった', rec?.inputId); // ブロックに突っ込んだらその場で当たり
 }
 function flashBtn(id){ const b = document.getElementById(id); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); setTimeout(() => b.classList.remove('flash'), 160); }
-function setLockUI(on){ const b = document.getElementById('bMove'); b.classList.toggle('locked', on); if (!on) flashBtn('bMove'); }
+function setLockUI(on){ setTimeout(updateRushBtn, 0); const b = document.getElementById('bMove'); b.classList.toggle('locked', on); if (!on) flashBtn('bMove'); }
 
+const RUSH_CELL_SEC = 0.05; // 解放で1マス駆け抜ける時間
+let rushAnim = null;
+// 画面上のキャラの位置（解放中は道を1マスずつ駆け抜ける）
+function playerVis(t){
+  if (rushAnim){ const k = Math.min(1, Math.max(0, (t - rushAnim.t0) / rushAnim.dur)); if (k < 1) return rushAnim.from + (rushAnim.to - rushAnim.from) * k; }
+  return tween(player.from, player.idx, player.at, t);
+}
+// 解放中の演出：まだ届いていないブロックを描き、届いた瞬間に吹き飛ばす。通った道に残像
+function drawRushAnim(t){
+  if (!rushAnim) return;
+  const v = playerVis(t);
+  for (const b of rushAnim.blown){
+    if (b.done) continue;
+    if (v >= b.idx - .35){ b.done = true; effects.push({ idx: b.idx, t, purple: b.purple }); uiTone(520 + 40 * (b.idx - rushAnim.from), .03, 0); continue; }
+    const p = cellXY(b.idx), sz = cell * .93 * 1.25, spr = b.purple ? purpleCv : b.hit ? crackCv : b.hard ? hardCv : noteCv;
+    g.drawImage(spr, p.x - sz / 2, p.y - sz / 2, sz, sz);
+  }
+  while (rushAnim.trail < Math.floor(v)){ fx.push({ type: 'ghost', idx: rushAnim.trail, t, d: .22, flip: facesRight(rushAnim.trail) }); rushAnim.trail++; }
+  if (t >= rushAnim.t0 + rushAnim.dur){
+    fx.push({ type: 'stomp', idx: rushAnim.to, t, d: .3, strong: true });
+    texts.push({ s: '+' + (rushAnim.to - rushAnim.from) + '歩', idx: rushAnim.to, t, col: '#c6ff44', big: true });
+    rushAnim = null;
+  }
+}
+// 解放できる状態のとき、キャラの横に小さく「OK」（点滅なし）
+function drawRushOk(t){
+  if (!rushOn() || rushRelease !== 'manual' || rushAnim || moveLocked || rushCells() < RUSH_MIN_CELLS) return;
+  const p = cellXY(playerVis(t)), fs = Math.max(10, Math.round(cell * .24)), x = p.x + cell * .42, y = p.y - cell * .46;
+  g.save(); g.font = `900 ${fs}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  const w = g.measureText('OK').width + fs * .8, h = fs * 1.35;
+  rr(g, x - w / 2, y - h / 2, w, h, h / 2); g.fillStyle = '#c6ff44'; g.fill(); g.lineWidth = 2.5; g.strokeStyle = '#081221'; g.stroke();
+  g.fillStyle = '#081221'; g.fillText('OK', x, y + 1); g.restore();
+}
 // ため解放：ためたマス数だけ一気に前へ。途中（と足元）のブロックは全部吹き飛ばして突き抜ける
 function doRush(t, rec, auto){
   const cells = Math.min(rushCells(), GOAL_INDEX - player.idx);
   if (cells <= 0 || moveLocked) return false;
   const P = player.idx, to = P + cells, blown = notes.filter(x => x.idx <= to);
-  for (const nt of blown){ notes.splice(notes.indexOf(nt), 1); effects.push({ idx: nt.idx, t, purple: !!nt.purple }); }
-  for (let i = P; i < to; i++) fx.push({ type: 'ghost', idx: i, t, d: .18 + (i - P) * .02, flip: facesRight(i) });
-  player.from = P; player.idx = to; player.at = t;
-  charState = 'move'; charUntil = t + 0.25;
-  rushUnits = 0;
+  for (const nt of blown) notes.splice(notes.indexOf(nt), 1); // 当たり判定からはすぐ外す（見た目はキャラが届くまで残す）
+  const dur = cells * RUSH_CELL_SEC;
+  rushAnim = { from: P, to, t0: t, dur, blown: blown.map(nt => ({ idx: nt.idx, purple: !!nt.purple, hard: (nt.hp || 1) > 1, hit: !!nt.hit })), trail: P };
+  player.from = to; player.idx = to; player.at = t; // 論理上はすぐ到着。見た目は rushAnim で駆け抜ける
+  charState = 'move'; charUntil = t + dur + 0.12;
+  rushUnits = 0; updateRushBtn();
   moveSteps += cells; recordSteps += cells; setStepsHud();
-  fx.push({ type: 'stomp', idx: to, t, d: .3, strong: true });
-  texts.push({ s: '+' + cells + '歩', idx: to, t, col: '#c6ff44', big: true });
   [660, 880, 1320].forEach((f, i) => uiTone(f, .07, i * .03));
-  flashBtn('bMove');
   diagEv('rush', { inputId: rec?.inputId ?? null, auto: !!auto, cells, from: P, to, blown: blown.map(x => x.id), moveSteps, recordSteps });
   return true;
 }
@@ -1114,7 +1150,7 @@ function doAction(type, n, t, diff, rec){
       const elPts = speedOn() ? elBreak(word, sub) : null;
       diagResult(rec, { status: 'judged', judge: word, points: elPts, stepBonus: speedOn() ? stepBonus : null, combo: speedOn() ? combo : null, mult: speedOn() ? comboMult(combo) : null, sectionPerfect: endlessScoreOn() ? secPerfect : null, warpReady: endlessScoreOn() ? warpReady : null, beat: n, offsetMs: r2(diff * 1000), noteId: target.id, noteIdx: target.idx, noteHpBefore: hpBefore, noteHpAfter: hpBefore > 1 ? target.hp : 0, destroyed: hpBefore <= 1, playerIdx: player.idx, lockBefore, lockAfter: moveLocked });
       diagShow(word + '：' + msText(diff * 1000));
-      if (rushOn() && rushRelease === 'auto' && rushCells() >= RUSH_MAX_CELLS && !moveLocked) doRush(t, rec, true); // 自動：満タンの瞬間に解放
+      if (rushOn() && rushRelease === 'auto' && rushCells() >= RUSH_MAX_CELLS && !moveLocked && !rushAnim) doRush(t, rec, true); // 自動：満タンの瞬間に解放
     }
   }
 }
@@ -1129,8 +1165,12 @@ function input(type, e, device){
   const t = tNow - (delayMs ?? 0) / 1000;
   const rec = diagInput(type, e, device, ev, handlerPerf, delayMs, tNow, t);
   if (ev.perf != null && ev.perf < resumePerf){ diagInputEnd(rec, { status: 'invalid', reason: 'ポーズ解除前に押された入力' }); if (type === 'break') diagShow('無効：ポーズ解除前の入力'); return; }
+  if (type === 'rush'){
+    if (rushOn() && rushRelease === 'manual' && rushCells() >= RUSH_MIN_CELLS && !moveLocked && !rushAnim){ diagInputEnd(rec, { status: 'immediate', reason: 'ため解放（判定なし）' }); doRush(tNow, rec, false); }
+    else diagInputEnd(rec, { status: 'invalid', reason: 'ためが足りない（解放できない）' });
+    return;
+  }
   if (type === 'move'){
-    if (rushOn() && rushRelease === 'manual' && rushCells() >= RUSH_MIN_CELLS && !moveLocked){ diagInputEnd(rec, { status: 'immediate', reason: 'ため解放（判定なし）' }); doRush(tNow, rec, false); return; } // たまっていれば「進む」で解放
     if (!chargeTarget()){ diagInputEnd(rec, { status: 'immediate', reason: '進むは判定なし・押した瞬間に実行' }); freeMove(tNow, rec); return; } // 進むは拍に関係なく、押した瞬間に動く
     type = 'charge'; if (rec) rec.type = 'charge'; // 紫ノーツへの突進：ブレイクと同じように拍で判定
   }
@@ -1320,7 +1360,7 @@ function renderResult(result){
   const label=ov.querySelector('.scoreLabel span'),help=ov.querySelector('.scoreHelp p');
   label.dataset.orig??=label.textContent;help.dataset.orig??=help.innerHTML;
   label.textContent=result.mode==='endless'?(result.scoring==='rush'?'進んだ距離':'ENDLESS SCORE'):result.endless?'到達距離':label.dataset.orig;
-  help.innerHTML=result.mode==='endless'?(result.scoring==='rush'?`記録は進んだ距離（歩数）です。PERFECT・GREATで壊すとキャラに力がたまり、${result.rushRelease==='auto'?'満タンになると自動で':'3マス分以上たまったら「進む」で'}解放して、ためた分だけ一気に突き進みます（最大8マス）。途中のブロックは全部吹き飛ばします。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`:result.scoring==='stepBonus'?`ブレイク（PERFECT 100／GREAT 80／GOOD 30）と前進（50）で点が入ります。PERFECT・GREATで壊すと、次の一歩が強くなります（PERFECTなら＋100、GREATなら＋50。持てるのは1回分）。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`:`進むとブレイクで点が入ります。PERFECT・GREATでコンボがつながり、10コンボで×2、25コンボで×3。倍率は点と歩数の両方にかかります（キャラが進むのは1マスずつ）。GOOD・受付時間外の入力・被弾でコンボは0に戻ります。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`):result.endless?`曲が終わるまでに進んだマス数が記録です（判定で増えたり減ったりしません）。コースの終わりでワープするには、そのコースでPERFECTを${WARP_PERFECT}回取る必要があります。足りないときは終わりで待ち、ブレイクを続けて達成すると自動でワープします。ライフがなくなると、その時点の距離が記録になります。`:help.dataset.orig;
+  help.innerHTML=result.mode==='endless'?(result.scoring==='rush'?`記録は進んだ距離（歩数）です。PERFECT・GREATで壊すとキャラに力がたまり、${result.rushRelease==='auto'?'満タンになると自動で':'3マス分以上たまったら（キャラの横に「OK」）「解放」ボタンで'}解放して、ためた分だけ一気に突き進みます（最大8マス）。途中のブロックは全部吹き飛ばします。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`:result.scoring==='stepBonus'?`ブレイク（PERFECT 100／GREAT 80／GOOD 30）と前進（50）で点が入ります。PERFECT・GREATで壊すと、次の一歩が強くなります（PERFECTなら＋100、GREATなら＋50。持てるのは1回分）。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`:`進むとブレイクで点が入ります。PERFECT・GREATでコンボがつながり、10コンボで×2、25コンボで×3。倍率は点と歩数の両方にかかります（キャラが進むのは1マスずつ）。GOOD・受付時間外の入力・被弾でコンボは0に戻ります。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`):result.endless?`曲が終わるまでに進んだマス数が記録です（判定で増えたり減ったりしません）。コースの終わりでワープするには、そのコースでPERFECTを${WARP_PERFECT}回取る必要があります。足りないときは終わりで待ち、ブレイクを続けて達成すると自動でワープします。ライフがなくなると、その時点の距離が記録になります。`:help.dataset.orig;
   text('reason',result.endless?result.reasonText:'');
   if(result.mode==='endless'){text('badge',`ワープ ${result.warps}回　到達 ×${result.speed.toFixed(1)}`);text('foot',result.scoring==='rush'?`解放：${result.rushRelease==='auto'?'自動':'自分で'}`:result.scoring==='stepBonus'?`${result.moveSteps}歩`:`記録 ${result.recordSteps}歩（実移動 ${result.moveSteps}マス）`);}
   else if(result.endless)text('badge',`ワープ ${result.warps}回`);
@@ -1389,7 +1429,7 @@ document.querySelectorAll('[data-result-skip]').forEach(b=>b.addEventListener('c
 function placeJudge(t){
   const el=document.getElementById('judge'),wrap=document.getElementById('fieldWrap');
   const a=cv.getBoundingClientRect(),b=wrap.getBoundingClientRect();
-  const p=cellXY(tween(player.from,player.idx,player.at,t));
+  const p=cellXY(playerVis(t));
   const x=a.left-b.left+p.x,y=a.top-b.top+p.y,w=el.offsetWidth,h=el.offsetHeight;
   const left=Math.max(4,Math.min(b.width-w-4,x-w/2));
   let top=y-cell*.64-h;
@@ -1608,7 +1648,7 @@ function draw(t){
   cameraRow=cameraAtTime(t);
   drawCourse(t);drawLineAndG(t);
   document.getElementById('beatWash').style.opacity=reduceMotion.matches?'0':(beatPulse(t)*.13).toFixed(3);
-  const pulse=beatPulse(t),pp=cellXY(tween(player.from,player.idx,player.at,t));
+  const pulse=beatPulse(t),pp=cellXY(playerVis(t));
   if(pulse>0){
     g.save();g.strokeStyle=`rgba(134,241,249,${pulse*.55})`;g.lineWidth=1;
     rr(g,pp.x-cell*.44,pp.y-cell*.44,cell*.88,cell*.88,cell*.05);g.stroke();g.restore();
@@ -1630,7 +1670,7 @@ function draw(t){
     }
     g.restore();
   }
-  const vp=tween(player.from,player.idx,player.at,t);
+  const vp=playerVis(t);
   const pre=state==='play'||state==='paused'||state==='resuming'?notesWillMove():false,nb=beatTime(nextBeat);
   const drawn=diagRun?[]:null;
   for(const nt of notes){
@@ -1672,7 +1712,9 @@ function draw(t){
     g.beginPath();g.moveTo(p.x-r,p.y+r*.72);g.lineTo(p.x+r,p.y-r*.72);g.stroke();g.restore();
   }
   if(drawn)diagLastDraw={perf:r2(performance.now()),songT:r4(t),playerDrawnIdx:r4(vp),notes:drawn};
+  drawRushAnim(t);
   drawChar(t);
+  drawRushOk(t);
   updateSpot(t);
   if(document.getElementById('judge').classList.contains('pop'))placeJudge(t);
   texts=texts.filter(x=>t-x.t<.5);g.textAlign='center';g.font=`600 ${Math.max(10,Math.round(cell*.26))}px sans-serif`;
@@ -1739,7 +1781,7 @@ function drawPose(k, x, y){
 }
 function drawChar(t){
   if (t > charUntil) charState = 'idle';
-  const p = cellXY(tween(player.from, player.idx, player.at, t));
+  const p = cellXY(playerVis(t));
   if (rushOn() && rushUnits > 0){
     const fr = rushUnits / (RUSH_MAX_CELLS * RUSH_UNITS_PER_CELL), ready = rushCells() >= (rushRelease === 'auto' ? RUSH_MAX_CELLS : RUSH_MIN_CELLS);
     const rg = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, cell * (.45 + .35 * fr));
@@ -1809,7 +1851,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v27', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v28', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -1868,7 +1910,7 @@ function diagEv(type, data){
 }
 function diagInput(type, e, device, ev, handlerPerf, delayMs, tNow, t){
   if (!diagRun) return null;
-  const vp = tween(player.from, player.idx, player.at, t), pre = notesWillMove(), nb = beatTime(nextBeat);
+  const vp = playerVis(t), pre = notesWillMove(), nb = beatTime(nextBeat);
   const near = [...notes].sort((a, b) => a.idx - b.idx).slice(0, 3).map(nt => { const V = noteView(nt, t, pre, nb, vp); return { id: nt.id, logicalIdx: nt.idx, from: nt.from, hp: nt.hp || 1, red: !!nt.hit, moveStart: r4(V.at), moveEnd: r4(V.at + MOVE_ANIM), estimatedDrawnIdx: r4(V.vis) }; });
   return diagEv('input', { inputId: 'in' + (diagSeq + 1), action: type === 'break' ? 'ブレイク' : '進む', device: device === 'keyboard' ? 'キーボード' : device === 'touch' ? 'タッチ' : device === 'mouse' ? 'マウス' : device === 'pen' ? 'ペン' : device,
     eventTimeStamp: typeof e?.timeStamp === 'number' ? e.timeStamp : null, eventPerf: r2(ev.perf), eventTimeNote: ev.reason ?? ev.basis ?? null, handlerPerf: r2(handlerPerf), queueDelayMs: r2(delayMs),
@@ -1973,16 +2015,23 @@ window.addEventListener('pagehide', () => { if (diagRun && state !== 'ready') di
   paint(); }
 
 // ===== 操作 =====
+function updateRushBtn(){
+  const b = document.getElementById('bRush'); if (!b) return;
+  const show = rushOn() && rushRelease === 'manual';
+  b.classList.toggle('hide', !show);
+  b.classList.toggle('ready', show && rushCells() >= RUSH_MIN_CELLS && !moveLocked);
+}
 function bindBtn(id, type){
   const el = document.getElementById(id);
   el.addEventListener('pointerdown', e => { e.preventDefault(); el.classList.add('press'); input(type, e, e.pointerType || 'unknown'); });
   ['pointerup','pointercancel','pointerleave'].forEach(ev => el.addEventListener(ev, () => el.classList.remove('press')));
 }
-bindBtn('bBreak', 'break'); bindBtn('bMove', 'move');
+bindBtn('bBreak', 'break'); bindBtn('bRush', 'rush'); bindBtn('bMove', 'move');
 window.addEventListener('keydown', e => {
   if (e.repeat) return;
   if (e.key === 'ArrowRight' || e.key === 'k') input('break', e, 'keyboard');
   if (e.key === 'ArrowLeft' || e.key === ' ' || e.key === 'j') input('move', e, 'keyboard');
+  if (e.key === 'ArrowUp' || e.key === 'l') input('rush', e, 'keyboard');
 });
 
 let pausedAt=null,resumeTimer=null,resumeToken=0,resumeFloor=-Infinity;
@@ -2017,6 +2066,7 @@ function nextLap(t, songEnded){
   [784, 988, 1175].forEach((f, i) => uiTone(f, .12, i * .05));
   player = { idx: 0, from: 0, at: 0 }; notes = []; effects = []; texts = []; fx = [];
   nextBeat = 0; acted = -1; pendingCheck = []; earlyInput = null; nextGap = 4; runLen = 1;
+  rushAnim = null;
   charState = 'idle'; charUntil = 0; damageAt = -9; lastBeatAt = -9; hideJudge(); // 曲が頭に戻るので、前の曲の時刻で残っている表示を消す
   lineK = 0; gIdx = gIndexFor(0); gFrom = gIdx; gMoveAt = -9;
   cameraRow=0;cameraFrom=0;cameraTarget=0;cameraAt=-9;setPalette(0);
