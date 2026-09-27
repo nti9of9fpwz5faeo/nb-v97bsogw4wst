@@ -296,7 +296,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v25</span>
+  <span id="verBadge">バージョン v26</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -878,7 +878,7 @@ function onBeat(n, t){
     if (chartNotes() ? chartSpawns(n)&&lastIdx<gIdx : gIdx - lastIdx >= nextGap){
       const purple = !chartNotes() && !isTutorial() && !moveLocked && (song?.purple || 0) > 0 && rand() < song.purple; // 紫＝突進ノーツ（周の最初の1個にはしない）
       notes.push({ id: noteId++, idx: gIdx, from: gIdx, at: t, pop: t, hp: purple ? 1 : chartNotes() ? chartHp(n, gIdx - lastIdx) : rollHp(gIdx - lastIdx), purple });
-      if(!chartNotes())nextGap = purple ? Math.max(3, pickGap()) : pickGap();
+      if(!chartNotes())nextGap = pickGap(); // 紫も連続ブロックに混ざる（突進で後ろを押し返すので空けない）
     }
   }
   lastBeatAt = t;lastBeatStrength=activeChart?.accents?.[n]??1;
@@ -1040,6 +1040,11 @@ function doAction(type, n, t, diff, rec){
     const elPts = speedOn() ? elBreak(word, sub) : null;
     diagResult(rec, { status: 'judged', judge: word, charge: true, points: elPts, combo: speedOn() ? combo : null, beat: n, offsetMs: r2(diff * 1000), noteId: target.id, playerFrom: player.idx, playerTo: player.idx + 1 });
     diagShow('突進 ' + word + '：' + msText(diff * 1000));
+    // 目の前に隙間なく続くブロックを、まとめて1マス押し返す（突き破る）。進んだ先でぶつからない
+    const chain = []; for (let k = player.idx + 1; ; k++){ const nt = notes.find(x => x.idx === k); if (!nt) break; chain.push(nt); }
+    for (const nt of chain){ nt.from = nt.idx; nt.idx += 1; nt.at = t; }
+    if (chain.length) fx.push({ type: 'stomp', idx: player.idx + 1, t, d: .2, strong: false });
+    diagEv('knockback', { inputId: rec?.inputId ?? null, count: chain.length, noteIds: chain.map(x => x.id) });
     freeMove(t, null); // 壊したマスの先へ1マス進む（前進の点・歩数もここで入る）
     charState = 'slash'; charUntil = t + 0.22;
     return;
@@ -1764,7 +1769,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v25', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v26', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
