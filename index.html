@@ -293,7 +293,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v13</span>
+  <span id="verBadge">バージョン v14</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -367,24 +367,32 @@ let endReason = null;
 const END_REASON = { hp: 'ライフ切れ', finish: '完走', song_end: 'ワープ前に曲が終わった' };
 function endlessScoreOn(){ return playMode === 'distance' && !isTutorial(); } // 距離チャレンジ
 // ===== エンドレス：終端でワープ（条件なし）→ 速度＋0.1（最大2.2）。ブレイク点に得点倍率を掛ける =====
-const SPEED_BASE_PTS = { PERFECT: 100, GREAT: 80, GOOD: 50, MISS: 0 }; // 基本点（仮）
-const SPEED_STEP = 0.1, SPEED_MAX = 2.2;                               // ワープごとの加速と上限
+// ===== エンドレス：記録は「歩数」＝実際に進んだマス＋判定ゲージのボーナス =====
+// ゲージは整数で管理（満タン16）。数字はここでまとめて調整する（試遊用の仮）
+const GAUGE_FULL = 16;
+const GAUGE_GAIN = { PERFECT: 4, GREAT: 2, GOOD: 1 };   // ＝＋25％／＋12.5％／＋6.25％
+const GAUGE_INPUT_MISS = -2;                             // 入力MISS（受付時間外）＝−12.5％。被弾では減らさない
+const SPEED_STEP = 0.1, SPEED_MAX = 2.2;                  // ワープごとの加速（足し算）と上限
 function speedOn(){ return playMode === 'endless' && !isTutorial(); }
-function speedMult(r){ return r * r; }                                 // 得点倍率＝再生速度の2乗（仮）
-let speedScore = 0;
-function speedPoints(word){ return Math.round((SPEED_BASE_PTS[word] || 0) * speedMult(rate)); }
-function addSpeedPoints(word, t){
-  const pts = speedPoints(word); if (!pts) return 0;
-  speedScore += pts; document.getElementById('scoreNum').textContent = speedScore.toLocaleString();
-  texts.push({ s: '+' + pts, idx: player.idx, t, col: PRICE_COL[SPEED_BASE_PTS[word]] || '#fff' });
-  return pts;
+let moveSteps = 0, bonusSteps = 0, gauge = 0, gaugeFxAt = -1e9, gaugeFxDir = 0;
+function totalSteps(){ return moveSteps + bonusSteps; }
+function setStepsHud(){ document.getElementById('scoreNum').textContent = totalSteps().toLocaleString() + '歩'; }
+// ゲージを増減する。満タンごとに＋1歩（記録だけ。プレイヤーは動かさない）、余りは持ち越し、0未満にはしない
+function gaugeChange(delta, cause, inputId, noteId, t){
+  if (!speedOn() || !delta) return;
+  const before = gauge; let gained = 0;
+  gauge = Math.max(0, gauge + delta);
+  while (gauge >= GAUGE_FULL){ gauge -= GAUGE_FULL; bonusSteps++; gained++; }
+  gaugeFxAt = performance.now(); gaugeFxDir = delta > 0 ? 1 : -1;
+  if (gained){ texts.push({ s: '+' + gained + '歩', idx: player.idx, t, col: '#c6ff44', big: true }); setStepsHud(); }
+  diagEv('gauge', { cause, inputId: inputId ?? null, noteId: noteId ?? null, delta, before, after: gauge, full: GAUGE_FULL, bonusGained: gained, moveSteps, bonusSteps, totalSteps: totalSteps() });
 }
 function distance(){ return courseLap * GOAL_INDEX + player.idx; }
 function setDistHud(){ document.getElementById('scoreNum').textContent = distance() + 'マス'; }
 function atTerminal(){ return player.idx >= LINES[LINES.length - 1]; }
 function updateWarpHud(){
   const el = document.getElementById('warpHud');
-  if (speedOn()){ el.className = ''; el.textContent = '速度 ×' + rate.toFixed(1) + '　得点 ×' + speedMult(rate).toFixed(2); return; }
+  if (speedOn()){ el.className = ''; el.textContent = '速度 ×' + rate.toFixed(1); return; }
   if (!endlessScoreOn()){ el.className = 'hide'; return; }
   if (warpReady){ el.className = 'ready'; el.textContent = 'PERFECT ' + WARP_PERFECT + ' / ' + WARP_PERFECT + '　ワープOK'; }
   else if (atTerminal()){ el.className = 'wait'; el.textContent = 'ワープまで あと' + (WARP_PERFECT - secPerfect) + '回'; }
@@ -635,8 +643,8 @@ function reset(){
   runScore = 0; movePrice = 0; runSteps = 0; courseLap = 0;
   secPerfect = 0; warpReady = false; sectionNo = 1; termWaitLogged = false; document.getElementById('lapGain').classList.remove('show');
   endReason = null;
-  speedScore = 0;
-  document.getElementById('scoreNum').textContent = endlessScoreOn() ? '0マス' : '0'; updateWarpHud(); document.getElementById('scoreHud').classList.toggle('hide', !(scoreOn() || endlessScoreOn() || speedOn()));
+  moveSteps = 0; bonusSteps = 0; gauge = 0; gaugeFxAt = -1e9;
+  document.getElementById('scoreNum').textContent = endlessScoreOn() ? '0マス' : speedOn() ? '0歩' : '0'; updateWarpHud(); document.getElementById('scoreHud').classList.toggle('hide', !(scoreOn() || endlessScoreOn() || speedOn()));
   notes = []; effects = []; texts = []; fx = [];
   setLockUI(true); tutClearUI();
   nextBeat = 0; acted = -1; pendingCheck = [];
@@ -947,6 +955,7 @@ function freeMove(t, rec){
   charState = 'move'; charUntil = t + 0.18;
   if (scoreOn()){ runSteps++; addScore(movePrice, t, true); }
   if (endlessScoreOn()){ setDistHud(); updateWarpHud(); }
+  if (speedOn()){ moveSteps++; setStepsHud(); }
   tutProgress('move');
   checkHit(t, '進んだ先にノーツがあった', rec?.inputId); // ブロックに突っ込んだらその場で当たり
 }
@@ -987,8 +996,8 @@ function doAction(type, n, t, diff, rec){
       }
       showJudge(word, sub);
       if (word === 'PERFECT') countPerfect(t);
-      const spPts = speedOn() ? addSpeedPoints(word, t) : null;
-      diagResult(rec, { status: 'judged', judge: word, points: spPts, scoreMult: speedOn() ? r4(speedMult(rate)) : null, sectionPerfect: endlessScoreOn() ? secPerfect : null, warpReady: endlessScoreOn() ? warpReady : null, beat: n, offsetMs: r2(diff * 1000), noteId: target.id, noteIdx: target.idx, noteHpBefore: hpBefore, noteHpAfter: hpBefore > 1 ? target.hp : 0, destroyed: hpBefore <= 1, playerIdx: player.idx, lockBefore, lockAfter: moveLocked });
+      const gBefore = gauge; if (speedOn()) gaugeChange(GAUGE_GAIN[word] || 0, 'break_' + word, rec?.inputId, target.id, t);
+      diagResult(rec, { status: 'judged', judge: word, gaugeBefore: speedOn() ? gBefore : null, gaugeAfter: speedOn() ? gauge : null, sectionPerfect: endlessScoreOn() ? secPerfect : null, warpReady: endlessScoreOn() ? warpReady : null, beat: n, offsetMs: r2(diff * 1000), noteId: target.id, noteIdx: target.idx, noteHpBefore: hpBefore, noteHpAfter: hpBefore > 1 ? target.hp : 0, destroyed: hpBefore <= 1, playerIdx: player.idx, lockBefore, lockAfter: moveLocked });
       diagShow(word + '：' + msText(diff * 1000));
     }
   }
@@ -1011,6 +1020,7 @@ function input(type, e, device){
   if (Math.abs(diff) > WINDOW || n < 0){
     diagInputEnd(rec, { status: 'miss', judge: 'MISS', lifeLoss: false, reason: (n < 0 ? '最初の拍より前' : '受付時間外') + '（加点なし・ライフは減らない・ノーツはそのまま）', offsetMs: r2(diff * 1000) });
     showJudge('MISS', 'タイミングずれ');
+    if (speedOn()) gaugeChange(GAUGE_INPUT_MISS, 'input_miss', rec?.inputId, null, tNow); // 入力MISSはゲージだけ減る
     diagShow('MISS：受付時間外（' + msText(diff * 1000) + '）');
     return;
   }
@@ -1126,8 +1136,8 @@ function captureResult(clear){
   if(result.newBest){try{localStorage.setItem(key,String(result.score));}catch(e){}}
   if(speedOn()){
     // エンドレス：ブレイクで得た点の合計。自己ベストは曲・難易度ごと（距離チャレンジ・旧方式とは別）
-    Object.assign(result,{endless:true,mode:'endless',score:speedScore,unit:'',rank:'—',badge:'',warps:lap,speed:rate,endReason,reasonText:END_REASON[endReason]||''});
-    const skey=`neon-blade-speed-best-v1:${song.file}:${runDifficulty}`+(activeChart?.chartVersion?':'+activeChart.chartVersion:'');
+    Object.assign(result,{endless:true,mode:'endless',score:totalSteps(),unit:'歩',moveSteps,bonusSteps,rank:'—',badge:'',warps:lap,speed:rate,endReason,reasonText:END_REASON[endReason]||''});
+    const skey=`neon-blade-steps-best-v1:${song.file}:${runDifficulty}`+(activeChart?.chartVersion?':'+activeChart.chartVersion:'');
     let prev=0;try{const v=Number(localStorage.getItem(skey));if(Number.isInteger(v)&&v>=0)prev=v;}catch(e){}
     result.newBest=result.score>prev;result.best=result.newBest?result.score:prev;
     if(result.newBest){try{localStorage.setItem(skey,String(result.score));}catch(e){}}
@@ -1178,10 +1188,10 @@ function renderResult(result){
   text('foot',`残りHP ${result.hp} / ${time}`);
   const label=ov.querySelector('.scoreLabel span'),help=ov.querySelector('.scoreHelp p');
   label.dataset.orig??=label.textContent;help.dataset.orig??=help.innerHTML;
-  label.textContent=result.mode==='endless'?'ENDLESS SCORE':result.endless?'到達距離':label.dataset.orig;
-  help.innerHTML=result.mode==='endless'?`ブレイクが成功するたびに点が入ります。基本点（PERFECT ${SPEED_BASE_PTS.PERFECT}／GREAT ${SPEED_BASE_PTS.GREAT}／GOOD ${SPEED_BASE_PTS.GOOD}）×得点倍率（速度の2乗）です。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`:result.endless?`曲が終わるまでに進んだマス数が記録です（判定で増えたり減ったりしません）。コースの終わりでワープするには、そのコースでPERFECTを${WARP_PERFECT}回取る必要があります。足りないときは終わりで待ち、ブレイクを続けて達成すると自動でワープします。ライフがなくなると、その時点の距離が記録になります。`:help.dataset.orig;
+  label.textContent=result.mode==='endless'?'合計歩数':result.endless?'到達距離':label.dataset.orig;
+  help.innerHTML=result.mode==='endless'?`記録は歩数です。進んだマス数に、判定ゲージのボーナスを足したものです。PERFECT・GREAT・GOODでゲージがたまり、満タンになるたびに＋1歩。受付時間外の入力でゲージが少し減ります（ライフは減りません）。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。`:result.endless?`曲が終わるまでに進んだマス数が記録です（判定で増えたり減ったりしません）。コースの終わりでワープするには、そのコースでPERFECTを${WARP_PERFECT}回取る必要があります。足りないときは終わりで待ち、ブレイクを続けて達成すると自動でワープします。ライフがなくなると、その時点の距離が記録になります。`:help.dataset.orig;
   text('reason',result.endless?result.reasonText:'');
-  if(result.mode==='endless')text('badge',`ワープ ${result.warps}回　到達 ×${result.speed.toFixed(1)}`);
+  if(result.mode==='endless'){text('badge',`ワープ ${result.warps}回　到達 ×${result.speed.toFixed(1)}`);text('foot',`実移動 ${result.moveSteps}歩＋ボーナス ${result.bonusSteps}歩`);}
   else if(result.endless)text('badge',`ワープ ${result.warps}回`);
   renderHeroCanvas(ov.querySelector('canvas'),result.heroId);
   ov.querySelector('details').open=false;ov.scrollTop=0;
@@ -1295,7 +1305,7 @@ function end(clear){
   if(state!=='play')return;
   stopMoveScheduler();document.getElementById('pauseBtn').disabled=true;tutClearUI();
   state=clear?'clear':'over';
-  diagEv(clear?'clear':'game_over',{endReason,endReasonText:END_REASON[endReason]||null,speedScore:speedOn()?speedScore:null,hp,counts:{...counts},maxCombo,distance:endlessScoreOn()?distance():null,warps:endlessScoreOn()?sectionNo-1:null,...diagCtx()});
+  diagEv(clear?'clear':'game_over',{endReason,endReasonText:END_REASON[endReason]||null,steps:speedOn()?{move:moveSteps,bonus:bonusSteps,total:totalSteps(),gaugeLeft:gauge}:null,hp,counts:{...counts},maxCombo,distance:endlessScoreOn()?distance():null,warps:endlessScoreOn()?sectionNo-1:null,...diagCtx()});
   finishedRun=captureResult(clear);
   diagSave();
   document.querySelectorAll('#controls button').forEach(b=>{b.disabled=true;b.classList.remove('press');});
@@ -1420,6 +1430,16 @@ function drawCourse(t){
   }
 }
 
+// 判定ゲージ：プレイヤーの足元に細いバー。数字は出さず、たまり具合だけ。増えた／減った直後だけ少し光る
+function drawStepGauge(){
+  if(!speedOn()||state==='ready')return;
+  const p=cellXY(tween(player.from,player.idx,player.at,songTime())),w=cell*.72,h=Math.max(3,cell*.07),x=p.x-w/2,y=p.y+cell*.44;
+  const k=Math.max(0,1-(performance.now()-gaugeFxAt)/350),fr=gauge/GAUGE_FULL;
+  g.save();
+  rr(g,x,y,w,h,h/2);g.fillStyle='#08122199';g.fill();
+  if(fr>0){rr(g,x,y,w*fr,h,h/2);g.fillStyle=gaugeFxDir<0&&k>0?'#ff8be8':'#c6ff44';g.globalAlpha=.75+.25*k;if(k>0){g.shadowColor=g.fillStyle;g.shadowBlur=6*k;}g.fill();}
+  g.restore();
+}
 function beatPulse(t){return t>=lastBeatAt&&lastBeatAt>=0?Math.max(0,1-(t-lastBeatAt)/.17)*lastBeatStrength:0;}
 function impactOffset(t){
   if(reduceMotion.matches||state!=='play')return 0;
@@ -1521,6 +1541,7 @@ function draw(t){
   }
   if(drawn)diagLastDraw={perf:r2(performance.now()),songT:r4(t),playerDrawnIdx:r4(vp),notes:drawn};
   drawChar(t);
+  drawStepGauge();
   updateSpot(t);
   if(document.getElementById('judge').classList.contains('pop'))placeJudge(t);
   texts=texts.filter(x=>t-x.t<.5);g.textAlign='center';g.font=`600 ${Math.max(10,Math.round(cell*.26))}px sans-serif`;
@@ -1602,7 +1623,7 @@ function drawChar(t){
 function checkLines(t){
   if (!(state==='play' && player.idx >= LINES[lineK] && hp > 0)) return false;
   if (lineK === LINES.length - 1 && speedOn()){ // エンドレス：終端に着いたら条件なしでワープ（曲は頭から次の速度で）
-    diagEv('warp', { fromRate: rate, toRate: Math.min(SPEED_MAX, rate + SPEED_STEP), score: speedScore, ...diagCtx() });
+    diagEv('warp', { fromRate: rate, toRate: Math.min(SPEED_MAX, rate + SPEED_STEP), gauge, ...diagCtx() });
     nextLap(t, false); updateWarpHud(); return true;
   }
   if (lineK === LINES.length - 1 && endlessScoreOn()){ // 終端：PERFECTが足りていればワープ、足りなければその場で待つ（ブレイクは続けられる）
@@ -1650,7 +1671,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v13', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v14', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -1685,7 +1706,7 @@ function clockInfo(now){
   c.songTimeFormula = '出力時刻−songStart−手動補正÷1000。押した時刻は、そこから（処理開始−イベント発生）を引く';
   return c;
 }
-function diagCtx(){ const c = { rate, bpm: r2(BPM), lap: lap + 1, attempt: diagAttempt, lapBeat: nextBeat, chartVersion: activeChart?.chartVersion ?? null, mode: playMode }; if (speedOn()){ c.scoreMult = r4(speedMult(rate)); c.score = speedScore; } if (endlessScoreOn() && player){ c.section = sectionNo; c.distance = distance(); c.sectionPerfect = secPerfect; c.warpNeed = WARP_PERFECT; c.warpReady = warpReady; c.atTerminal = atTerminal(); } return c; }
+function diagCtx(){ const c = { rate, bpm: r2(BPM), lap: lap + 1, attempt: diagAttempt, lapBeat: nextBeat, chartVersion: activeChart?.chartVersion ?? null, mode: playMode }; if (speedOn()){ c.moveSteps = moveSteps; c.bonusSteps = bonusSteps; c.totalSteps = totalSteps(); c.gauge = gauge; } if (endlessScoreOn() && player){ c.section = sectionNo; c.distance = distance(); c.sectionPerfect = secPerfect; c.warpNeed = WARP_PERFECT; c.warpReady = warpReady; c.atTerminal = atTerminal(); } return c; }
 function diagStart(){
   diagAttempt = 1; diagLastDraw = null; resumePerf = -Infinity; lastBeatLagMs = null;
   if (!diagOn){ diagRun = null; return; }
@@ -1851,10 +1872,10 @@ function nextCourse(t){
   texts.push({ s: 'COURSE ' + (courseLap + 1), idx: 0, t, col: '#ffe941', big: true });
 }
 function nextLap(t, songEnded){
-  if(!songEnded){ lap++; rate = Math.min(SPEED_MAX, 1 + lap * SPEED_STEP); applyRate(); diagEv('speed_up', { rate, lap, scoreMult: r4(speedMult(rate)) }); } // 足し算で加速（掛け算ではない）
+  if(!songEnded){ lap++; rate = Math.min(SPEED_MAX, 1 + lap * SPEED_STEP); applyRate(); diagEv('speed_up', { rate, lap }); } // 足し算で加速（掛け算ではない）
   else { diagAttempt++; diagEv('song_restart', { reason: 'ゴール前に曲が終わった。この挑戦の集計は破棄', lap, attempt: diagAttempt }); }
   // 周回突破と速度アップを伝える（点のボーナスはなし）
-  showLapBanner(`ワープ！　速度 ×${rate.toFixed(1)}　得点 ×${speedMult(rate).toFixed(2)}`);
+  showLapBanner(`ワープ！　速度 ×${rate.toFixed(1)}`);
   [784, 988, 1175].forEach((f, i) => uiTone(f, .12, i * .05));
   player = { idx: 0, from: 0, at: 0 }; notes = []; effects = []; texts = []; fx = [];
   nextBeat = 0; acted = -1; pendingCheck = []; nextGap = 4; runLen = 1;
