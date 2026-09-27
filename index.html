@@ -25,6 +25,29 @@
   #scoreHud{text-align:center;margin-top:6px;font:900 34px/1 system-ui,sans-serif;letter-spacing:.03em;color:#fff;-webkit-text-stroke:5px #081221;paint-order:stroke fill;font-variant-numeric:tabular-nums}
   #scoreHud.hide{display:none}
   #scoreHud{position:relative}
+  #diagLine{position:absolute;left:6px;bottom:4px;max-width:calc(100% - 12px);padding:2px 8px;border-radius:8px;background:#081221cc;color:#fff;font:700 11px/1.5 system-ui,sans-serif;pointer-events:none;z-index:3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #diagLine.hide{display:none}
+  #diagSettings{width:min(360px,100%);flex:none;font-size:12px;margin-top:6px;text-align:center}
+  #diagSettings summary{padding:7px;cursor:pointer}
+  .diagRow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;gap:10px}
+  .diagRow select{font-size:13px;padding:3px 6px;border-radius:6px;border:2px solid #081221}
+  .diagRow input{width:22px;height:22px;accent-color:#c6ff44}
+  #diagSettings p{font-size:11px;margin:4px 0}
+  #diagOpen{border:2px solid #081221;border-radius:8px;padding:5px 12px;background:#1348b9;color:#fff;font-weight:800}
+  #diagOv{z-index:12;overflow-y:auto;touch-action:pan-y;justify-content:safe center}
+  .diagPanel{width:min(420px,100%);padding:16px 14px;border:4px solid #081221;border-radius:22px;background:#0d1d3a;color:#eef6ff;font-size:12px;line-height:1.55}
+  .diagPanel h2{margin:0 0 6px;font-size:22px;text-align:center;color:#dcff43}
+  .diagPanel table{width:100%;border-collapse:collapse;margin:6px 0 10px;font-variant-numeric:tabular-nums}
+  .diagPanel th,.diagPanel td{padding:3px 4px;border-bottom:1px solid #ffffff22;text-align:right}
+  .diagPanel th:first-child,.diagPanel td:first-child{text-align:left}
+  .diagPanel h3{margin:10px 0 2px;font-size:13px;color:#8af3fa}
+  .diagNote{color:#a9bdd6;font-size:11px}
+  .diagBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  .diagPanel .ovBtn{width:100%;min-width:0;margin:0;padding:10px 4px;font-size:14px}
+  #diagClose{margin-top:8px}
+  #diagMsg{min-height:18px;text-align:center;color:#c6ff44;margin:6px 0 0}
+  .diagOpenBtn{margin-top:8px;width:100%}
+  .diagOpenBtn[hidden]{display:none}
   #lapGain{position:absolute;left:0;right:0;top:100%;margin-top:4px;font:800 13px/1.3 system-ui,sans-serif;letter-spacing:.04em;color:#ffe941;-webkit-text-stroke:3px #081221;paint-order:stroke fill;opacity:0;pointer-events:none;z-index:4}
   #lapGain.show{animation:lapGain 1.8s ease-out forwards}
   @keyframes lapGain{0%{opacity:0;transform:translateY(4px)}12%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0}}
@@ -239,7 +262,7 @@
   <div id="progress"><i id="progFill"></i></div>
   <div id="scoreHud" class="hide" aria-live="off"><span id="scoreNum">0</span><div id="lapGain"></div></div>
   </div>
-  <div id="spot" class="hide"></div><div id="fieldWrap"><canvas id="cv"></canvas><div id="tip" class="hide"></div><div id="judge"><span id="jWord"></span><small id="jSub"></small></div></div>
+  <div id="spot" class="hide"></div><div id="fieldWrap"><canvas id="cv"></canvas><div id="tip" class="hide"></div><div id="judge"><span id="jWord"></span><small id="jSub"></small></div><div id="diagLine" class="hide" aria-hidden="true"></div></div>
   <div id="controls">
     <button class="btn" id="bMove" aria-label="進む"><svg class="icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 8 9 31q-2 3 2 3h11v21h20V34h11q4 0 2-3Z" fill="#66dfe21a" stroke="#b6fbff" stroke-width="2.5" stroke-linejoin="round"/></svg><span>進む</span><svg class="bubbles" viewBox="0 0 50 50" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width=".8"><circle cx="36" cy="31" r="7"/><circle cx="23" cy="41" r="3.5"/><circle cx="42" cy="44" r="2"/><circle cx="32" cy="17" r="2.4"/><circle cx="16" cy="33" r="1.4"/><circle cx="42" cy="9" r="1"/></g></svg></button>
     <button class="btn" id="bBreak" aria-label="ブレイク"><svg class="icon" viewBox="0 0 64 64" aria-hidden="true"><rect x="16" y="17" width="35" height="35" rx="3" fill="#920d2588" stroke="#ff3550" stroke-width="2"/><path d="M33 20v29M19 34h29" stroke="#c01c93" stroke-width="1"/><path d="m6 57 13-22L59 6 47 29Z" fill="#b5fbff" stroke="#62eafa" stroke-width="1.5"/><path d="m9 54 43-34" stroke="#fff" stroke-width="1.5"/></svg><span>ブレイク</span><svg class="bubbles" viewBox="0 0 50 50" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width=".8"><circle cx="36" cy="31" r="7"/><circle cx="23" cy="41" r="3.5"/><circle cx="42" cy="44" r="2"/><circle cx="32" cy="17" r="2.4"/><circle cx="16" cy="33" r="1.4"/><circle cx="42" cy="9" r="1"/></g></svg></button>
@@ -253,7 +276,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v3</span>
+  <span id="verBadge">バージョン v4</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button><button class="difficultyBtn" id="endlessBtn" aria-pressed="false">エンドレス</button></div>
@@ -262,6 +285,7 @@
   <div id="myPanel" class="hide"><div id="myName"></div><div id="myBpmRow"><span>BPM</span><button id="myDown" aria-label="BPMを下げる">−</button><b id="myBpm">--</b><button id="myUp" aria-label="BPMを上げる">＋</button></div><p id="myNote">曲はこの端末の中だけで使います</p><button id="myPlay">この曲で遊ぶ</button></div>
   <div id="speedSettings"><span>ノーツスピード</span><button id="spDown" aria-label="おそく">−</button><b id="spVal">×1.0</b><button id="spUp" aria-label="はやく">＋</button></div>
   <details id="timingSettings"><summary>タイミング調整</summary><label for="timingRange">動きのタイミング <b id="timingValue">0 ms</b></label><input id="timingRange" type="range" min="-250" max="250" step="5" value="0"><p>動きが音より早い → ＋へ<br>動きが音より遅い → −へ</p><button id="timingReset">0に戻す</button></details>
+  <details id="diagSettings"><summary>判定診断モード</summary><label class="diagRow" for="diagToggle"><span>診断モード</span><input id="diagToggle" type="checkbox"></label><label class="diagRow" for="diagOutput"><span>音の出力</span><select id="diagOutput"><option value="unknown">不明</option><option value="speaker">スピーカー</option><option value="wired">有線イヤホン</option><option value="bluetooth">Bluetooth</option></select></label><p>オンにすると、ブレイクのズレを画面の下に小さく表示し、記録を残します。</p><button id="diagOpen">前回の記録を見る</button></details>
   <p>まずは迫るノーツをブレイク。<br>すき間を見つけて、進もう。</p>
 </div>
 <div class="overlay hide" id="heroOv" role="dialog" aria-modal="true" aria-labelledby="heroHeading">
@@ -274,7 +298,8 @@
     <p class="heroNote">どのキャラも同じ強さ</p>
   </div>
 </div>
-<div class="overlay hide" id="pauseOv" role="dialog" aria-modal="true" aria-labelledby="pauseTitle"><div class="pausePanel"><h2 id="pauseTitle">PAUSE</h2><p id="pauseStatus" aria-live="polite">ひと休み</p><button class="ovBtn" id="resumeBtn">続ける</button><button class="ovBtn sub" id="pauseRetry">最初から</button><button class="ovBtn sub" id="pauseQuit">終了して曲えらびへ</button></div></div>
+<div class="overlay hide" id="pauseOv" role="dialog" aria-modal="true" aria-labelledby="pauseTitle"><div class="pausePanel"><h2 id="pauseTitle">PAUSE</h2><p id="pauseStatus" aria-live="polite">ひと休み</p><button class="ovBtn" id="resumeBtn">続ける</button><button class="ovBtn sub" id="pauseRetry">最初から</button><button class="ovBtn sub" id="pauseDiag" hidden>判定診断</button><button class="ovBtn sub" id="pauseQuit">終了して曲えらびへ</button></div></div>
+<div class="overlay hide" id="diagOv" role="dialog" aria-modal="true" aria-labelledby="diagTitle"><div class="diagPanel"><h2 id="diagTitle">判定診断</h2><div id="diagBody"></div><div class="diagBtns"><button class="ovBtn" id="diagDl">JSONを保存</button><button class="ovBtn sub" id="diagCopy">コピー</button></div><p id="diagMsg" aria-live="polite"></p><button class="ovBtn sub" id="diagClose">閉じる</button></div></div>
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
@@ -329,6 +354,7 @@ function scoreLap(beats){
   const acc = total ? Math.round(weighted / total * ENDLESS_ACC_MAX) : 0;
   const fast = Math.round(ENDLESS_FAST_MAX * Math.max(0, 1 - beats / ENDLESS_FAST_BEATS));
   endlessTotal += acc + fast; endlessGoals++;
+  diagEv('goal', { beats, accuracyPoints: acc, fastBonus: fast, total: endlessTotal, lapJudgments: { ...lapJ }, ...diagCtx() });
   document.getElementById('scoreNum').textContent = endlessTotal.toLocaleString();
   showLapGain(acc, fast);
 }
@@ -604,14 +630,16 @@ function beatTime(n){
   if(n>=beats.length)return beats[beats.length-1]/rate+(n-beats.length+1)*SPB;
   return beats[n]/rate;
 }
+// beatTime() と同じ時間の基準（再生倍率で割った実時間）で一番近い拍を探す
 function nearestBeat(t){
   if(!activeChart)return Math.round((t-OFFSET)/SPB);
-  const b=activeChart.beats;
-  if(t<b[0])return Math.round((t-b[0])/SPB);
-  if(t>b[b.length-1])return b.length-1+Math.round((t-b[b.length-1])/SPB);
+  const b=activeChart.beats,first=b[0]/rate,last=b[b.length-1]/rate;
+  if(t<first)return Math.round((t-first)/SPB);
+  if(t>last)return b.length-1+Math.round((t-last)/SPB);
+  const x=t*rate;
   let lo=0,hi=b.length-1;
-  while(lo<hi){const m=(lo+hi)>>1;if(b[m]<t)lo=m+1;else hi=m;}
-  return lo>0&&t-b[lo-1]<b[lo]-t?lo-1:lo;
+  while(lo<hi){const m=(lo+hi)>>1;if(b[m]<x)lo=m+1;else hi=m;}
+  return lo>0&&x-b[lo-1]<b[lo]-x?lo-1:lo;
 }
 function chartSpawns(n){return !!activeChart?.spawn[runDifficulty]?.[n];}
 function chartFill(n,t){
@@ -754,14 +782,14 @@ function onBeat(n, t){
   const red = notes.find(nt => nt.hit);
   if (red && n > (red.hitBeat ?? n) + 1 && !tutSafe()){     // 1拍待っても壊せてない → ダメージ
     notes.splice(notes.indexOf(red), 1);
-    damage(t);
+    damage(t, '赤ノーツを1拍以内に壊せなかった', red, null);
   }
   // 練習中は、ブロックが目の前に来たらプレイヤーが押すまで待つ
   const frozen = notes.some(nt => nt.hit) || tutFreeze() || (tutWait() && notes.some(nt => nt.idx <= player.idx));
   if (n >= INTRO_BEATS && notes.length){
     for (const nt of notes){
-      nt.from = nt.idx; nt.at = t;
-      if (frozen) nt.spin = t; else { nt.idx -= 1; nt.spin = null; }
+      nt.from = nt.idx;
+      if (frozen){ nt.at = t; nt.spin = t; } else { nt.at = t - MOVE_ANIM; nt.idx -= 1; nt.spin = null; } // 表示は拍ちょうどに到着済み
     }
     if(!moveScheduler)playMoveSE(n);
   }
@@ -778,22 +806,25 @@ function onBeat(n, t){
   }
   lastBeatAt = t;lastBeatStrength=activeChart?.accents[n]??1;
   // 拍の直前に押されていたら今実行
-  if (earlyInput && t - earlyInput.time <= WINDOW){ doAction(earlyInput.type, n, t, earlyInput.diff); }
-  earlyInput = null;
+  if (earlyInput){
+    if (earlyInput.n === n){ const q = earlyInput; earlyInput = null; doAction(q.type, n, t, q.diff, q.rec); }
+    else if (earlyInput.n < n){ diagEv('input_expired', { inputId: earlyInput.rec?.inputId ?? null, beat: earlyInput.n }); earlyInput = null; }
+  }
   pendingCheck.push({ n, checkAt: beatTime(n) + WINDOW });
 }
 
-function checkHit(t){
+function checkHit(t, reason, inputId){
   if (tutSafe()) return;   // 練習中はダメージなし
   for (const nt of [...notes]){
     if (nt.idx <= player.idx && !nt.hit){
       notes.splice(notes.indexOf(nt), 1);
-      damage(t);
+      damage(t, reason || 'ノーツが自分のマスに来て、受付時間内に壊せなかった', nt, inputId ?? null);
     }
   }
 }
 
-function damage(t){
+function damage(t, reason, nt, inputId){
+  diagEv('damage', { reason: reason || null, causeInputId: inputId ?? null, noteId: nt?.id ?? null, noteIdx: nt?.idx ?? null, noteHp: nt?.hp ?? null, playerIdx: player.idx, hpBefore: hp, ...diagCtx() });
   hp--; drawHud(); damageAt = t;
   const veil = document.getElementById('impactVeil');
   veil.classList.remove('hit'); void veil.offsetWidth; veil.classList.add('hit');
@@ -821,6 +852,7 @@ function judgeOf(diff){
 let jTimer = null;
 // display=true は演出用の表示だけ（判定・コンボ・スコアには数えない）
 function showJudge(word, sub, display){
+  if (display) diagEv('display_judge', { word, sub: sub || null, note: '演出用の表示。判定・統計には含めない' });
   if (!display){
     counts[word]++;
     if (endlessScoreOn()) lapJ[word]++;
@@ -835,23 +867,24 @@ function showJudge(word, sub, display){
   clearTimeout(jTimer); jTimer = setTimeout(() => { el.classList.remove('pop');w.textContent = ''; document.getElementById('jSub').textContent = ''; }, 650);
 }
 
-function freeMove(t){
+function freeMove(t, rec){
   const stuck = notes.find(x => x.hit && x.idx <= player.idx);
-  if (stuck){ texts.push({ s: 'もう1回ブレイク！', idx: player.idx, t, col: '#ff5a5a' }); return; }
-  if (moveLocked){ texts.push({ s: 'まず1個ブレイク', idx: player.idx, t, col: '#ffffff' }); return; }
-  if (player.idx >= GOAL_INDEX) return;
+  if (stuck){ texts.push({ s: 'もう1回ブレイク！', idx: player.idx, t, col: '#ff5a5a' }); diagResult(rec, { status: 'invalid', reason: '赤ノーツが残っていて進めない', noteId: stuck.id }); return; }
+  if (moveLocked){ texts.push({ s: 'まず1個ブレイク', idx: player.idx, t, col: '#ffffff' }); diagResult(rec, { status: 'invalid', reason: '移動ロック中（最初の1個を壊すまで）' }); return; }
+  if (player.idx >= GOAL_INDEX){ diagResult(rec, { status: 'invalid', reason: 'ゴール位置' }); return; }
+  diagResult(rec, { status: 'moved', reason: '進む（判定なし）', playerFrom: player.idx, playerTo: player.idx + 1 });
   fx.push({ type: 'ghost', idx: player.idx, t, d: .13, flip: facesRight(player.idx) });
   player.from = player.idx; player.idx += 1; player.at = t;
   fx.push({ type: 'spark', idx: player.idx, t, d: .2 });
   charState = 'move'; charUntil = t + 0.18;
   if (scoreOn()){ runSteps++; addScore(movePrice, t, true); }
   tutProgress('move');
-  checkHit(t); // ブロックに突っ込んだらその場で当たり
+  checkHit(t, '進んだ先にノーツがあった', rec?.inputId); // ブロックに突っ込んだらその場で当たり
 }
 function flashBtn(id){ const b = document.getElementById(id); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); setTimeout(() => b.classList.remove('flash'), 160); }
 function setLockUI(on){ const b = document.getElementById('bMove'); b.classList.toggle('locked', on); if (!on) flashBtn('bMove'); }
 
-function doAction(type, n, t, diff){
+function doAction(type, n, t, diff, rec){
   acted = n;
   const word = judgeOf(diff), sub = Math.abs(diff) <= 0.045 ? '' : (diff < 0 ? 'FAST' : 'LATE');
   if (type === 'move'){
@@ -867,7 +900,9 @@ function doAction(type, n, t, diff){
     charState = 'slash'; charUntil = t + 0.22;
     // 1タップで壊せるのは一番近い1個だけ
     const target = notes.filter(x => x.idx <= player.idx).sort((a,b)=>a.idx-b.idx)[0];
+    if (!target){ diagResult(rec, { status: 'invalid', reason: '対象ノーツなし', beat: n, offsetMs: r2(diff * 1000), lockBefore: moveLocked }); diagShow('無効：対象ノーツなし'); }
     if (target){
+      const hpBefore = target.hp || 1, lockBefore = moveLocked;
       fx.push({ type: 'cut', idx: player.idx, t, d: .16 });
       flashBtn('bBreak');
       if ((target.hp||1) > 1){
@@ -882,25 +917,35 @@ function doAction(type, n, t, diff){
         playSE(word);
       }
       showJudge(word, sub);
+      diagResult(rec, { status: 'judged', judge: word, beat: n, offsetMs: r2(diff * 1000), noteId: target.id, noteIdx: target.idx, noteHpBefore: hpBefore, noteHpAfter: hpBefore > 1 ? target.hp : 0, destroyed: hpBefore <= 1, playerIdx: player.idx, lockBefore, lockAfter: moveLocked });
+      diagShow(word + '：' + msText(diff * 1000));
     }
   }
 }
 
 let earlyInput = null;
-function input(type){
+// 押した瞬間（イベント発生時刻）を曲の時間に直して採点する。処理待ちで不当にLATEにならないように
+function input(type, e, device){
+  const handlerPerf = performance.now();
   if (state !== 'play') return;
-  const t = songTime();
-  if (type === 'move'){ freeMove(t); return; } // 進むは拍に関係なく、押した瞬間に動く
+  const tNow = songTime(), ev = eventPerfTime(e, handlerPerf);
+  const delayMs = ev.perf != null ? Math.max(0, handlerPerf - ev.perf) : null;
+  const t = tNow - (delayMs ?? 0) / 1000;
+  const rec = diagInput(type, e, device, ev, handlerPerf, delayMs, tNow, t);
+  if (ev.perf != null && ev.perf < resumePerf){ diagInputEnd(rec, { status: 'invalid', reason: 'ポーズ解除前に押された入力' }); if (type === 'break') diagShow('無効：ポーズ解除前の入力'); return; }
+  if (type === 'move'){ diagInputEnd(rec, { status: 'immediate', reason: '進むは判定なし・押した瞬間に実行' }); freeMove(tNow, rec); return; } // 進むは拍に関係なく、押した瞬間に動く
   const n = nearestBeat(t);
   const diff = t - beatTime(n);
+  diagTarget(rec, n, t, diff);
   if (Math.abs(diff) > WINDOW || n < 0){
+    diagInputEnd(rec, { status: 'miss', judge: 'MISS', reason: n < 0 ? '最初の拍より前' : '受付時間外', offsetMs: r2(diff * 1000) });
     showJudge('MISS', 'タイミングずれ');
+    diagShow('MISS：受付時間外（' + msText(diff * 1000) + '）');
     return;
   }
-  if (acted === n) return; // 1拍に1回だけ
-  if (diff < 0){ earlyInput = { type, time: t, diff }; acted = n; }   // 拍の少し前 → 拍で実行
-  else if (n < nextBeat){ doAction(type, n, t, diff); }               // 拍の少し後 → すぐ実行
-  else { earlyInput = { type, time: t, diff }; acted = n; }
+  if (acted === n){ diagInputEnd(rec, { status: 'invalid', reason: '同じ拍ですでに操作済み' }); diagShow('無効：同じ拍ですでに操作済み'); return; } // 1拍に1回だけ
+  if (n < nextBeat){ diagInputEnd(rec, { status: 'immediate', reason: 'その拍の処理は済んでいるので、すぐ実行' }); doAction(type, n, tNow, diff, rec); }  // 拍の処理が済んでいる → すぐ実行
+  else { earlyInput = { type, time: t, diff, n, rec }; acted = n; diagInputEnd(rec, { status: 'queued', reason: '拍の処理前なので、その拍まで保留（採点は押した時刻）' }); }
 }
 
 // 判定で音を変える：PERFECT＝キーン付きで派手、GREAT＝ふつう、GOOD＝こもった小さめ
@@ -1010,6 +1055,7 @@ function resultMarkup(prefix,clear){
     <div class="resultFoot"><span class="resultBadge" data-result-badge></span><span data-result-foot></span></div>
     <div class="resultActions"><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
     <button class="resultSkip" data-result-skip>タップでまとめて表示</button>
+    <button class="ovBtn sub diagOpenBtn" data-diag hidden>判定診断を見る</button>
     <details class="scoreHelp"><summary>スコアのしくみ</summary><p>${scoreOn()?`1マス進むごとに点が入ります。値段は直前のブレイクの判定で決まります（PERFECT 100／GREAT 80／GOOD 50／被弾・MISS 0）。ブレイクそのものでも、その1/10が入ります。曲が最後まで流れたら終了です。`:`判定精度 × 到達率 × 1,000,000点。PERFECT=100%、GREAT=80%、GOOD=50%、MISS=0%の平均が判定精度です。MISSは被弾とタイミング外の入力を含みます。<br>クリア時のランク：S 98万 / A 90万 / B 80万 / C 65万点以上。自己ベストは曲・難易度ごとに保存します。`}</p></details>
   </div>`;
 }
@@ -1040,6 +1086,7 @@ function renderResult(result){
   if(result.endless){text('badge',`ゴール ${result.goals}回`);text('foot',`到達速度 ×${result.speed.toFixed(1)}`);}
   renderHeroCanvas(ov.querySelector('canvas'),result.heroId);
   ov.querySelector('details').open=false;ov.scrollTop=0;
+  ov.querySelector('[data-diag]').hidden=!diagRun;
   ov.querySelectorAll('.resultPending,.resultReveal').forEach(el=>el.classList.remove('resultPending','resultReveal'));
   ov.querySelector('[data-result-skip]').disabled=false;
 }
@@ -1149,7 +1196,9 @@ function end(clear){
   if(state!=='play')return;
   stopMoveScheduler();document.getElementById('pauseBtn').disabled=true;tutClearUI();
   state=clear?'clear':'over';
+  diagEv(clear?'clear':'game_over',{hp,counts:{...counts},maxCombo,endlessTotal:endlessScoreOn()?endlessTotal:null,...diagCtx()});
   finishedRun=captureResult(clear);
+  diagSave();
   document.querySelectorAll('#controls button').forEach(b=>{b.disabled=true;b.classList.remove('press');});
   if(!clear){resultTimer=setTimeout(()=>finishResult(false),500);return;}
   clearTimeout(jTimer);document.getElementById('judge').classList.remove('pop');
@@ -1204,8 +1253,9 @@ function cellXY(idx){
   const a = path[Math.floor(i)], b = path[Math.ceil(i)], f = i - Math.floor(i);
   return { x: PAD + (a.c + (b.c - a.c) * f + 0.5) * cell, y: PAD + (a.r + (b.r - a.r) * f - cameraRow + 0.5) * cell };
 }
+const MOVE_ANIM = 0.09; // ノーツが1マス動く時間
 function tween(from, to, at, t){
-  const k = Math.min(1, Math.max(0, (t - at) / 0.09)); // 0.09秒でサッと動いて止まる
+  const k = Math.min(1, Math.max(0, (t - at) / MOVE_ANIM)); // 0.09秒でサッと動いて止まる
   const e = 1 - Math.pow(1 - k, 3);
   return from + (to - from) * e;
 }
@@ -1283,6 +1333,27 @@ function impactOffset(t){
   }
   return 0;
 }
+// 次の拍でノーツが前へ進むか（onBeatと同じ条件で先読み。表示だけに使う）
+function notesWillMove(){
+  if(nextBeat<INTRO_BEATS||!notes||!notes.length)return false;
+  const n=nextBeat,red=notes.find(nt=>nt.hit);
+  const redGone=!!red&&n>(red.hitBeat??n)+1&&!tutSafe();
+  return !(notes.some(nt=>nt.hit&&!(redGone&&nt===red))||tutFreeze()||(tutWait()&&notes.some(nt=>nt.idx<=player.idx)));
+}
+// ノーツの表示位置。拍ちょうどに次のマスへ着くよう、拍のMOVE_ANIM前から動き始める
+function noteView(nt,t,pre,nb,vp){
+  const smooth=noteSpeed>1&&state!=='ready';
+  let ln,at=nt.at,moving=nt.from!==nt.idx;
+  if(pre&&t>nb-MOVE_ANIM&&t<nb){ln=tween(nt.idx,nt.idx-1,nb-MOVE_ANIM,t);at=nb-MOVE_ANIM;moving=true;}
+  else ln=tween(nt.from,nt.idx,nt.at,t);
+  if(smooth){
+    const b0=beatTime(nextBeat-1),b1=beatTime(nextBeat);
+    const frac=pre&&nextBeat>=INTRO_BEATS&&b1>b0?Math.min(1,Math.max(0,(t-b0)/(b1-b0))):0;
+    ln=Math.max(player.idx,nt.idx-frac);
+  }
+  const vis=ln<=vp?ln:vp+(ln-vp)*noteSpeed;
+  return {ln,vis,at,moving,smooth};
+}
 function draw(t){
   g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,boardW,boardH);
   // 音の時計を基準に表示だけ動かす。入力ボタンと当たり判定の座標は固定。
@@ -1309,23 +1380,19 @@ function draw(t){
     g.restore();
   }
   const vp=tween(player.from,player.idx,player.at,t);
+  const pre=state==='play'||state==='paused'||state==='resuming'?notesWillMove():false,nb=beatTime(nextBeat);
+  const drawn=diagRun?[]:null;
   for(const nt of notes){
     // スピードが速いほど、自分から遠くに見えて速く迫る（到着の瞬間は同じ）
     // ×1.0は「ドクッ」と止まる動き。速くしたときは止まらずなめらかに流れる
-    const smooth=noteSpeed>1&&state!=='ready';
-    let ln=tween(nt.from,nt.idx,nt.at,t);
-    if(smooth){
-      const b0=beatTime(nextBeat-1),b1=beatTime(nextBeat);
-      const frac=nextBeat>=INTRO_BEATS&&b1>b0?Math.min(1,Math.max(0,(t-b0)/(b1-b0))):0;
-      ln=Math.max(player.idx,nt.idx-frac);
-    }
-    const vis=ln<=vp?ln:vp+(ln-vp)*noteSpeed;
+    const V=noteView(nt,t,pre,nb,vp),smooth=V.smooth,vis=V.vis;
+    if(drawn&&drawn.length<4)drawn.push({id:nt.id,logicalIdx:nt.idx,drawnIdx:r4(vis)});
     if(noteSpeed>1&&vis>gIdx+.5)continue;          // Gより奥はまだ見えない
     const p=cellXY(vis);
     const emerge=noteSpeed>1?Math.min(1,Math.max(0,gIdx+.5-vis)):1; // Gから出てくる
     const pop=(nt.pop!=null?Math.min(1,Math.max(0,(t-nt.pop)/.16)):1)*emerge;
     const body=cell*.93*pop,sz=body*1.25;
-    let rk=nt.at>-9&&(nt.from!==nt.idx||nt.spin===nt.at)?Math.min(1,Math.max(0,(t-nt.at)/.2)):1;
+    let rk=V.at>-9&&(V.moving||nt.spin===nt.at)?Math.min(1,Math.max(0,(t-V.at)/.2)):1;
     let ang=(1-Math.pow(1-rk,3))*Math.PI;
     if(smooth){rk=0;ang=vis*Math.PI*.5;}   // なめらかモードはずっとゆっくり回転
     g.save();g.translate(p.x,p.y);
@@ -1353,6 +1420,7 @@ function draw(t){
     g.save();g.globalAlpha=1-k;g.strokeStyle='#d8fcff';g.lineWidth=2;g.shadowColor=heroInfo().accent;g.shadowBlur=7;
     g.beginPath();g.moveTo(p.x-r,p.y+r*.72);g.lineTo(p.x+r,p.y-r*.72);g.stroke();g.restore();
   }
+  if(drawn)diagLastDraw={perf:r2(performance.now()),songT:r4(t),playerDrawnIdx:r4(vp),notes:drawn};
   drawChar(t);
   updateSpot(t);
   if(document.getElementById('judge').classList.contains('pop'))placeJudge(t);
@@ -1435,6 +1503,7 @@ function loop(){
   requestAnimationFrame(loop);
   if (state === 'loading') return;
   const t = ['play','paused','resuming','clear','over'].includes(state) ? songTime() : 0;
+  { const pn = performance.now(); if (lastFramePerf != null) frameDtMs = r2(pn - lastFramePerf); lastFramePerf = pn; }
   if (state === 'play'){
     syncClock();
     // Process deadlines and beats in chronological order, including a late frame.
@@ -1442,7 +1511,7 @@ function loop(){
       const bt=beatTime(nextBeat),hit=pendingCheck[0]?.checkAt??Infinity;
       if(Math.min(bt,hit)>t)break;
       if(hit<=bt){pendingCheck.shift();checkHit(hit);}
-      else{onBeat(nextBeat,bt);nextBeat++;}
+      else{lastBeatLagMs=r2((t-bt)*1000);if(diagRun&&lastBeatLagMs>50)diagEv('beat_late',{beat:nextBeat,lagMs:lastBeatLagMs,frameDtMs});onBeat(nextBeat,bt);nextBeat++;}
     }
     let lapped = false;
     if (state==='play' && player.idx >= LINES[lineK] && hp > 0){
@@ -1464,17 +1533,171 @@ function loop(){
   if(state==='clear'&&victoryAt>=0)drawVictory();
 }
 
+// ===== 判定診断モード =====
+// 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
+const APP_VERSION = 'v4', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
+let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
+let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
+try{ diagOn = localStorage.getItem('neon-blade-diag') === '1'; diagOutput = localStorage.getItem('neon-blade-diag-output') || 'unknown'; }catch(e){}
+function r2(v){ return typeof v === 'number' && isFinite(v) ? Math.round(v * 100) / 100 : null; }
+function r4(v){ return typeof v === 'number' && isFinite(v) ? Math.round(v * 10000) / 10000 : null; }
+function msText(ms){ const a = Math.round(Math.abs(ms)); return a === 0 ? 'ぴったり' : a + 'ms' + (ms < 0 ? '早い' : '遅い'); }
+// event.timeStamp を performance.now() と同じ基準に直す。使えないときは null と理由
+function eventPerfTime(e, now){
+  if (!e || typeof e.timeStamp !== 'number' || !(e.timeStamp > 0)) return { perf: null, reason: 'event.timeStampが取得できない（処理開始時刻で代用）' };
+  const d = now - e.timeStamp;
+  if (d >= 0 && d < 1000) return { perf: e.timeStamp, reason: null, basis: 'performance.now()と同じ基準' };
+  const d2 = Date.now() - e.timeStamp;
+  if (d2 >= 0 && d2 < 1000) return { perf: now - d2, reason: null, basis: 'エポック基準のtimeStampを変換' };
+  return { perf: null, reason: 'timeStampが処理時刻から離れすぎ（' + r2(d) + 'ms、処理開始時刻で代用）' };
+}
+function latencyInfo(){
+  const has = k => typeof ctx?.[k] === 'number';
+  return { baseLatency: has('baseLatency') ? ctx.baseLatency : null, baseLatencyNote: has('baseLatency') ? null : 'このブラウザーでは取得できない',
+    outputLatency: has('outputLatency') ? ctx.outputLatency : null, outputLatencyNote: has('outputLatency') ? null : 'このブラウザーでは取得できない' };
+}
+// songTime() と同じ計算をたどって、どの値で音声の時計に合わせたかを残す
+function clockInfo(now){
+  const c = { currentTime: ctx.currentTime, songStart: r4(songStart), timingMs, ...latencyInfo(), outputTimestamp: null, method: null, fallback: false, fallbackReason: null };
+  if (ctx.getOutputTimestamp){
+    const ts = ctx.getOutputTimestamp();
+    c.outputTimestamp = { contextTime: ts.contextTime, performanceTime: ts.performanceTime };
+    if (ts.contextTime > 0 && ts.performanceTime > 0 && Math.abs(now - ts.performanceTime) < 250){ c.method = 'getOutputTimestamp：contextTime＋(処理開始時刻−performanceTime)。currentTimeを上限'; }
+    else { c.fallback = true; c.fallbackReason = 'getOutputTimestampの値が無効・古い'; }
+  } else { c.fallback = true; c.fallbackReason = 'getOutputTimestamp非対応'; }
+  if (c.fallback) c.method = '代替：currentTime−outputLatency−baseLatency（取得できない遅延は0として推定）';
+  c.songTimeFormula = '出力時刻−songStart−手動補正÷1000。押した時刻は、そこから（処理開始−イベント発生）を引く';
+  return c;
+}
+function diagCtx(){ return { rate, bpm: r2(BPM), lap: lap + 1, attempt: diagAttempt }; }
+function diagStart(){
+  diagAttempt = 1; diagLastDraw = null; resumePerf = -Infinity; lastBeatLagMs = null;
+  if (!diagOn){ diagRun = null; return; }
+  diagSeq = 0;
+  diagRun = { logVersion: DIAG_LOG_VERSION, appVersion: APP_VERSION, createdAt: new Date().toISOString(),
+    device: { userAgent: navigator.userAgent, platform: navigator.userAgentData?.platform ?? navigator.platform ?? null, mobile: navigator.userAgentData?.mobile ?? null, language: navigator.language, screen: { w: screen.width, h: screen.height, dpr: window.devicePixelRatio }, maxTouchPoints: navigator.maxTouchPoints ?? null, audioOutput: diagOutput, audioOutputLabel: OUTPUT_LABEL[diagOutput], audioOutputNote: '音の出力は手動で選んだ値（自動判別していない）' },
+    song: { name: song.name, file: song.file, baseBpm: song.bpm, offset: song.offset, chart: song.chart || null, chartBeats: activeChart?.beats?.length ?? null, local: !!song.local, tutorial: isTutorial() },
+    settings: { mode: endless ? 'endless' : 'normal', difficulty: runDifficulty, hero: runHeroId, noteSpeed, timingMs, scoreMode: scoreOn() },
+    judgeWindows: { perfectMs: 45, greatMs: 90, acceptMsFormula: 'min(170, 1拍×0.36)', note: '受付限界は再生倍率で変わる。各入力に実際の値を記録' },
+    audio: { sampleRate: ctx?.sampleRate ?? null, ...latencyInfo(), getOutputTimestamp: !!ctx?.getOutputTimestamp },
+    limits: { maxEvents: DIAG_MAX_EVENTS, dropChunk: DIAG_DROP_CHUNK }, droppedEvents: 0, droppedNote: null, saveError: null, events: [] };
+  diagEv('start', { ...diagCtx() });
+}
+function diagEv(type, data){
+  if (!diagRun) return null;
+  const ev = { seq: ++diagSeq, type, perf: r2(performance.now()), songT: state === 'ready' || state === 'loading' ? null : r4(songTime()), ...data };
+  const E = diagRun.events;
+  if (E.length >= DIAG_MAX_EVENTS){ E.splice(0, DIAG_DROP_CHUNK); diagRun.droppedEvents += DIAG_DROP_CHUNK; diagRun.droppedNote = `件数上限（${DIAG_MAX_EVENTS}件）を超えたため、古い記録を${diagRun.droppedEvents}件削除`; }
+  E.push(ev); return ev;
+}
+function diagInput(type, e, device, ev, handlerPerf, delayMs, tNow, t){
+  if (!diagRun) return null;
+  const vp = tween(player.from, player.idx, player.at, t), pre = notesWillMove(), nb = beatTime(nextBeat);
+  const near = [...notes].sort((a, b) => a.idx - b.idx).slice(0, 3).map(nt => { const V = noteView(nt, t, pre, nb, vp); return { id: nt.id, logicalIdx: nt.idx, from: nt.from, hp: nt.hp || 1, red: !!nt.hit, moveStart: r4(V.at), moveEnd: r4(V.at + MOVE_ANIM), estimatedDrawnIdx: r4(V.vis) }; });
+  return diagEv('input', { inputId: 'in' + (diagSeq + 1), action: type === 'break' ? 'ブレイク' : '進む', device: device === 'keyboard' ? 'キーボード' : device === 'touch' ? 'タッチ' : device === 'mouse' ? 'マウス' : device === 'pen' ? 'ペン' : device,
+    eventTimeStamp: typeof e?.timeStamp === 'number' ? e.timeStamp : null, eventPerf: r2(ev.perf), eventTimeNote: ev.reason ?? ev.basis ?? null, handlerPerf: r2(handlerPerf), queueDelayMs: r2(delayMs),
+    songTimeAtHandler: r4(tNow), songTimeUsed: r4(t), clock: clockInfo(handlerPerf), timingMs,
+    mode: endless ? 'endless' : 'normal', difficulty: runDifficulty, chart: !!activeChart, song: song.name, ...diagCtx(), lockState: moveLocked, playerIdx: player.idx,
+    display: { noteSpeed, frameDtMs, beatLagMs: lastBeatLagMs, lastDrawn: diagLastDraw ? { ...diagLastDraw, note: '入力前に最後に実際に描いた位置' } : null, estimatedAtInput: { playerIdx: r4(vp), notes: near, note: '押した時刻に描いていたはずの推定位置' } } });
+}
+function diagTarget(rec, n, t, diff){
+  if (!rec) return;
+  const bt = beatTime(n);
+  rec.target = { beat: n, beatTime: r4(bt), prevBeatTime: r4(beatTime(n - 1)), nextBeatTime: r4(beatTime(n + 1)), offsetMs: r2(diff * 1000), sign: 'マイナス＝早い、プラス＝遅い', windowsMs: { perfect: 45, great: 90, accept: r2(WINDOW * 1000) } };
+}
+function diagInputEnd(rec, o){ if (rec) Object.assign(rec, o); }
+function diagResult(rec, o){
+  if (!rec) return;
+  diagEv('input_result', { inputId: rec.inputId, action: rec.action, ...diagCtx(), ...o });
+}
+function diagShow(text){
+  if (!diagOn || !diagRun) return;
+  const el = document.getElementById('diagLine'); el.textContent = text; el.classList.remove('hide');
+  clearTimeout(diagLineTimer); diagLineTimer = setTimeout(() => el.classList.add('hide'), 2500);
+}
+function diagSave(){
+  if (!diagRun) return;
+  try{ localStorage.setItem(DIAG_STORE_KEY, JSON.stringify(diagRun)); diagRun.saveError = null; }
+  catch(e){ diagRun.saveError = 'この端末に保存できなかった（' + (e?.name || 'error') + '）。コピー／JSON保存は使えます'; }
+}
+function diagLoadLast(){
+  if (diagRun) return diagRun;
+  try{ const v = JSON.parse(localStorage.getItem(DIAG_STORE_KEY) || 'null'); if (v && v.logVersion === DIAG_LOG_VERSION) diagRun = v; }catch(e){}
+  return diagRun;
+}
+function stats(a){
+  if (!a.length) return { n: 0, median: null, mean: null, sd: null, iqr: null };
+  const s = [...a].sort((x, y) => x - y), q = p => { const i = (s.length - 1) * p, lo = Math.floor(i); return s[lo] + (s[Math.ceil(i)] - s[lo]) * (i - lo); };
+  const mean = a.reduce((x, y) => x + y, 0) / a.length, sd = Math.sqrt(a.reduce((x, y) => x + (y - mean) ** 2, 0) / a.length);
+  return { n: a.length, median: r2(q(.5)), mean: r2(mean), sd: r2(sd), iqr: r2(q(.75) - q(.25)) };
+}
+function diagSummary(run){
+  const E = run.events, judged = E.filter(e => e.type === 'input_result' && e.status === 'judged');
+  const timingMiss = E.filter(e => e.type === 'input' && e.status === 'miss'), dmg = E.filter(e => e.type === 'damage');
+  const invalid = E.filter(e => e.type === 'input' && e.status === 'invalid').length + E.filter(e => e.type === 'input_result' && e.status === 'invalid').length;
+  const off = judged.map(e => e.offsetMs), delays = E.filter(e => e.type === 'input' && typeof e.queueDelayMs === 'number').map(e => e.queueDelayMs);
+  const group = key => { const m = new Map(); for (const e of judged){ const k = key(e); if (!m.has(k)) m.set(k, []); m.get(k).push(e); } return [...m].map(([k, es]) => ({ k, ...stats(es.map(e => e.offsetMs)), P: es.filter(e => e.judge === 'PERFECT').length, G: es.filter(e => e.judge === 'GREAT').length, D: es.filter(e => e.judge === 'GOOD').length })); };
+  return { counts: { PERFECT: judged.filter(e => e.judge === 'PERFECT').length, GREAT: judged.filter(e => e.judge === 'GREAT').length, GOOD: judged.filter(e => e.judge === 'GOOD').length, MISS: timingMiss.length + dmg.length, missTiming: timingMiss.length, missDamage: dmg.length },
+    early: off.filter(v => v < 0).length, late: off.filter(v => v > 0).length, exact: off.filter(v => v === 0).length, offset: stats(off), delay: stats(delays), delayMax: delays.length ? r2(Math.max(...delays)) : null, invalid,
+    bySpeed: group(e => '×' + Number(e.rate).toFixed(1)), byLap: group(e => '周' + e.lap + '・挑戦' + e.attempt) };
+}
+function diagRender(){
+  const run = diagLoadLast(), body = document.getElementById('diagBody');
+  document.getElementById('diagMsg').textContent = '';
+  document.getElementById('diagDl').disabled = document.getElementById('diagCopy').disabled = !run;
+  if (!run){ body.innerHTML = '<p>まだ記録がありません。診断モードをオンにして遊ぶと記録されます。</p>'; return; }
+  const S = diagSummary(run), v = x => x == null ? '—' : x, ms = x => x == null ? '—' : (x > 0 ? '+' : '') + x + 'ms';
+  const rows = list => list.map(g => `<tr><td>${g.k}</td><td>${g.n}</td><td>${ms(g.median)}</td><td>${v(g.sd)}</td><td>${g.P}/${g.G}/${g.D}</td></tr>`).join('') || '<tr><td colspan="5">なし</td></tr>';
+  const head = '<tr><th></th><th>数</th><th>中央値</th><th>ばらつき</th><th>P/G/GOOD</th></tr>';
+  body.innerHTML = `<p class="diagNote">${run.song.name}／${run.settings.mode === 'endless' ? 'エンドレス' : '通常'}／${String(run.settings.difficulty).toUpperCase()}／音の出力：${run.device.audioOutputLabel}／${run.appVersion}</p>
+    <table><tr><th>PERFECT</th><th>GREAT</th><th>GOOD</th><th>MISS</th></tr><tr><td style="text-align:left">${S.counts.PERFECT}</td><td>${S.counts.GREAT}</td><td>${S.counts.GOOD}</td><td>${S.counts.MISS}</td></tr></table>
+    <p class="diagNote">MISSの内訳：受付時間外 ${S.counts.missTiming}／被弾 ${S.counts.missDamage}</p>
+    <table><tr><td>早押し／遅押し／ぴったり</td><td>${S.early}／${S.late}／${S.exact}</td></tr><tr><td>ズレの中央値</td><td>${ms(S.offset.median)}</td></tr><tr><td>ばらつき（標準偏差）</td><td>${v(S.offset.sd)}ms</td></tr><tr><td>ばらつき（四分位範囲）</td><td>${v(S.offset.iqr)}ms</td></tr><tr><td>入力処理待ち（中央値／最大）</td><td>${v(S.delay.median)}ms／${v(S.delayMax)}ms</td></tr><tr><td>無効入力（統計には含めない）</td><td>${S.invalid}</td></tr></table>
+    <h3>速度別</h3><table>${head}${rows(S.bySpeed)}</table>
+    <h3>周回別</h3><table>${head}${rows(S.byLap)}</table>
+    <p class="diagNote">ズレの統計は、判定がついたブレイク入力（PERFECT／GREAT／GOOD）だけが対象です。受付時間外のMISS・被弾・無効入力・周回の演出表示は含めません。マイナス＝早い、プラス＝遅い。処理待ちは全入力が対象です。</p>
+    ${run.droppedNote ? `<p class="diagNote">${run.droppedNote}</p>` : ''}${run.saveError ? `<p class="diagNote">${run.saveError}</p>` : ''}`;
+}
+function openDiag(){ diagRender(); document.getElementById('diagOv').classList.remove('hide'); document.getElementById('diagOv').scrollTop = 0; }
+function diagJSON(){ return JSON.stringify(diagLoadLast(), null, 1); }
+function diagFileName(){ const d = new Date(), p = n => String(n).padStart(2, '0'); return `neon-blade-diag-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}.json`; }
+function diagMsg(t){ document.getElementById('diagMsg').textContent = t; }
+document.getElementById('diagDl').addEventListener('click', () => {
+  if (!diagLoadLast()) return;
+  try{
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([diagJSON()], { type: 'application/json' })); a.download = diagFileName();
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); diagMsg('JSONを保存しました');
+  }catch(e){ diagMsg('保存できませんでした。コピーを使ってください'); }
+});
+document.getElementById('diagCopy').addEventListener('click', async () => {
+  if (!diagLoadLast()) return;
+  const text = diagJSON();
+  try{ await navigator.clipboard.writeText(text); diagMsg('コピーしました'); return; }catch(e){}
+  try{ const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); diagMsg(ok ? 'コピーしました' : 'コピーできませんでした。JSON保存を使ってください'); }
+  catch(e){ diagMsg('コピーできませんでした。JSON保存を使ってください'); }
+});
+document.getElementById('diagClose').addEventListener('click', () => document.getElementById('diagOv').classList.add('hide'));
+document.getElementById('diagOpen').addEventListener('click', openDiag);
+document.getElementById('pauseDiag').addEventListener('click', openDiag);
+document.querySelectorAll('[data-diag]').forEach(b => b.addEventListener('click', openDiag));
+{ const tg = document.getElementById('diagToggle'), out = document.getElementById('diagOutput');
+  tg.checked = diagOn; out.value = OUTPUT_LABEL[diagOutput] ? diagOutput : 'unknown';
+  tg.addEventListener('change', () => { diagOn = tg.checked; try{ localStorage.setItem('neon-blade-diag', diagOn ? '1' : '0'); }catch(e){} });
+  out.addEventListener('change', () => { diagOutput = out.value; try{ localStorage.setItem('neon-blade-diag-output', diagOutput); }catch(e){} }); }
+window.addEventListener('pagehide', () => { if (diagRun && state !== 'ready') diagSave(); });
+
 // ===== 操作 =====
 function bindBtn(id, type){
   const el = document.getElementById(id);
-  el.addEventListener('pointerdown', e => { e.preventDefault(); el.classList.add('press'); input(type); });
+  el.addEventListener('pointerdown', e => { e.preventDefault(); el.classList.add('press'); input(type, e, e.pointerType || 'unknown'); });
   ['pointerup','pointercancel','pointerleave'].forEach(ev => el.addEventListener(ev, () => el.classList.remove('press')));
 }
 bindBtn('bBreak', 'break'); bindBtn('bMove', 'move');
 window.addEventListener('keydown', e => {
   if (e.repeat) return;
-  if (e.key === 'ArrowRight' || e.key === 'k') input('break');
-  if (e.key === 'ArrowLeft' || e.key === ' ' || e.key === 'j') input('move');
+  if (e.key === 'ArrowRight' || e.key === 'k') input('break', e, 'keyboard');
+  if (e.key === 'ArrowLeft' || e.key === ' ' || e.key === 'j') input('move', e, 'keyboard');
 });
 
 let pausedAt=null,resumeTimer=null,resumeToken=0,resumeFloor=-Infinity;
@@ -1502,7 +1725,8 @@ function nextCourse(t){
   texts.push({ s: 'COURSE ' + (courseLap + 1), idx: 0, t, col: '#ffe941', big: true });
 }
 function nextLap(t, songEnded){
-  if(!songEnded){ lap++; rate = Math.min(2.2, 1 + lap * 0.1); applyRate(); }
+  if(!songEnded){ lap++; rate = Math.min(2.2, 1 + lap * 0.1); applyRate(); diagEv('speed_up', { rate, lap }); }
+  else { diagAttempt++; diagEv('song_restart', { reason: 'ゴール前に曲が終わった。この挑戦の集計は破棄', lap, attempt: diagAttempt }); }
   showJudge('PERFECT', songEnded ? 'LAP ' + (lap+1) : 'SPEED UP ×' + rate.toFixed(1), true);
   resetLapJ(); // 新しい周の集計（曲が終わって戻った場合は、その挑戦分を破棄）
   player = { idx: 0, from: 0, at: 0 }; notes = []; effects = []; texts = []; fx = [];
@@ -1517,6 +1741,7 @@ function startGame(){
   document.querySelectorAll('.overlay').forEach(o=>o.classList.add('hide'));
   reset();progFill.style.width='0%';
   lap=0;rate=song.rate||1;applyRate();
+  diagStart();
   tutStep=0;tutDone=0;tutSpawned=0;tutStepAt=0;tutApplyUI();
   if(ctx.state==='suspended')ctx.resume();
   startMusicAt();state='play';startMoveScheduler();
@@ -1525,7 +1750,9 @@ function pauseGame(){
   if(state==='resuming'){cancelResume();state='paused';}
   else if(state==='play'){
     pausedAt=songTime();state='paused';stopSong();stopMoveScheduler();
+    diagEv('pause',{pausedAt:r4(pausedAt)});diagSave();
   }else return;
+  document.getElementById('pauseDiag').hidden=!diagRun;
   document.querySelectorAll('#controls button').forEach(b=>{b.disabled=true;b.classList.remove('press');});
   document.getElementById('pauseOv').classList.remove('hide');
   document.getElementById('pauseStatus').textContent='ひと休み';
@@ -1542,7 +1769,7 @@ async function resumeGame(){
   const tick=()=>{
     if(token!==resumeToken||state!=='resuming')return;
     if(count===0){
-      resumeFloor=pausedAt;startMusicAt(pausedAt+timingMs/1000);state='play';pausedAt=null;
+      resumeFloor=pausedAt;startMusicAt(pausedAt+timingMs/1000);state='play';resumePerf=performance.now();diagEv('resume',{from:r4(pausedAt)});pausedAt=null;
       document.getElementById('pauseOv').classList.add('hide');
       document.querySelectorAll('#controls button').forEach(b=>b.disabled=false);
       startMoveScheduler();document.getElementById('pauseBtn').focus();return;
@@ -1552,6 +1779,7 @@ async function resumeGame(){
   };tick();
 }
 function returnToSongs(){
+  if(state==='play'||state==='paused'||state==='resuming'){diagEv('quit',{});diagSave();}
   cancelResume();cancelResultReveal();stopMoveScheduler();stopSong();
   clearTimeout(resultTimer);resultTimer=null;victoryAt=-1;
   for(const v of victoryVoices){try{v.stop();}catch(e){}}victoryVoices.clear();
