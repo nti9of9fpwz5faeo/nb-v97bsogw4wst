@@ -293,7 +293,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v15</span>
+  <span id="verBadge">バージョン v16</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -347,7 +347,7 @@ try{playMode=localStorage.getItem('neon-blade-mode')||(localStorage.getItem('neo
 if(!['normal','distance','endless'].includes(playMode))playMode='normal';
 endless=playMode!=='normal';
 function applyRate(){ BPM = song.bpm * rate; OFFSET = song.offset / rate; SPB = 60 / BPM; WINDOW = Math.min(0.17, SPB * 0.36); }
-const MODE_DESC={normal:'いつものモードです。',distance:'曲が終わるまでに、どこまで進めるかを競います。',endless:'ワープするたびに曲が速くなります。速いほど高得点です。'};
+const MODE_DESC={normal:'いつものモードです。',distance:'曲が終わるまでに、どこまで進めるかを競います。',endless:'自分のペースで進もう。ワープするたびに加速。正確なブレイクでボーナス歩数！'};
 function updateModeUI(){ document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===playMode))); document.getElementById('modeDesc').textContent=MODE_DESC[playMode]; }
 function setSong(sg){ song = sg; activeChart=chartCache[sg.chart]||null; GAPS = sg.dense ? DIFFICULTIES[difficulty].dense : DIFFICULTIES[difficulty].gaps; applyRate(); }
 const COLS = 8, ROWS = 11;
@@ -859,6 +859,7 @@ function onBeat(n, t){
   const red = notes.find(nt => nt.hit);
   if (red && n > (red.hitBeat ?? n) + 1 && !tutSafe()){     // 1拍待っても壊せてない → ダメージ
     notes.splice(notes.indexOf(red), 1);
+    rememberHit((red.hitBeat ?? n - 2) + 1, red); // 2回目は hitBeat+1 の拍で壊す予定だった
     damage(t, '赤ノーツを1拍以内に壊せなかった', red, null);
   }
   // 練習中は、ブロックが目の前に来たらプレイヤーが押すまで待つ
@@ -895,11 +896,33 @@ function checkHit(t, reason, inputId, beat){
   for (const nt of [...notes]){
     if (nt.idx <= player.idx && !nt.hit){
       notes.splice(notes.indexOf(nt), 1);
+      if (beat != null) rememberHit(beat, nt); // 受付期限切れの被弾だけ（進んでぶつかった被弾は巻き戻さない）
       damage(t, reason || 'ノーツが自分のマスに来て、受付時間内に壊せなかった', nt, inputId ?? null);
     }
   }
 }
 
+// ===== 入力処理の遅れ対策 =====
+// 押した瞬間（イベント時刻）は受付時間内なのに、ハンドラーが動く前に期限切れの被弾が先に処理されることがある。
+// 直前の期限切れ被弾を少しだけ覚えておき、その被弾より前に押されていた有効な入力なら、被弾を取り消して正しく採点する。
+const LATE_INPUT_MAX_MS = 300;  // これ以上遅れて処理された入力は巻き戻さない
+let recentHits = [];
+function rememberHit(beat, nt){
+  const now = performance.now();
+  recentHits = recentHits.filter(h => now - h.perf < 1000);
+  recentHits.push({ beat, perf: now, note: { ...nt }, playerIdx: player.idx, hpBefore: hp, comboBefore: combo, dmgSeq: diagSeq + 1 });
+}
+function tryRevertLateHit(n, evPerf, handlerPerf, rec){
+  if (evPerf == null || handlerPerf - evPerf > LATE_INPUT_MAX_MS) return false;
+  const i = recentHits.findIndex(h => h.beat === n && h.perf > evPerf && h.playerIdx === player.idx);
+  if (i < 0) return false;
+  const h = recentHits.splice(i, 1)[0];
+  hp = h.hpBefore; drawHud(); counts.MISS = Math.max(0, counts.MISS - 1); combo = h.comboBefore;
+  notes.push({ ...h.note, idx: player.idx, from: player.idx, at: -9 });
+  texts = texts.filter(x => x.s !== 'ダメージ');
+  diagEv('damage_reverted', { inputId: rec?.inputId ?? null, noteId: h.note.id, beat: n, damageSeq: h.dmgSeq, pressedBeforeDamageMs: r2(h.perf - evPerf), handlerDelayMs: r2(handlerPerf - evPerf), hpRestored: hp, ...diagCtx() });
+  return true;
+}
 function damage(t, reason, nt, inputId, sub){
   diagEv('damage', { lifeLoss: true, reason: reason || null, causeInputId: inputId ?? null, noteId: nt?.id ?? null, noteIdx: nt?.idx ?? null, noteHp: nt?.hp ?? null, playerIdx: player.idx, hpBefore: hp, ...diagCtx() });
   hp--; drawHud(); damageAt = t;
@@ -1018,6 +1041,13 @@ function input(type, e, device){
   const diff = t - beatTime(n);
   diagTarget(rec, n, t, diff);
   if (Math.abs(diff) > WINDOW || n < 0){
+    // その拍に自分のマスにいる（来る）ノーツがなければ空振り＝無効（ゲージ・ライフ・コンボ・判定回数は変えない）
+    const reach = n >= nextBeat && notesWillMove() ? n - nextBeat + 1 : 0;
+    if (n < 0 || !notes.some(x => x.idx <= player.idx + reach)){
+      diagInputEnd(rec, { status: 'invalid', reason: '対象ノーツなし（受付時間外の空振り）', offsetMs: r2(diff * 1000) });
+      diagShow('無効：対象ノーツなし');
+      return;
+    }
     diagInputEnd(rec, { status: 'miss', judge: 'MISS', lifeLoss: false, reason: (n < 0 ? '最初の拍より前' : '受付時間外') + '（加点なし・ライフは減らない・ノーツはそのまま）', offsetMs: r2(diff * 1000) });
     showJudge('MISS', 'タイミングずれ');
     if (speedOn()) gaugeChange(GAUGE_INPUT_MISS, 'input_miss', rec?.inputId, null, tNow); // 入力MISSはゲージだけ減る
@@ -1025,7 +1055,11 @@ function input(type, e, device){
     return;
   }
   if (acted === n){ diagInputEnd(rec, { status: 'invalid', reason: '同じ拍ですでに操作済み' }); diagShow('無効：同じ拍ですでに操作済み'); return; } // 1拍に1回だけ
-  if (n < nextBeat){ diagInputEnd(rec, { status: 'immediate', reason: 'その拍の処理は済んでいるので、すぐ実行' }); doAction(type, n, tNow, diff, rec); }  // 拍の処理が済んでいる → すぐ実行
+  if (n < nextBeat){
+    const reverted = tryRevertLateHit(n, ev.perf, handlerPerf, rec); // 被弾が先に処理されていたら取り消す
+    diagInputEnd(rec, { status: 'immediate', reason: 'その拍の処理は済んでいるので、すぐ実行' + (reverted ? '（処理より先に出た期限切れ被弾を取り消し）' : '') });
+    doAction(type, n, tNow, diff, rec);
+  }  // 拍の処理が済んでいる → すぐ実行
   else { earlyInput = { type, time: t, diff, n, rec }; acted = n; diagInputEnd(rec, { status: 'queued', reason: '拍の処理前なので、その拍まで保留（採点は押した時刻）' }); }
 }
 
@@ -1684,7 +1718,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v15', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v16', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -1784,7 +1818,7 @@ function stats(a){
 }
 function diagSummary(run){
   const E = run.events, judged = E.filter(e => e.type === 'input_result' && e.status === 'judged');
-  const timingMiss = E.filter(e => e.type === 'input' && e.status === 'miss'), dmg = E.filter(e => e.type === 'damage' && e.reason !== '受付時間外のブレイク'); // 旧ログ（v5）の入力MISS由来の減算は被弾に数えない
+  const timingMiss = E.filter(e => e.type === 'input' && e.status === 'miss'), revertedSeq = new Set(E.filter(e => e.type === 'damage_reverted').map(e => e.damageSeq)), dmg = E.filter(e => e.type === 'damage' && e.reason !== '受付時間外のブレイク' && !revertedSeq.has(e.seq)); // 旧ログ（v5）の入力MISS由来の減算は被弾に数えない
   const invalid = E.filter(e => e.type === 'input' && e.status === 'invalid').length + E.filter(e => e.type === 'input_result' && e.status === 'invalid').length;
   const off = judged.map(e => e.offsetMs), delays = E.filter(e => e.type === 'input' && typeof e.queueDelayMs === 'number').map(e => e.queueDelayMs);
   const group = key => { const m = new Map(); for (const e of judged){ const k = key(e); if (!m.has(k)) m.set(k, []); m.get(k).push(e); } return [...m].map(([k, es]) => ({ k, ...stats(es.map(e => e.offsetMs)), P: es.filter(e => e.judge === 'PERFECT').length, G: es.filter(e => e.judge === 'GREAT').length, D: es.filter(e => e.judge === 'GOOD').length })); };
@@ -1902,7 +1936,7 @@ function nextLap(t, songEnded){
 function startGame(){
   document.querySelectorAll('.overlay').forEach(o=>o.classList.add('hide'));
   reset();progFill.style.width='0%';
-  lap=0;rate=song.rate||1;applyRate();
+  lap=0;rate=song.rate||1;applyRate();updateWarpHud(); // 速度を初期値に戻してから表示を更新
   runSongCorrMs=activeChart?songCorrSetting(song.chart):0;
   diagStart();
   tutStep=0;tutDone=0;tutSpawned=0;tutStepAt=0;tutApplyUI();
