@@ -303,7 +303,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v17</span>
+  <span id="verBadge">バージョン v18</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -1475,10 +1475,11 @@ function drawCourse(t){
 }
 
 // 判定ゲージ：歩数の下に表示（画像：img/gauge-base.png＝枠、img/gauge-fill.png＝中身）。数字は出さず、たまり具合だけ
+const SHOW_GAUGE = false; // 試遊中：ゲージは表示しない（視線がキャラから離れるため）。仕組みは裏で動く。true で上部に表示
 function updateGaugeHud(dir){
   const el = document.getElementById('stepGauge');
-  el.classList.toggle('hide', !speedOn());
-  if (!speedOn()) return;
+  el.classList.toggle('hide', !speedOn() || !SHOW_GAUGE);
+  if (!speedOn() || !SHOW_GAUGE) return;
   el.querySelector('.sgFill').style.clipPath = `inset(0 ${(1 - gauge / GAUGE_FULL) * 100}% 0 0 round 999px)`;
   if (dir){ el.classList.remove('up', 'down'); void el.offsetWidth; el.classList.add(dir > 0 ? 'up' : 'down'); }
 }
@@ -1712,7 +1713,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v17', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v18', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
