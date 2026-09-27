@@ -303,7 +303,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v19</span>
+  <span id="verBadge">バージョン v20</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -1234,7 +1234,7 @@ function renderResult(result){
   const label=ov.querySelector('.scoreLabel span'),help=ov.querySelector('.scoreHelp p');
   label.dataset.orig??=label.textContent;help.dataset.orig??=help.innerHTML;
   label.textContent=result.mode==='endless'?'合計歩数':result.endless?'到達距離':label.dataset.orig;
-  help.innerHTML=result.mode==='endless'?`記録は歩数です。進んだマス数に、判定ゲージのボーナスを足したものです。PERFECT・GREAT・GOODでゲージがたまり、満タンになるたびに＋1歩。受付時間外の入力でゲージが少し減ります（ライフは減りません）。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。`:result.endless?`曲が終わるまでに進んだマス数が記録です（判定で増えたり減ったりしません）。コースの終わりでワープするには、そのコースでPERFECTを${WARP_PERFECT}回取る必要があります。足りないときは終わりで待ち、ブレイクを続けて達成すると自動でワープします。ライフがなくなると、その時点の距離が記録になります。`:help.dataset.orig;
+  help.innerHTML=result.mode==='endless'?`記録は歩数です。進んだマス数に、判定ゲージのボーナスを足したものです。PERFECT・GREAT・GOODでゲージがたまり、満タンになるたびに＋1歩。受付時間外の入力でゲージが少し減ります（ライフは減りません）。コースの終わりに着くとワープして、曲は止まらずに0.1倍ずつ速くなります（最大2.2倍）。曲が終わったら頭から続きます。`:result.endless?`曲が終わるまでに進んだマス数が記録です（判定で増えたり減ったりしません）。コースの終わりでワープするには、そのコースでPERFECTを${WARP_PERFECT}回取る必要があります。足りないときは終わりで待ち、ブレイクを続けて達成すると自動でワープします。ライフがなくなると、その時点の距離が記録になります。`:help.dataset.orig;
   text('reason',result.endless?result.reasonText:'');
   if(result.mode==='endless'){text('badge',`ワープ ${result.warps}回　到達 ×${result.speed.toFixed(1)}`);text('foot',`実移動 ${result.moveSteps}歩＋ボーナス ${result.bonusSteps}歩`);}
   else if(result.endless)text('badge',`ワープ ${result.warps}回`);
@@ -1667,7 +1667,7 @@ function checkLines(t){
   if (!(state==='play' && player.idx >= LINES[lineK] && hp > 0)) return false;
   if (lineK === LINES.length - 1 && speedOn()){ // エンドレス：終端に着いたら条件なしでワープ（曲は頭から次の速度で）
     diagEv('warp', { fromRate: rate, toRate: Math.min(SPEED_MAX, rate + SPEED_STEP), gauge, ...diagCtx() });
-    nextLap(t, false); updateWarpHud(); return true;
+    endlessWarp(); updateWarpHud(); return true;
   }
   if (lineK === LINES.length - 1 && endlessScoreOn()){ // 終端：PERFECTが足りていればワープ、足りなければその場で待つ（ブレイクは続けられる）
     if (warpReady){ warp(t); return false; }
@@ -1702,7 +1702,7 @@ function loop(){
     if (isTutorial()){ const st=tutSt(); if(st?.auto && t-tutStepAt>=st.auto) tutAdvance(t); }
     if (state==='play' && !lapped && t > songBuf.duration / rate){
       if(isTutorial()&&!tutSt()?.live) tutLoopMusic();
-      else if(speedOn()){ endReason = 'song_end'; end(false); } // エンドレス：ワープ前に曲が終わったら終了
+      else if(speedOn()) endlessLoopMusic(); // エンドレス：曲が終わったら頭から続ける（コースと記録はそのまま）
       else if(endless&&!isTutorial()){ endReason = 'finish'; end(true); } // 距離チャレンジ：曲が終わったら完走
       else end(scoreOn());
     }
@@ -1714,7 +1714,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v19', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v20', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -1913,6 +1913,46 @@ function nextCourse(t){
   cameraRow=0;cameraFrom=0;cameraTarget=0;cameraAt=-9;setPalette(courseLap % PALETTES.length);
   revealEnd=REVEAL_ENDS[0];revealFrom=revealEnd;
   texts.push({ s: 'COURSE ' + (courseLap + 1), idx: 0, t, col: '#ffe941', big: true });
+}
+// ===== エンドレス：曲を止めずに加速する =====
+// 曲の再生位置はそのままで、再生速度だけ変える。songTime()＝再生位置÷速度なので、開始時刻をずらして合わせる
+function changeRateLive(r1){
+  const C = ctx.currentTime, raw = (C - songStart) * rate; // 今鳴らしている位置（曲の秒）
+  rate = r1; applyRate();
+  songStart = C - raw / r1;
+  if (songSrc){ try{ songSrc.playbackRate.setValueAtTime(r1, C); }catch(e){ songSrc.playbackRate.value = r1; } }
+}
+// コースを最初からにするが、曲は流したまま（拍の番号も続く）
+function resetCourseKeepSong(t){
+  player = { idx: 0, from: 0, at: t }; notes = []; effects = []; texts = []; fx = []; pendingCheck = []; earlyInput = null; acted = -1; nextGap = 4; runLen = 1;
+  lineK = 0; gIdx = gIndexFor(0); gFrom = gIdx; gMoveAt = -9;
+  cameraRow=0;cameraFrom=0;cameraTarget=0;cameraAt=-9;setPalette(lap % PALETTES.length);
+  revealEnd=REVEAL_ENDS[0];revealFrom=revealEnd;
+  charState = 'idle'; charUntil = 0; damageAt = -9; lastBeatAt = -9;
+}
+// ワープ地点＝倍速地点：コースは最初から、曲はそのまま続けて速度＋0.1（最大2.2）
+function endlessWarp(){
+  const r0 = rate;
+  lap++;
+  const r1 = Math.min(SPEED_MAX, 1 + lap * SPEED_STEP);
+  if (Math.abs(r1 - r0) > 1e-9) changeRateLive(r1);
+  const t = songTime();
+  diagEv('speed_up', { fromRate: r0, rate, lap, songPos: r4(t * rate), keepSong: true });
+  resetCourseKeepSong(t);
+  moveLocked = true; setLockUI(true); // 新しい周も、最初の1個を壊すまで進めない
+  stopMoveScheduler(); startMoveScheduler(); // ガイド音を新しい速度で予約し直す
+  showLapBanner(r1 > r0 ? `ワープ！　速度 ×${rate.toFixed(1)}` : `ワープ！　速度 ×${rate.toFixed(1)}（最大）`);
+  [784, 988, 1175].forEach((f, i) => uiTone(f, .12, i * .05));
+  texts.push({ s: 'LAP ' + (lap + 1), idx: 0, t, col: '#ffe941', big: true });
+}
+// 曲が最後まで終わったら、同じ速度で頭から続ける。キャラの位置・コース・ライフ・記録はそのまま（ノーツだけ消して仕切り直し）
+function endlessLoopMusic(){
+  diagEv('song_loop', { rate, lap, playerIdx: player.idx });
+  notes = []; effects = []; texts = []; fx = []; pendingCheck = []; earlyInput = null; acted = -1; nextBeat = 0;
+  player.from = player.idx; player.at = -9; gFrom = gIdx; gMoveAt = -9; cameraFrom = cameraTarget; cameraAt = -9; revealFrom = revealEnd;
+  charState = 'idle'; charUntil = 0; damageAt = -9; lastBeatAt = -9;
+  stopMoveScheduler(); startMusicAt(); startMoveScheduler();
+  showLapBanner('曲がもう一度はじまります');
 }
 function nextLap(t, songEnded){
   if(!songEnded){ lap++; rate = Math.min(SPEED_MAX, 1 + lap * SPEED_STEP); applyRate(); diagEv('speed_up', { rate, lap }); } // 足し算で加速（掛け算ではない）
