@@ -278,7 +278,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v5</span>
+  <span id="verBadge">バージョン v6</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button><button class="difficultyBtn" id="endlessBtn" aria-pressed="false">エンドレス</button></div>
@@ -344,11 +344,14 @@ let endlessTotal = 0, endlessGoals = 0;
 // 位置は「その周の経過拍数」から計算する（処理落ち・加速・ポーズで速さが変わらない）。以下は未調整の仮設定
 const ANTI_START = -6;           // 各周の開始位置（スタート地点から何マス後ろか。マイナス＝後ろ）
 const ANTI_GRACE_BEATS = 8;      // 各周の開始から止まっている拍数
-const ANTI_BEATS_PER_CELL = { normal: 2, hard: 3 }; // 何拍で1マス進むか（HARDはノーツが密なので少しゆっくり）
+const ANTI_BPC_FIRST = 4;        // 1周目：何拍で1マス進むか（ゆっくり始める）
+const ANTI_BPC_STEP = 0.5;       // 1周ごとに何拍ぶん速くするか
+const ANTI_BPC_MIN = { normal: 2, hard: 3 }; // これより速くはしない（HARDはノーツが密なので少しゆっくり）
+function antiBeatsPerCell(){ return Math.max(ANTI_BPC_MIN[runDifficulty] || 2, ANTI_BPC_FIRST - lap * ANTI_BPC_STEP); }
 const ANTI_WARN_CELLS = 2;       // この距離以下になったら色と音で警告を強める
 let antiIdx = ANTI_START, antiStepAt = -9, endReason = null, missBeat = -999, collisionBeat = -999;
 function antiOn(){ return endlessScoreOn(); }
-function antiAt(n){ return ANTI_START + Math.floor(Math.max(0, n - ANTI_GRACE_BEATS) / (ANTI_BEATS_PER_CELL[runDifficulty] || 2)); }
+function antiAt(n){ return ANTI_START + Math.floor(Math.max(0, n - ANTI_GRACE_BEATS) / antiBeatsPerCell()); }
 const END_REASON = { anti: 'アンチに飲み込まれた', hp: 'ライフがなくなった', song_end: 'ゴール前に曲が終わった' };
 function endlessScoreOn(){ return endless && !isTutorial(); }
 function showLapBanner(text){
@@ -1624,7 +1627,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v5', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v6', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -1659,7 +1662,7 @@ function clockInfo(now){
   c.songTimeFormula = '出力時刻−songStart−手動補正÷1000。押した時刻は、そこから（処理開始−イベント発生）を引く';
   return c;
 }
-function diagCtx(){ const c = { rate, bpm: r2(BPM), lap: lap + 1, attempt: diagAttempt, lapBeat: nextBeat }; if (antiOn()){ c.antiIdx = antiIdx; c.antiDistance = player ? player.idx - antiIdx : null; } return c; }
+function diagCtx(){ const c = { rate, bpm: r2(BPM), lap: lap + 1, attempt: diagAttempt, lapBeat: nextBeat }; if (antiOn()){ c.antiBeatsPerCell = antiBeatsPerCell(); c.antiIdx = antiIdx; c.antiDistance = player ? player.idx - antiIdx : null; } return c; }
 function diagStart(){
   diagAttempt = 1; diagLastDraw = null; resumePerf = -Infinity; lastBeatLagMs = null;
   if (!diagOn){ diagRun = null; return; }
