@@ -295,7 +295,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v23</span>
+  <span id="verBadge">バージョン v24</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -331,7 +331,7 @@ const SONGS = [
   { name: 'チュートリアル', file: 'audio/tutorial.mp3', bpm: 100, offset: 0.07, level: 'はじめて', tutorial: true },   // Neon Warmup（SUNO）
   { name: 'Shatter Forward', file: 'audio/shatter_forward.mp3', bpm: 130.3, offset: .002, level: '曲専用譜面', chart: 'charts/shatter_forward.json' },
   { name: 'Neon Rush', file: 'audio/neon_rush.mp3', bpm: 149.999, offset: .6213, level: '固定譜面テスト', chart: 'charts/neon_rush.json' }, // SUNO。音源を解析：150BPM一定、1拍目0.6213秒
-  { name: 'Zombie Protocol',     file: 'audio/song.mp3',    bpm: 129.3, offset: 0.12, level: 'ふつう', chart: 'charts/zombie_beats.json' }, // テンポが揺れる曲なので拍の位置だけ譜面で持つ（ノーツはランダム）
+  { name: 'Zombie Protocol',     file: 'audio/song.mp3',    bpm: 129.3, offset: 0.12, level: 'ふつう', chart: 'charts/zombie_beats.json', purple: 0.15 }, // 紫ノーツ（突進で壊す）を試す曲 // テンポが揺れる曲なので拍の位置だけ譜面で持つ（ノーツはランダム）
   { name: 'Stutter Bass Groove', file: 'audio/stutter.mp3', bpm: 150.1, offset: 0.0,  level: 'はやい', hard: true },
   { name: 'Bass Arcade',         file: 'audio/bass_arcade.mp3', bpm: 134.4, offset: 0.085, level: 'むずかしい', hard: true, dense: true },
   { name: 'Frostbite Breakbeat', file: 'audio/frostbite.mp3', bpm: 129.9, offset: 0.21, level: 'クール', hard: true },
@@ -871,8 +871,9 @@ function onBeat(n, t){
   else if (n >= INTRO_BEATS && !frozen){
     const lastIdx = Math.max(-99, ...notes.map(x => x.idx));
     if (chartNotes() ? chartSpawns(n)&&lastIdx<gIdx : gIdx - lastIdx >= nextGap){
-      notes.push({ id: noteId++, idx: gIdx, from: gIdx, at: t, pop: t, hp: chartNotes() ? chartHp(n, gIdx - lastIdx) : rollHp(gIdx - lastIdx) });
-      if(!chartNotes())nextGap = pickGap();
+      const purple = !chartNotes() && !isTutorial() && !moveLocked && (song?.purple || 0) > 0 && rand() < song.purple; // 紫＝突進ノーツ（周の最初の1個にはしない）
+      notes.push({ id: noteId++, idx: gIdx, from: gIdx, at: t, pop: t, hp: purple ? 1 : chartNotes() ? chartHp(n, gIdx - lastIdx) : rollHp(gIdx - lastIdx), purple });
+      if(!chartNotes())nextGap = purple ? Math.max(3, pickGap()) : pickGap();
     }
   }
   lastBeatAt = t;lastBeatStrength=activeChart?.accents?.[n]??1;
@@ -1007,9 +1008,29 @@ function freeMove(t, rec){
 function flashBtn(id){ const b = document.getElementById(id); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); setTimeout(() => b.classList.remove('flash'), 160); }
 function setLockUI(on){ const b = document.getElementById('bMove'); b.classList.toggle('locked', on); if (!on) flashBtn('bMove'); }
 
+// 突進の対象：自分のマスに来ている紫、または次の拍で来る紫（目の前）
+function chargeTarget(){
+  if (moveLocked || !notes) return null;
+  return notes.find(x => x.purple && (x.idx <= player.idx || (x.idx === player.idx + 1 && notesWillMove()))) || null;
+}
 function doAction(type, n, t, diff, rec){
   acted = n;
   const word = judgeOf(diff), sub = Math.abs(diff) <= 0.045 ? '' : (diff < 0 ? 'FAST' : 'LATE');
+  if (type === 'charge'){
+    const target = notes.filter(x => x.purple && x.idx <= player.idx).sort((a,b)=>a.idx-b.idx)[0];
+    if (!target){ diagResult(rec, { status: 'moved', reason: '突進の対象がもういないので、普通に進む' }); freeMove(t, null); return; }
+    notes.splice(notes.indexOf(target), 1);
+    effects.push({ idx: target.idx, t, purple: true });
+    playSE(word); flashBtn('bMove');
+    showJudge(word, sub);
+    if (word === 'PERFECT') countPerfect(t);
+    const elPts = speedOn() ? elBreak(word, sub) : null;
+    diagResult(rec, { status: 'judged', judge: word, charge: true, points: elPts, combo: speedOn() ? combo : null, beat: n, offsetMs: r2(diff * 1000), noteId: target.id, playerFrom: player.idx, playerTo: player.idx + 1 });
+    diagShow('突進 ' + word + '：' + msText(diff * 1000));
+    freeMove(t, null); // 壊したマスの先へ1マス進む（前進の点・歩数もここで入る）
+    charState = 'slash'; charUntil = t + 0.22;
+    return;
+  }
   if (type === 'move'){
     if (moveLocked){ texts.push({ s: 'まず1個ブレイク', idx: player.idx, t, col: '#ffffff' }); }
     else if (player.idx < GOAL_INDEX){
@@ -1022,8 +1043,8 @@ function doAction(type, n, t, diff, rec){
   } else {
     charState = 'slash'; charUntil = t + 0.22;
     // 1タップで壊せるのは一番近い1個だけ
-    const target = notes.filter(x => x.idx <= player.idx).sort((a,b)=>a.idx-b.idx)[0];
-    if (!target){ diagResult(rec, { status: 'invalid', reason: '対象ノーツなし', beat: n, offsetMs: r2(diff * 1000), lockBefore: moveLocked }); diagShow('無効：対象ノーツなし'); }
+    const target = notes.filter(x => x.idx <= player.idx && !x.purple).sort((a,b)=>a.idx-b.idx)[0]; // 紫はブレイクでは壊せない（突進のみ）
+    if (!target){ diagResult(rec, { status: 'invalid', reason: '対象ノーツなし（紫はブレイクでは壊せない）', beat: n, offsetMs: r2(diff * 1000), lockBefore: moveLocked }); diagShow('無効：対象ノーツなし'); }
     if (target){
       const hpBefore = target.hp || 1, lockBefore = moveLocked;
       fx.push({ type: 'cut', idx: player.idx, t, d: .16 });
@@ -1058,14 +1079,17 @@ function input(type, e, device){
   const t = tNow - (delayMs ?? 0) / 1000;
   const rec = diagInput(type, e, device, ev, handlerPerf, delayMs, tNow, t);
   if (ev.perf != null && ev.perf < resumePerf){ diagInputEnd(rec, { status: 'invalid', reason: 'ポーズ解除前に押された入力' }); if (type === 'break') diagShow('無効：ポーズ解除前の入力'); return; }
-  if (type === 'move'){ diagInputEnd(rec, { status: 'immediate', reason: '進むは判定なし・押した瞬間に実行' }); freeMove(tNow, rec); return; } // 進むは拍に関係なく、押した瞬間に動く
+  if (type === 'move'){
+    if (!chargeTarget()){ diagInputEnd(rec, { status: 'immediate', reason: '進むは判定なし・押した瞬間に実行' }); freeMove(tNow, rec); return; } // 進むは拍に関係なく、押した瞬間に動く
+    type = 'charge'; if (rec) rec.type = 'charge'; // 紫ノーツへの突進：ブレイクと同じように拍で判定
+  }
   const n = nearestBeat(t);
   const diff = t - beatTime(n);
   diagTarget(rec, n, t, diff);
   if (Math.abs(diff) > WINDOW || n < 0){
     // その拍に自分のマスにいる（来る）ノーツがなければ空振り＝無効（ゲージ・ライフ・コンボ・判定回数は変えない）
     const reach = n >= nextBeat && notesWillMove() ? n - nextBeat + 1 : 0;
-    if (n < 0 || !notes.some(x => x.idx <= player.idx + reach)){
+    if (n < 0 || !notes.some(x => (type === 'charge' ? x.purple : !x.purple) && x.idx <= player.idx + reach)){
       diagInputEnd(rec, { status: 'invalid', reason: '対象ノーツなし（受付時間外の空振り）', offsetMs: r2(diff * 1000) });
       diagShow('無効：対象ノーツなし');
       return;
@@ -1429,6 +1453,7 @@ function tween(from, to, at, t){
 const noteCv=document.createElement('canvas');
 const hardCv=document.createElement('canvas');
 const crackCv=document.createElement('canvas');
+const purpleCv=document.createElement('canvas');
 function rr(c,x,y,w,h,r){c.beginPath();c.roundRect(x,y,w,h,r);}
 function buildNoteSprite(){
   noteCv.width=320;noteCv.height=320;const c=noteCv.getContext('2d');c.scale(2,2);
@@ -1450,6 +1475,12 @@ function buildNoteSprite(){
   k.strokeStyle='#ffd0c4';k.lineWidth=2;rr(k,22,22,116,116,5);k.stroke();
   k.strokeStyle='#7d0b0b';k.lineWidth=4;k.beginPath();
   k.moveTo(30,55);k.lineTo(70,80);k.lineTo(45,110);k.moveTo(70,80);k.lineTo(120,60);k.moveTo(70,80);k.lineTo(110,130);k.stroke();
+  // 紫（突進で壊す）
+  purpleCv.width=320;purpleCv.height=320;const u=purpleCv.getContext('2d');u.scale(2,2);
+  u.shadowColor='#c59bff';u.shadowBlur=6;rr(u,16,16,128,128,9);u.fillStyle='#8a3dff';u.fill();u.shadowBlur=0;
+  u.strokeStyle='#081221';u.lineWidth=7;u.stroke();
+  u.strokeStyle='#d9c2ff';u.lineWidth=2;rr(u,22,22,116,116,5);u.stroke();
+  u.beginPath();u.moveTo(80,38);u.lineTo(122,80);u.lineTo(80,122);u.lineTo(38,80);u.closePath();u.fillStyle='#c59bff';u.fill();u.strokeStyle='#081221';u.lineWidth=5;u.stroke();
 }
 function tileAlpha(i,t){
   if(i>revealEnd)return 0;
@@ -1563,7 +1594,7 @@ function draw(t){
     g.save();g.translate(p.x,p.y);
     if(!reduceMotion.matches&&rk<1)g.rotate(ang);
     const pulse=reduceMotion.matches?0:beatPulse(t)*.025;g.scale(1+pulse,1+pulse);
-    const spr=nt.hit?crackCv:((nt.hp||1)>1?hardCv:noteCv);
+    const spr=nt.purple?purpleCv:nt.hit?crackCv:((nt.hp||1)>1?hardCv:noteCv);
     g.drawImage(spr,-sz/2,-sz/2,sz,sz);
     g.restore();
   }
@@ -1575,7 +1606,7 @@ function draw(t){
       const a=i*2.399+.3,dist=cell*(.12+k*(.35+(i%3)*.12));
       g.save();g.globalAlpha=(1-k)*.85;g.translate(p.x+Math.cos(a)*dist,p.y+Math.sin(a)*dist);g.rotate(a+k*2);
       const w=cell*(i%2?.10:.17)*(1-k*.4);
-      g.fillStyle=i%2?'#ff29ba':'#ff72e0';g.strokeStyle='#081221';g.lineWidth=1.5;
+      g.fillStyle=e.purple?(i%2?'#8a3dff':'#c59bff'):(i%2?'#ff29ba':'#ff72e0');g.strokeStyle='#081221';g.lineWidth=1.5;
       g.beginPath();g.moveTo(-w,-w*.4);g.lineTo(w*.7,-w);g.lineTo(w,w*.5);g.lineTo(-w*.3,w*.7);g.closePath();g.fill();g.stroke();g.restore();
     }
   }
@@ -1716,7 +1747,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v23', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v24', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
