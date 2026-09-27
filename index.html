@@ -278,7 +278,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v6</span>
+  <span id="verBadge">バージョン v7</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button><button class="difficultyBtn" id="endlessBtn" aria-pressed="false">エンドレス</button></div>
@@ -1391,19 +1391,12 @@ function drawAnti(t){
     g.shadowBlur=0;g.strokeStyle='#ffe6fb';g.lineWidth=Math.max(1,cell*.03);g.stroke();g.restore();
   }
 }
-// プレイヤーの足元に、アンチまでの余裕を小さな点で表示（最大6。近いとマゼンタ）
+// アンチが2マス以内に来たときだけ、プレイヤーのまわりに細い輪を出す（常時表示はしない）
 function drawAntiGauge(t){
   if(!antiOn()||state==='ready')return;
-  const d=player.idx-antiIdx;if(d<=0)return;
-  const p=cellXY(tween(player.from,player.idx,player.at,t)),n=6,filled=Math.min(n,d),r=Math.max(2.5,cell*.06),gap=r*2.8;
-  const col=d<=ANTI_WARN_CELLS?'#ff4fe0':d<=3?'#ffd23c':'#8af3fa';
-  g.save();const y=p.y+cell*.56,x0=p.x-(n-1)*gap/2;
-  for(let i=0;i<n;i++){
-    g.beginPath();g.arc(x0+i*gap,y,r,0,Math.PI*2);
-    g.fillStyle=i<filled?col:'#08122188';g.fill();g.lineWidth=1;g.strokeStyle='#081221';g.stroke();
-  }
-  if(d<=ANTI_WARN_CELLS){g.strokeStyle='#ff4fe0aa';g.lineWidth=1.5;g.beginPath();g.arc(p.x,p.y,cell*.47,0,Math.PI*2);g.stroke();}
-  g.restore();
+  const d=player.idx-antiIdx;if(d<=0||d>ANTI_WARN_CELLS)return;
+  const p=cellXY(tween(player.from,player.idx,player.at,t));
+  g.save();g.strokeStyle='#ff4fe0aa';g.lineWidth=1.5;g.beginPath();g.arc(p.x,p.y,cell*.47,0,Math.PI*2);g.stroke();g.restore();
 }
 function beatPulse(t){return t>=lastBeatAt&&lastBeatAt>=0?Math.max(0,1-(t-lastBeatAt)/.17)*lastBeatStrength:0;}
 function impactOffset(t){
@@ -1627,7 +1620,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v6', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v7', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
