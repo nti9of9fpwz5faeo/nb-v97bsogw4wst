@@ -21,6 +21,7 @@
   #tip{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(340px,90vw);padding:14px 18px;border:3px solid #5ddfeb;border-radius:14px;background:#081221f2;color:#fff;font-size:16px;font-weight:800;line-height:1.6;text-align:center;white-space:pre-line;box-shadow:0 0 22px #5ddfeb88;z-index:3;pointer-events:none}
   #tip.hide{display:none}
   #fieldWrap{position:relative}
+  #rushDim{position:absolute;inset:0;z-index:-1;background:#050b18;opacity:0;pointer-events:none}
   #verBadge{display:inline-block;margin:2px auto 6px;padding:3px 12px;border-radius:999px;background:#081221;color:#ffe941;font:800 13px/1.4 system-ui,sans-serif;letter-spacing:.04em}
   #scoreHud{text-align:center;margin-top:6px;font:900 34px/1 system-ui,sans-serif;letter-spacing:.03em;color:#fff;-webkit-text-stroke:5px #081221;paint-order:stroke fill;font-variant-numeric:tabular-nums}
   #scoreHud.hide{display:none}
@@ -280,6 +281,7 @@
 </head>
 <body>
 <div id="app">
+  <div id="rushDim" aria-hidden="true"></div>
   <div id="top">
   <div class="hudRow"><div id="hud" aria-label="体力5"></div><button id="pauseBtn" aria-label="一時停止・終了" disabled>Ⅱ</button></div>
   <div id="progress"><i id="progFill"></i></div>
@@ -299,7 +301,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v31</span>
+  <span id="verBadge">バージョン v32</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -650,7 +652,7 @@ function reset(){
   runScore = 0; movePrice = 0; runSteps = 0; courseLap = 0;
   secPerfect = 0; warpReady = false; sectionNo = 1; termWaitLogged = false; document.getElementById('lapGain').classList.remove('show');
   endReason = null;
-  elScore = 0; moveSteps = 0; recordSteps = 0; elLastMult = 1; stepBonus = null; rushUnits = 0; rushAnim = null; rushGuardUntil = -9;
+  elScore = 0; moveSteps = 0; recordSteps = 0; elLastMult = 1; stepBonus = null; rushUnits = 0; rushAnim = null; rushGuardUntil = -9; rushFade = null; shards = [];
   document.getElementById('scoreNum').textContent = endlessScoreOn() ? '0マス' : rushOn() ? '0歩' : '0'; updateWarpHud(); document.getElementById('scoreHud').classList.toggle('hide', !(scoreOn() || endlessScoreOn() || speedOn()));
   notes = []; effects = []; texts = []; fx = [];
   setLockUI(true); tutClearUI();
@@ -1039,9 +1041,9 @@ function setLockUI(on){ const b = document.getElementById('bMove'); b.classList.
 const RUSH_WINDUP_SEC = 0.6;  // 発動：ブロックがその場で回り出す時間
 const RUSH_CELL_SEC = 0.1;     // 駆け抜ける速さ（1マスあたり）
 const RUSH_GUARD_SEC = 0.6;    // 着地のあと、ダメージを受けない時間
-let rushAnim = null, rushGuardUntil = -9;
+let rushAnim = null, rushGuardUntil = -9, rushFade = null, shards = [];
 function rushGuard(t){ return !!rushAnim || t < rushGuardUntil; }
-function blastNote(nt, t){ const i = notes.indexOf(nt); if (i >= 0) notes.splice(i, 1); effects.push({ idx: nt.idx, t, purple: !!nt.purple }); }
+function blastNote(nt, t){ const i = notes.indexOf(nt); if (i >= 0) notes.splice(i, 1); spawnShards(nt.idx, t, nt.purple ? 'purple' : (nt.hp || 1) > 1 ? 'hard' : 'pink'); }
 function takeBlown(to){ const b = notes.filter(x => x.idx <= to + 1); for (const nt of b) notes.splice(notes.indexOf(nt), 1); return b.map(nt => ({ idx: nt.idx, purple: !!nt.purple, hard: (nt.hp || 1) > 1, hit: !!nt.hit })); }
 // 画面上のキャラの位置（発動中は溜め→道を1マスずつ駆け抜ける）
 function playerVis(t){
@@ -1052,7 +1054,53 @@ function playerVis(t){
   }
   return tween(player.from, player.idx, player.at, t);
 }
+// 破片：大きく飛び散って、少し落ちながら消える
+const SHARD_COLS = { pink: ['#ff19b8', '#ff72e0', '#ffd0f3'], hard: ['#19b6ff', '#7be9ff', '#dff8ff'], purple: ['#8a3dff', '#c59bff', '#efe4ff'], red: ['#ff2f2f', '#ff8a6b', '#ffe0d6'] };
+function spawnShards(idx, t, kind){
+  const p = cellXY(idx), cols = SHARD_COLS[kind] || SHARD_COLS.pink;
+  for (let i = 0; i < 16; i++){
+    const a = Math.random() * Math.PI * 2, sp = cell * (2.4 + Math.random() * 3.4);
+    shards.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - cell * 2.2, rot: Math.random() * 6, vr: (Math.random() - .5) * 22, s: cell * (.07 + Math.random() * .15), col: cols[i % 3], t0: t, life: .5 + Math.random() * .3 });
+  }
+  effects.push({ idx, t, purple: kind === 'purple' });
+}
+function drawShards(t){
+  if (!shards.length) return;
+  shards = shards.filter(q => t >= q.t0 && t - q.t0 < q.life);
+  for (const q of shards){
+    const dt = t - q.t0, x = q.x + q.vx * dt, y = q.y + q.vy * dt + cell * 7 * dt * dt;
+    g.save(); g.globalAlpha = Math.max(0, 1 - dt / q.life); g.translate(x, y); g.rotate(q.rot + q.vr * dt);
+    g.fillStyle = q.col; g.strokeStyle = '#081221'; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(-q.s, -q.s * .5); g.lineTo(q.s * .8, -q.s); g.lineTo(q.s, q.s * .6); g.lineTo(-q.s * .4, q.s * .8); g.closePath(); g.fill(); g.stroke(); g.restore();
+  }
+}
+// 光の軌跡：キャラの通った道に沿って光の線（頭ほど明るい）
+function drawLightTrail(from, head, alpha){
+  const tail = Math.max(from, head - 4); if (head - tail < .05) return;
+  const pts = []; for (let x = tail; x < head; x += .1) pts.push(cellXY(x)); pts.push(cellXY(head));
+  g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+  for (let i = 1; i < pts.length; i++){
+    const f = i / (pts.length - 1);
+    g.globalAlpha = alpha * f * .55; g.strokeStyle = '#c6ff44'; g.lineWidth = cell * (.1 + .22 * f); g.shadowColor = '#c6ff44'; g.shadowBlur = 14;
+    g.beginPath(); g.moveTo(pts[i - 1].x, pts[i - 1].y); g.lineTo(pts[i].x, pts[i].y); g.stroke();
+    g.globalAlpha = alpha * f; g.strokeStyle = '#ffffff'; g.lineWidth = cell * (.03 + .06 * f); g.shadowBlur = 0;
+    g.beginPath(); g.moveTo(pts[i - 1].x, pts[i - 1].y); g.lineTo(pts[i].x, pts[i].y); g.stroke();
+  }
+  g.restore();
+}
+// 発動中の暗さ（0〜1）。発動でさっと暗く、着地のあとふわっと戻る
+function rushDimAmount(t){
+  if (rushAnim) return Math.min(1, Math.max(0, (t - rushAnim.t0) / .15));
+  if (rushFade) return Math.max(0, 1 - (t - rushFade.t) / .3);
+  return 0;
+}
+// 必殺技の発動中の演出
 function drawRushAnim(t){
+  // 周りを少し暗く（発動中だけ。着地のあとふわっと戻る）
+  const dim = rushDimAmount(t), op = (.5 * dim).toFixed(3), el = document.getElementById('rushDim');
+  if (el.style.opacity !== op) el.style.opacity = op;
+  if (rushFade && !rushAnim){ const k = 1 - (t - rushFade.t) / .3; if (k > 0) drawLightTrail(rushFade.from, rushFade.to, k); else rushFade = null; }
+  drawShards(t);
   if (!rushAnim) return;
   const A = rushAnim;
   // 溜めが終わった瞬間に実際に前へ（ここで記録も増える）。溜めの間に近づいたブロックもまとめて吹き飛ばす対象に
@@ -1063,20 +1111,38 @@ function drawRushAnim(t){
     charState = 'move'; charUntil = A.moveAt + A.dur + 0.15;
     uiTone(330, .18, 0); uiTone(660, .18, .02);
   }
-  const v = playerVis(t), spin = Math.max(0, t - A.t0);
+  const v = playerVis(t), spin = Math.max(0, t - A.t0), pc = cellXY(v);
+  // 溜め：光の粒がキャラに吸い込まれる＋キャラの光がふくらむ
+  if (!A.moved){
+    const k = Math.min(1, (t - A.t0) / RUSH_WINDUP_SEC);
+    g.save();
+    for (let i = 0; i < 28; i++){
+      const o = (i % 7) / 7 * .45, q = Math.min(1, Math.max(0, (k - o) / (1 - o)));
+      if (q <= 0 || q >= 1) continue;
+      const a = i * 2.399 + A.from, r = cell * 2.3 * (1 - q) * (.75 + .25 * ((i * 5) % 4) / 3);
+      g.globalAlpha = Math.min(1, q * 2.5) * (1 - q * .3); g.fillStyle = i % 3 ? '#c6ff44' : '#ffffff';
+      g.beginPath(); g.arc(pc.x + Math.cos(a + q * 1.5) * r, pc.y + Math.sin(a + q * 1.5) * r, cell * (.035 + .03 * (1 - q)), 0, Math.PI * 2); g.fill();
+    }
+    const R = cell * (.4 + .5 * k), rg = g.createRadialGradient(pc.x, pc.y, 0, pc.x, pc.y, R);
+    rg.addColorStop(0, `rgba(198,255,68,${(.25 + .45 * k).toFixed(3)})`); rg.addColorStop(1, 'rgba(198,255,68,0)');
+    g.globalAlpha = 1; g.fillStyle = rg; g.beginPath(); g.arc(pc.x, pc.y, R, 0, Math.PI * 2); g.fill();
+    g.restore();
+  } else {
+    drawLightTrail(A.from, v, 1); // 駆け抜け：光の線
+  }
+  // ブロック：その場でだんだん速く回り、キャラが届いた瞬間に大きく砕ける
   for (const b of A.blown){
     if (b.done) continue;
-    if (A.moved && v >= b.idx - .3){ b.done = true; effects.push({ idx: b.idx, t, purple: b.purple }); fx.push({ type: 'stomp', idx: b.idx, t, d: .18, strong: false }); playSE('PERFECT'); continue; }
-    // その場でだんだん速く回る
+    if (A.moved && v >= b.idx - .3){ b.done = true; spawnShards(b.idx, t, b.purple ? 'purple' : b.hit ? 'red' : b.hard ? 'hard' : 'pink'); fx.push({ type: 'stomp', idx: b.idx, t, d: .18, strong: false }); playSE('PERFECT'); continue; }
     const p = cellXY(b.idx), sz = cell * .93 * 1.25, spr = b.purple ? purpleCv : b.hit ? crackCv : b.hard ? hardCv : noteCv;
     g.save(); g.translate(p.x, p.y); g.rotate(spin * spin * 9 + b.idx); g.drawImage(spr, -sz / 2, -sz / 2, sz, sz); g.restore();
   }
-  if (A.moved) while (A.trail < Math.floor(v)){ fx.push({ type: 'ghost', idx: A.trail, t, d: .3, flip: facesRight(A.trail) }); A.trail++; }
   if (A.moved && t >= A.moveAt + A.dur){
-    for (const b of A.blown) if (!b.done){ b.done = true; effects.push({ idx: b.idx, t, purple: b.purple }); }
+    for (const b of A.blown) if (!b.done){ b.done = true; spawnShards(b.idx, t, b.purple ? 'purple' : b.hard ? 'hard' : 'pink'); }
     fx.push({ type: 'stomp', idx: A.to, t, d: .35, strong: true });
     texts.push({ s: '+' + (A.to - A.from) + '歩', idx: A.to, t, col: '#c6ff44', big: true });
     [523, 784, 1047].forEach((f, i) => uiTone(f, .16, i * .04));
+    rushFade = { t, from: A.from, to: A.to };
     rushAnim = null;
   }
 }
@@ -1659,6 +1725,7 @@ function noteView(nt,t,pre,nb,vp){
 }
 function draw(t){
   g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,boardW,boardH);
+  const rDim=rushDimAmount(t);g.filter=rDim>0?`brightness(${(1-.5*rDim).toFixed(3)})`:'none';
   // 音の時計を基準に表示だけ動かす。入力ボタンと当たり判定の座標は固定。
   cv.style.transform=`translateY(${impactOffset(t).toFixed(2)}px)`;
   cameraRow=cameraAtTime(t);
@@ -1728,6 +1795,7 @@ function draw(t){
     g.beginPath();g.moveTo(p.x-r,p.y+r*.72);g.lineTo(p.x+r,p.y-r*.72);g.stroke();g.restore();
   }
   if(drawn)diagLastDraw={perf:r2(performance.now()),songT:r4(t),playerDrawnIdx:r4(vp),notes:drawn};
+  g.filter='none';
   drawRushAnim(t);
   drawChar(t);
   drawRushOk(t);
@@ -1868,7 +1936,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v31', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v32', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2085,7 +2153,7 @@ function nextLap(t, songEnded){
   [784, 988, 1175].forEach((f, i) => uiTone(f, .12, i * .05));
   player = { idx: 0, from: 0, at: 0 }; notes = []; effects = []; texts = []; fx = [];
   nextBeat = 0; acted = -1; pendingCheck = []; earlyInput = null; nextGap = 4; runLen = 1;
-  rushAnim = null; rushGuardUntil = -9; // 前の曲の時刻で残った無敵を消す
+  rushAnim = null; rushGuardUntil = -9; rushFade = null; shards = []; // 前の曲の時刻で残った無敵・演出を消す
   charState = 'idle'; charUntil = 0; damageAt = -9; lastBeatAt = -9; hideJudge(); // 曲が頭に戻るので、前の曲の時刻で残っている表示を消す
   lineK = 0; gIdx = gIndexFor(0); gFrom = gIdx; gMoveAt = -9;
   cameraRow=0;cameraFrom=0;cameraTarget=0;cameraAt=-9;setPalette(0);
