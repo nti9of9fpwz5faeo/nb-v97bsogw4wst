@@ -24,6 +24,10 @@
   #verBadge{display:inline-block;margin:2px auto 6px;padding:3px 12px;border-radius:999px;background:#081221;color:#ffe941;font:800 13px/1.4 system-ui,sans-serif;letter-spacing:.04em}
   #scoreHud{text-align:center;margin-top:6px;font:900 34px/1 system-ui,sans-serif;letter-spacing:.03em;color:#fff;-webkit-text-stroke:5px #081221;paint-order:stroke fill;font-variant-numeric:tabular-nums}
   #scoreHud.hide{display:none}
+  #scoreHud{position:relative}
+  #lapGain{position:absolute;left:0;right:0;top:100%;margin-top:4px;font:800 13px/1.3 system-ui,sans-serif;letter-spacing:.04em;color:#ffe941;-webkit-text-stroke:3px #081221;paint-order:stroke fill;opacity:0;pointer-events:none;z-index:4}
+  #lapGain.show{animation:lapGain 1.8s ease-out forwards}
+  @keyframes lapGain{0%{opacity:0;transform:translateY(4px)}12%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0}}
   @media(max-height:680px){#scoreHud{font-size:26px;margin-top:3px}}
   #judge{height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
   #jWord{font-size:23px;font-weight:700;letter-spacing:.16em;min-height:23px}
@@ -233,7 +237,7 @@
   <div id="top">
   <div class="hudRow"><div id="hud" aria-label="体力5"></div><button id="pauseBtn" aria-label="一時停止・終了" disabled>Ⅱ</button></div>
   <div id="progress"><i id="progFill"></i></div>
-  <div id="scoreHud" class="hide" aria-live="off"><span id="scoreNum">0</span></div>
+  <div id="scoreHud" class="hide" aria-live="off"><span id="scoreNum">0</span><div id="lapGain"></div></div>
   </div>
   <div id="spot" class="hide"></div><div id="fieldWrap"><canvas id="cv"></canvas><div id="tip" class="hide"></div><div id="judge"><span id="jWord"></span><small id="jSub"></small></div></div>
   <div id="controls">
@@ -249,7 +253,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v2</span>
+  <span id="verBadge">バージョン v3</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button><button class="difficultyBtn" id="endlessBtn" aria-pressed="false">エンドレス</button></div>
@@ -306,6 +310,28 @@ const MOVE_PTS = { PERFECT: 100, GREAT: 80, GOOD: 50, MISS: 0 }, BREAK_RATE = 0.
 const PRICE_COL = { 100: '#ffffff', 80: '#50e6ff', 50: '#7dffb0', 0: '#8a96a8' };
 let runScore = 0, movePrice = 0, runSteps = 0, courseLap = 0;
 function scoreOn(){ return SCORE_MODE && !isTutorial() && !endless; }
+// エンドレスのスコア（試し）：ゴールするたびに「判定精度点」＋「早着ボーナス」を累計。進むだけでは点は入らない
+const ENDLESS_ACC_MAX = 1000;    // 判定精度点の最大
+const ENDLESS_FAST_MAX = 1000;   // 早着ボーナスの最大
+const ENDLESS_FAST_BEATS = 128;  // この拍数以上かかったら早着ボーナス0（拍で数えるので速さが上がっても有利にならない）
+let endlessTotal = 0, endlessGoals = 0, lapJ = { PERFECT: 0, GREAT: 0, GOOD: 0, MISS: 0 };
+function endlessScoreOn(){ return endless && !isTutorial(); }
+function resetLapJ(){ lapJ = { PERFECT: 0, GREAT: 0, GOOD: 0, MISS: 0 }; }
+function showLapGain(acc, fast){
+  const el = document.getElementById('lapGain');
+  el.textContent = `判定精度 +${acc}点　早着 +${fast}点`;
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+}
+// ゴールした周の点を確定して累計へ（曲の時計がリセットされる前に呼ぶ）
+function scoreLap(beats){
+  const total = Object.keys(JUDGMENT_WEIGHT).reduce((n,k)=>n+lapJ[k],0);
+  const weighted = Object.keys(JUDGMENT_WEIGHT).reduce((n,k)=>n+lapJ[k]*JUDGMENT_WEIGHT[k],0);
+  const acc = total ? Math.round(weighted / total * ENDLESS_ACC_MAX) : 0;
+  const fast = Math.round(ENDLESS_FAST_MAX * Math.max(0, 1 - beats / ENDLESS_FAST_BEATS));
+  endlessTotal += acc + fast; endlessGoals++;
+  document.getElementById('scoreNum').textContent = endlessTotal.toLocaleString();
+  showLapGain(acc, fast);
+}
 function addScore(pts, t, big){
   runScore += pts; document.getElementById('scoreNum').textContent = runScore.toLocaleString();
   texts.push({ s: '+' + pts, idx: player.idx, t, col: big ? (PRICE_COL[movePrice] || '#fff') : (PRICE_COL[pts * 10] || '#fff'), big: !!big, dim: !big });
@@ -524,7 +550,8 @@ function reset(){
   cv.style.transform = '';
   hp = MAX_HP; player = { idx: 0, from: 0, at: 0 }; moveLocked = true;
   runScore = 0; movePrice = 0; runSteps = 0; courseLap = 0;
-  document.getElementById('scoreNum').textContent = '0'; document.getElementById('scoreHud').classList.toggle('hide', !scoreOn());
+  endlessTotal = 0; endlessGoals = 0; resetLapJ(); document.getElementById('lapGain').classList.remove('show');
+  document.getElementById('scoreNum').textContent = '0'; document.getElementById('scoreHud').classList.toggle('hide', !(scoreOn() || endlessScoreOn()));
   notes = []; effects = []; texts = []; fx = [];
   setLockUI(true); tutClearUI();
   nextBeat = 0; acted = -1; pendingCheck = [];
@@ -792,13 +819,17 @@ function judgeOf(diff){
   return 'GOOD';
 }
 let jTimer = null;
-function showJudge(word, sub){
-  counts[word]++;
-  if (scoreOn()){ movePrice = MOVE_PTS[word]; if (word !== 'MISS') addScore(Math.round(MOVE_PTS[word] * BREAK_RATE), songTime(), false); }
-  if (word === 'MISS') combo = 0; else { combo++; maxCombo = Math.max(maxCombo, combo); }
+// display=true は演出用の表示だけ（判定・コンボ・スコアには数えない）
+function showJudge(word, sub, display){
+  if (!display){
+    counts[word]++;
+    if (endlessScoreOn()) lapJ[word]++;
+    if (scoreOn()){ movePrice = MOVE_PTS[word]; if (word !== 'MISS') addScore(Math.round(MOVE_PTS[word] * BREAK_RATE), songTime(), false); }
+    if (word === 'MISS') combo = 0; else { combo++; maxCombo = Math.max(maxCombo, combo); }
+  }
   const el = document.getElementById('judge'), w = document.getElementById('jWord');
   w.textContent = word; el.style.setProperty('--judge-color',JUDGE[word].col); w.style.color = JUDGE[word].col; w.style.textShadow = '0 2px 0 #07101c';
-  document.getElementById('jSub').textContent = (combo >= 2 ? combo + ' COMBO  ' : '') + (sub || '');
+  document.getElementById('jSub').textContent = (!display && combo >= 2 ? combo + ' COMBO  ' : '') + (sub || '');
   placeJudge(songTime());
   el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
   clearTimeout(jTimer); jTimer = setTimeout(() => { el.classList.remove('pop');w.textContent = ''; document.getElementById('jSub').textContent = ''; }, 650);
@@ -959,6 +990,14 @@ function captureResult(clear){
   result.newBest=clear&&result.score>previous;
   result.best=result.newBest?result.score:previous;
   if(result.newBest){try{localStorage.setItem(key,String(result.score));}catch(e){}}
+  if(endlessScoreOn()){
+    // エンドレス：ゴールで確定した累計点が最終スコア。自己ベストは曲・難易度ごとにエンドレス専用で保存
+    Object.assign(result,{endless:true,score:endlessTotal,rank:'—',badge:'',goals:endlessGoals,speed:rate});
+    const ekey=`neon-blade-endless-best-v1:${song.file}:${runDifficulty}`;
+    let prev=0;try{const v=Number(localStorage.getItem(ekey));if(Number.isInteger(v)&&v>=0)prev=v;}catch(e){}
+    result.newBest=result.score>prev;result.best=result.newBest?result.score:prev;
+    if(result.newBest){try{localStorage.setItem(ekey,String(result.score));}catch(e){}}
+  }
   return result;
 }
 function resultMarkup(prefix,clear){
@@ -994,6 +1033,11 @@ function renderResult(result){
   text('badge',result.steps!=null?(`${result.steps}マス進んだ`+(result.badge?'  '+result.badge:'')):result.clear?result.badge:`到達率 ${Math.floor(result.progress*100)}%`);
   const seconds=Math.floor(result.seconds),time=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
   text('foot',`残りHP ${result.hp} / ${time}`);
+  const label=ov.querySelector('.scoreLabel span'),help=ov.querySelector('.scoreHelp p');
+  label.dataset.orig??=label.textContent;help.dataset.orig??=help.innerHTML;
+  label.textContent=result.endless?'ENDLESS SCORE':label.dataset.orig;
+  help.innerHTML=result.endless?`ゴールするたびに「判定精度点（最大${ENDLESS_ACC_MAX.toLocaleString('en-US')}）」と「早着ボーナス（最大${ENDLESS_FAST_MAX.toLocaleString('en-US')}）」が加算されます。判定精度点はその周のPERFECT=100%、GREAT=80%、GOOD=50%、MISS=0%の平均です。早着ボーナスは少ない拍数でゴールするほど高くなり、${ENDLESS_FAST_BEATS}拍以上で0点です。進むだけでは点は入りません。自己ベストは曲・難易度ごとに保存します。`:help.dataset.orig;
+  if(result.endless){text('badge',`ゴール ${result.goals}回`);text('foot',`到達速度 ×${result.speed.toFixed(1)}`);}
   renderHeroCanvas(ov.querySelector('canvas'),result.heroId);
   ov.querySelector('details').open=false;ov.scrollTop=0;
   ov.querySelectorAll('.resultPending,.resultReveal').forEach(el=>el.classList.remove('resultPending','resultReveal'));
@@ -1400,9 +1444,10 @@ function loop(){
       if(hit<=bt){pendingCheck.shift();checkHit(hit);}
       else{onBeat(nextBeat,bt);nextBeat++;}
     }
+    let lapped = false;
     if (state==='play' && player.idx >= LINES[lineK] && hp > 0){
       if (lineK === LINES.length - 1 && scoreOn()){ nextCourse(t); }
-      else if (lineK === LINES.length - 1 && endless && !isTutorial()){ nextLap(t,false); }
+      else if (lineK === LINES.length - 1 && endless && !isTutorial()){ scoreLap(nextBeat); nextLap(t,false); lapped = true; }
       else if (lineK === LINES.length - 1){ fx.push({ type: 'goal', idx: player.idx, t, d: .5 }); end(true); }
       else {
         lineK++; gFrom = gIdx; gIdx = gIndexFor(lineK); gMoveAt = t;
@@ -1412,7 +1457,7 @@ function loop(){
       }
     }
     if (isTutorial()){ const st=tutSt(); if(st?.auto && t-tutStepAt>=st.auto) tutAdvance(t); }
-    if (t > songBuf.duration / rate){ if(isTutorial()&&!tutSt()?.live) tutLoopMusic(); else if(endless&&!isTutorial()) nextLap(t,true); else end(scoreOn()); }
+    if (!lapped && t > songBuf.duration / rate){ if(isTutorial()&&!tutSt()?.live) tutLoopMusic(); else if(endless&&!isTutorial()) nextLap(t,true); else end(scoreOn()); }
   }
   if (state === 'play' && songBuf) progFill.style.width = (Math.min(1, Math.max(0, t / (songBuf.duration / rate))) * 100) + '%';
   draw(t);
@@ -1458,13 +1503,14 @@ function nextCourse(t){
 }
 function nextLap(t, songEnded){
   if(!songEnded){ lap++; rate = Math.min(2.2, 1 + lap * 0.1); applyRate(); }
-  showJudge('PERFECT', songEnded ? 'LAP ' + (lap+1) : 'SPEED UP ×' + rate.toFixed(1));
+  showJudge('PERFECT', songEnded ? 'LAP ' + (lap+1) : 'SPEED UP ×' + rate.toFixed(1), true);
+  resetLapJ(); // 新しい周の集計（曲が終わって戻った場合は、その挑戦分を破棄）
   player = { idx: 0, from: 0, at: 0 }; notes = []; effects = []; texts = []; fx = [];
   nextBeat = 0; acted = -1; pendingCheck = []; nextGap = 4; runLen = 1;
   lineK = 0; gIdx = gIndexFor(0); gFrom = gIdx; gMoveAt = -9;
   cameraRow=0;cameraFrom=0;cameraTarget=0;cameraAt=-9;setPalette(0);
   revealEnd=REVEAL_ENDS[0];revealFrom=revealEnd;
-  moveLocked = false; setLockUI(false);
+  moveLocked = true; setLockUI(true); // 新しい周も、最初の1個を壊すまで進めない
   stopMoveScheduler(); startMusicAt(); startMoveScheduler();
 }
 function startGame(){
