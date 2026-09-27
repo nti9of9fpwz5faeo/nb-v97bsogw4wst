@@ -302,7 +302,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v40</span>
+  <span id="verBadge">バージョン v41</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -395,6 +395,7 @@ let elScore = 0, moveSteps = 0, recordSteps = 0; // スコア／実際に進ん�
 let stepBonus = null; // 次の一歩ボーナス：null / 'PERFECT' / 'GREAT'
 let rushUnits = 0, rushGainAt = -1e9; // ため（RUSH_FULL で満タン）
 function rushReady(){ return rushUnits >= RUSH_FULL; }
+function stepsLabel(n){ return n.toLocaleString('en-US') + (n === 1 ? ' STEP' : ' STEPS'); }
 function setStepsHud(){ const sn = document.getElementById('scoreNum'); if (rushOn()) sn.innerHTML = recordSteps.toLocaleString('en-US') + '<small class="unitEn"> STEPS</small>'; else sn.textContent = elScore.toLocaleString(); updateWarpHud(); }
 function elAdd(pts, steps){ elScore += pts; recordSteps += steps; setStepsHud(); }
 function distance(){ return courseLap * GOAL_INDEX + player.idx; }
@@ -1031,7 +1032,7 @@ function freeMove(t, rec){
   charState = 'move'; charUntil = t + 0.18;
   if (scoreOn()){ runSteps++; addScore(movePrice, t, true); }
   if (endlessScoreOn()){ setDistHud(); updateWarpHud(); }
-  if (rushOn()){ moveSteps++; recordSteps++; setStepsHud(); diagEv('el_move', { inputId: rec?.inputId ?? null, rushUnits, moveSteps }); }
+  if (rushOn()){ moveSteps++; recordSteps++; setStepsHud(); texts = texts.filter(x => !x.step); texts.push({ s: stepsLabel(recordSteps), idx: player.idx, t, col: '#ffffff', step: true }); /* 進むたびに今の歩数をキャラの位置に（重ならないよう最新の1つだけ） */ diagEv('el_move', { inputId: rec?.inputId ?? null, rushUnits, moveSteps }); }
   else if (speedOn()){
     const m = comboMult(combo), used = EL_SCORING === 'stepBonus' ? stepBonus : null, bonus = used ? STEP_BONUS_PTS[used] : 0, pts = EL_MOVE_PTS * m + bonus;
     stepBonus = EL_SCORING === 'stepBonus' ? null : stepBonus; // 成功した前進1回で消費
@@ -2031,7 +2032,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v40', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v41', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
