@@ -302,7 +302,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v36</span>
+  <span id="verBadge">バージョン v37</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -474,6 +474,8 @@ const CHARACTERS=[
   {id:'ninja',name:'ネオン',tag:'光の刃を振るう忍者',accent:'#42eaff',dark:'#075bc9'},
   {id:'volt',name:'ボルト',tag:'雷の刃を持つ小さな剣士',accent:'#ffe63d',dark:'#008edb',atlas:'img/characters/volt.webp',poses:[{ax:.67,foot:.93,bodyH:.82},{ax:.61,foot:.93,bodyH:.78},{ax:.68,foot:.84,bodyH:.76},{ax:.63,foot:.86,bodyH:.76}]},
   {id:'prism',name:'プリズム',tag:'澄んだ結晶の刃を持つ剣士',accent:'#83ffe4',dark:'#00a6a5',atlas:'img/characters/prism.webp',poses:[{ax:.66,foot:.93,bodyH:.78},{ax:.61,foot:.93,bodyH:.78},{ax:.67,foot:.81,bodyH:.74},{ax:.64,foot:.82,bodyH:.73}]},
+  {id:'veno',name:'ヴェノ',tag:'毒の剣を使いこなす剣士',accent:'#a8ff2e',dark:'#5a1f96',atlas:'img/characters/veno.webp',poses:[{ax:.61,foot:.893,bodyH:.57},{ax:.56,foot:.893,bodyH:.57},{ax:.60,foot:.893,bodyH:.57},{ax:.62,foot:.893,bodyH:.57}],
+   special:{atlas:'img/characters/veno-special.webp',poses:[{ax:.50,foot:.893,bodyH:.57},{ax:.50,foot:.893,bodyH:.57}]},slashFx:'img/characters/veno-slash.webp',poison:true},
   {id:'echo',name:'エコー',tag:'音の刃を響かせる剣士',accent:'#ff57d6',dark:'#a91ced',atlas:'img/characters/echo.webp',poses:[{ax:.65,foot:.91,bodyH:.75},{ax:.60,foot:.91,bodyH:.75},{ax:.66,foot:.84,bodyH:.71},{ax:.63,foot:.85,bodyH:.70}]}
 ];
 const HERO_STORAGE='neon-blade-character';
@@ -489,8 +491,16 @@ function loadHero(h){
     const finish=ok=>{if(done)return;done=true;clearTimeout(timer);im.onload=im.onerror=null;if(ok)heroImages[h.id]=im;resolve(ok);};
     const timer=setTimeout(()=>finish(false),12000);
     im.onload=()=>finish(im.naturalWidth>0);im.onerror=()=>finish(false);im.src=h.atlas;
+    loadHeroExtras(h);
   });
 }
+// 必殺技の2ポーズ（溜め・一閃）と斬撃エフェクトの画像（あるキャラだけ）
+const heroSpecial={},heroFx={};
+function loadHeroExtras(h){
+  if(h.special&&!heroSpecial[h.id]){const im=new Image();im.onload=()=>{heroSpecial[h.id]=im;};im.src=h.special.atlas;}
+  if(h.slashFx&&!heroFx[h.id]){const im=new Image();im.onload=()=>{heroFx[h.id]=im;};im.src=h.slashFx;}
+}
+function heroHasSpecial(id=selectedHero){return !!heroSpecial[id];}
 function heroFrame(id,pose='idle'){
   const im=heroImages[id],n=Math.max(0,['idle','move','slash','damage'].indexOf(pose));
   if(!im)return null;
@@ -653,7 +663,7 @@ function reset(){
   runScore = 0; movePrice = 0; runSteps = 0; courseLap = 0;
   secPerfect = 0; warpReady = false; sectionNo = 1; termWaitLogged = false; document.getElementById('lapGain').classList.remove('show');
   endReason = null;
-  elScore = 0; moveSteps = 0; recordSteps = 0; elLastMult = 1; stepBonus = null; rushUnits = 0; rushAnim = null; rushGuardUntil = -9; rushFade = null; shards = [];
+  elScore = 0; moveSteps = 0; recordSteps = 0; elLastMult = 1; stepBonus = null; rushUnits = 0; rushAnim = null; rushGuardUntil = -9; rushFade = null; shards = []; slashMarks = []; mists = []; rushPoseUntil = -9;
   document.getElementById('scoreNum').textContent = endlessScoreOn() ? '0マス' : '0'; if (rushOn()) setStepsHud(); updateWarpHud(); document.getElementById('scoreHud').classList.toggle('hide', !(scoreOn() || endlessScoreOn() || speedOn()));
   notes = []; effects = []; texts = []; fx = [];
   setLockUI(true); tutClearUI();
@@ -1042,7 +1052,8 @@ function setLockUI(on){ const b = document.getElementById('bMove'); b.classList.
 const RUSH_WINDUP_SEC = 0.6;  // 発動：ブロックがその場で回り出す時間
 const RUSH_CELL_SEC = 0.1;     // 駆け抜ける速さ（1マスあたり）
 const RUSH_GUARD_SEC = 0.6;    // 着地のあと、ダメージを受けない時間
-let rushAnim = null, rushGuardUntil = -9, rushFade = null, shards = [];
+let rushAnim = null, rushGuardUntil = -9, rushFade = null, shards = [], slashMarks = [], mists = [], rushPoseUntil = -9;
+function poisonHero(){ return !!heroInfo().poison; }
 function rushGuard(t){ return !!rushAnim || t < rushGuardUntil; }
 function blastNote(nt, t){ const i = notes.indexOf(nt); if (i >= 0) notes.splice(i, 1); spawnShards(nt.idx, t, nt.purple ? 'purple' : (nt.hp || 1) > 1 ? 'hard' : 'pink'); }
 function takeBlown(to){ const b = notes.filter(x => x.idx <= to + 1); for (const nt of b) notes.splice(notes.indexOf(nt), 1); return b.map(nt => ({ idx: nt.idx, purple: !!nt.purple, hard: (nt.hp || 1) > 1, hit: !!nt.hit })); }
@@ -1056,16 +1067,41 @@ function playerVis(t){
   return tween(player.from, player.idx, player.at, t);
 }
 // 破片：大きく飛び散って、少し落ちながら消える
+const POISON_COLS = ['#a8ff2e', '#6fe01c', '#d9ff9a', '#7a2fc4'];
 const SHARD_COLS = { pink: ['#ff19b8', '#ff72e0', '#ffd0f3'], hard: ['#19b6ff', '#7be9ff', '#dff8ff'], purple: ['#8a3dff', '#c59bff', '#efe4ff'], red: ['#ff2f2f', '#ff8a6b', '#ffe0d6'] };
 function spawnShards(idx, t, kind){
-  const p = cellXY(idx), cols = SHARD_COLS[kind] || SHARD_COLS.pink;
+  const p = cellXY(idx), base = SHARD_COLS[kind] || SHARD_COLS.pink, cols = poisonHero() ? [base[0], POISON_COLS[0], base[1], POISON_COLS[1]] : base;
   if (shards.length > 110) shards.splice(0, shards.length - 110);
   for (let i = 0; i < 10; i++){
     const a = Math.random() * Math.PI * 2, sp = cell * (2.4 + Math.random() * 3.4);
-    shards.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - cell * 2.2, rot: Math.random() * 6, vr: (Math.random() - .5) * 22, s: cell * (.07 + Math.random() * .15), col: cols[i % 3], t0: t, life: .5 + Math.random() * .3 });
+    shards.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - cell * 2.2, rot: Math.random() * 6, vr: (Math.random() - .5) * 22, s: cell * (.07 + Math.random() * .15), col: cols[i % cols.length], t0: t, life: .5 + Math.random() * .3 });
+  }
+  if (poisonHero()){ // 毒：しずくが飛び、煙がしばらく残る
+    for (let i = 0; i < 6; i++){ const a = -Math.PI / 2 + (Math.random() - .5) * 2.2, sp = cell * (1.5 + Math.random() * 2); shards.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, rot: 0, vr: 0, s: cell * (.05 + Math.random() * .05), col: POISON_COLS[i % 2], t0: t, life: .6 + Math.random() * .3, drop: true }); }
+    for (let i = 0; i < 3; i++) mists.push({ x: p.x + (Math.random() - .5) * cell * .6, y: p.y + (Math.random() - .5) * cell * .4, r: cell * (.3 + Math.random() * .2), t0: t + i * .05, life: .7 + Math.random() * .3, col: i % 2 ? '168,255,46' : '122,47,196' });
+    if (mists.length > 60) mists.splice(0, mists.length - 60);
   }
   effects.push({ idx, t, purple: kind === 'purple' });
 }
+// 毒の煙（ふわっと広がって消える）と、斬撃の跡（画像）
+function drawPoisonLayers(t){
+  if (mists.length){
+    mists = mists.filter(m => t - m.t0 < m.life);
+    for (const m of mists){ const k = (t - m.t0) / m.life; if (k < 0) continue; g.globalAlpha = .28 * (1 - k); g.fillStyle = `rgb(${m.col})`; g.beginPath(); g.arc(m.x, m.y - k * cell * .5, m.r * (1 + k * .8), 0, Math.PI * 2); g.fill(); }
+    g.globalAlpha = 1;
+  }
+  if (slashMarks.length){
+    slashMarks = slashMarks.filter(m => t - m.t0 < m.life);
+    const im = heroFx[selectedHero];
+    for (const m of slashMarks){
+      const k = (t - m.t0) / m.life; if (k < 0 || !im) continue;
+      const sz = cell * m.size * (.85 + .3 * Math.min(1, k * 3));
+      g.save(); g.globalAlpha = k < .15 ? k / .15 : 1 - (k - .15) / .85; g.translate(m.x, m.y); g.rotate(m.rot); if (m.flip) g.scale(-1, 1);
+      g.drawImage(im, -sz / 2, -sz / 2, sz, sz); g.restore();
+    }
+  }
+}
+function addSlashMark(idx, t, size, flip){ const p = cellXY(idx); slashMarks.push({ x: p.x, y: p.y, t0: t, life: .32, size, rot: (Math.random() - .5) * .6, flip }); if (slashMarks.length > 14) slashMarks.shift(); }
 function drawShards(t){
   if (!shards.length) return;
   shards = shards.filter(q => t >= q.t0 && t - q.t0 < q.life);
@@ -1073,6 +1109,7 @@ function drawShards(t){
     const dt = t - q.t0, x = q.x + q.vx * dt, y = q.y + q.vy * dt + cell * 7 * dt * dt;
     g.save(); g.globalAlpha = Math.max(0, 1 - dt / q.life); g.translate(x, y); g.rotate(q.rot + q.vr * dt);
     g.fillStyle = q.col;
+    if (q.drop){ g.beginPath(); g.arc(0, 0, q.s, 0, Math.PI * 2); g.fill(); g.restore(); continue; }
     g.beginPath(); g.moveTo(-q.s, -q.s * .5); g.lineTo(q.s * .8, -q.s); g.lineTo(q.s, q.s * .6); g.lineTo(-q.s * .4, q.s * .8); g.closePath(); g.fill(); g.restore();
   }
 }
@@ -1084,8 +1121,8 @@ function drawLightTrail(from, head, alpha){
   const L = head - tail;
   for (let k = 0; k < 3; k++){ // 後ろ→先頭へ、だんだん太く明るく
     const a = tail + L * k / 3, b = tail + L * (k + 1) / 3, f = (k + 1) / 3;
-    seg(a, b); g.globalAlpha = alpha * .35 * f; g.strokeStyle = '#c6ff44'; g.lineWidth = cell * (.18 + .2 * f); g.stroke();
-    g.globalAlpha = alpha * f; g.strokeStyle = '#ffffff'; g.lineWidth = cell * (.04 + .05 * f); g.stroke();
+    seg(a, b); g.globalAlpha = alpha * .35 * f; g.strokeStyle = poisonHero() ? '#7fe01c' : '#c6ff44'; g.lineWidth = cell * (.18 + .2 * f); g.stroke();
+    g.globalAlpha = alpha * f; g.strokeStyle = poisonHero() ? '#eaffc2' : '#ffffff'; g.lineWidth = cell * (.04 + .05 * f); g.stroke();
   }
   g.restore();
 }
@@ -1100,7 +1137,9 @@ function drawRushAnim(t){
   // 周りを少し暗く（発動中だけ。着地のあとふわっと戻る）
   const dim = rushDimAmount(t), op = (.5 * dim).toFixed(3), el = document.getElementById('rushDim');
   if (el.style.opacity !== op) el.style.opacity = op;
+  const dimCol = poisonHero() ? '#12051f' : '#050b18'; if (el.dataset.col !== dimCol){ el.dataset.col = dimCol; el.style.background = dimCol; }
   if (rushFade && !rushAnim){ const k = 1 - (t - rushFade.t) / .3; if (k > 0) drawLightTrail(rushFade.from, rushFade.to, k); else rushFade = null; }
+  drawPoisonLayers(t);
   drawShards(t);
   if (!rushAnim) return;
   const A = rushAnim;
@@ -1121,7 +1160,7 @@ function drawRushAnim(t){
       const o = (i % 7) / 7 * .45, q = Math.min(1, Math.max(0, (k - o) / (1 - o)));
       if (q <= 0 || q >= 1) continue;
       const a = i * 2.399 + A.from, r = cell * 2.3 * (1 - q) * (.75 + .25 * ((i * 5) % 4) / 3);
-      g.globalAlpha = Math.min(1, q * 2.5) * (1 - q * .3); g.fillStyle = i % 3 ? '#c6ff44' : '#ffffff';
+      g.globalAlpha = Math.min(1, q * 2.5) * (1 - q * .3); g.fillStyle = poisonHero() ? (i % 3 ? '#a8ff2e' : '#b77dff') : (i % 3 ? '#c6ff44' : '#ffffff');
       g.beginPath(); g.arc(pc.x + Math.cos(a + q * 1.5) * r, pc.y + Math.sin(a + q * 1.5) * r, cell * (.035 + .03 * (1 - q)), 0, Math.PI * 2); g.fill();
     }
     const R = cell * (.4 + .5 * k), rg = g.createRadialGradient(pc.x, pc.y, 0, pc.x, pc.y, R);
@@ -1134,13 +1173,14 @@ function drawRushAnim(t){
   // ブロック：その場で止まり、キャラが届いた瞬間に大きく砕ける（回転はさせない）
   for (const b of A.blown){
     if (b.done) continue;
-    if (A.moved && v >= b.idx - .3){ b.done = true; spawnShards(b.idx, t, b.purple ? 'purple' : b.hit ? 'red' : b.hard ? 'hard' : 'pink'); fx.push({ type: 'stomp', idx: b.idx, t, d: .18, strong: false }); playSE('PERFECT'); continue; }
+    if (A.moved && v >= b.idx - .3){ b.done = true; spawnShards(b.idx, t, b.purple ? 'purple' : b.hit ? 'red' : b.hard ? 'hard' : 'pink'); if (heroFx[selectedHero]) addSlashMark(b.idx, t, 1.5, !facesRight(b.idx)); else fx.push({ type: 'stomp', idx: b.idx, t, d: .18, strong: false }); playSE('PERFECT'); continue; }
     const p = cellXY(b.idx), sz = cell * .93 * 1.25, spr = b.purple ? purpleCv : b.hit ? crackCv : b.hard ? hardCv : noteCv;
     g.drawImage(spr, p.x - sz / 2, p.y - sz / 2, sz, sz);
   }
   if (A.moved && t >= A.moveAt + A.dur){
     for (const b of A.blown) if (!b.done){ b.done = true; spawnShards(b.idx, t, b.purple ? 'purple' : b.hard ? 'hard' : 'pink'); }
     fx.push({ type: 'stomp', idx: A.to, t, d: .35, strong: true });
+    if (heroFx[selectedHero]){ addSlashMark(A.to, t, 2.6, !facesRight(A.to)); slashMarks[slashMarks.length - 1].life = .5; spawnShards(A.to, t, 'purple'); rushPoseUntil = t + .35; }
     texts.push({ s: '+' + (A.to - A.from) + ' STEPS', idx: A.to, t, col: '#c6ff44', big: true });
     [523, 784, 1047].forEach((f, i) => uiTone(f, .16, i * .04));
     rushFade = { t, from: A.from, to: A.to };
@@ -1796,7 +1836,7 @@ function draw(t){
   }
   if(drawn)diagLastDraw={perf:r2(performance.now()),songT:r4(t),playerDrawnIdx:r4(vp),notes:drawn};
   const rDim=rushDimAmount(t);
-  if(rDim>0){g.save();g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-atop';g.globalAlpha=.5*rDim;g.fillStyle='#050b18';g.fillRect(0,0,g.canvas.width,g.canvas.height);g.restore();}
+  if(rDim>0){g.save();g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-atop';g.globalAlpha=.5*rDim;g.fillStyle=poisonHero()?'#12051f':'#050b18';g.fillRect(0,0,g.canvas.width,g.canvas.height);g.restore();}
   drawRushAnim(t);
   drawChar(t);
   drawRushOk(t);
@@ -1851,6 +1891,12 @@ const POSE = {
 const CHAR_H = 0.98;   // 体の高さ（マス比）
 const glowChar = { idle: true };
 function drawPose(k, x, y){
+  if(k==='charge'||k==='ultimate'){ // 必殺技のポーズ（専用画像があるキャラだけ）
+    const im=heroSpecial[selectedHero],sp=heroInfo().special;
+    if(im&&sp){const n=k==='charge'?0:1,P=sp.poses[n],fw=im.naturalWidth/2,fh=im.naturalHeight,h=cell*CHAR_H/P.bodyH,w=h*fw/fh;
+      g.drawImage(im,n*fw,0,fw,fh,x-w*P.ax,y+cell*.47-h*P.foot,w,h);return;}
+    k=k==='charge'?'slash':'move';
+  }
   if(selectedHero!=='ninja'){
     const f=heroFrame(selectedHero,k);
     if(f){
@@ -1875,11 +1921,14 @@ function drawChar(t){
     g.fillStyle = rg; g.beginPath(); g.arc(p.x, p.y, R, 0, Math.PI * 2); g.fill();
   }
   // 向き：段の進む方向だけ（下に降りるときも変えない）
-  const faceRight = facesRight(player.idx);
+  const vIdx = rushAnim ? Math.floor(playerVis(t)) : player.idx;
+  const faceRight = facesRight(vIdx);
+  let pose = charState;
+  if (heroHasSpecial()){ if (rushAnim) pose = rushAnim.moved ? 'ultimate' : 'charge'; else if (t < rushPoseUntil) pose = 'ultimate'; }
   g.save(); g.translate(p.x, p.y);
   if (faceRight) g.scale(-1, 1);
   if (charState === 'damage' && Math.floor(t * 20) % 2) g.globalAlpha = .45;
-  g.shadowColor='#061225';g.shadowBlur=2;drawPose(charState, 0, 0);
+  g.shadowColor='#061225';g.shadowBlur=2;drawPose(pose, 0, 0);
   g.restore();
 }
 
@@ -1937,7 +1986,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v36', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v37', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2154,7 +2203,7 @@ function nextLap(t, songEnded){
   [784, 988, 1175].forEach((f, i) => uiTone(f, .12, i * .05));
   player = { idx: 0, from: 0, at: 0 }; notes = []; effects = []; texts = []; fx = [];
   nextBeat = 0; acted = -1; pendingCheck = []; earlyInput = null; nextGap = 4; runLen = 1;
-  rushAnim = null; rushGuardUntil = -9; rushFade = null; shards = []; // 前の曲の時刻で残った無敵・演出を消す
+  rushAnim = null; rushGuardUntil = -9; rushFade = null; shards = []; slashMarks = []; mists = []; rushPoseUntil = -9; // 前の曲の時刻で残った無敵・演出を消す
   charState = 'idle'; charUntil = 0; damageAt = -9; lastBeatAt = -9; hideJudge(); // 曲が頭に戻るので、前の曲の時刻で残っている表示を消す
   lineK = 0; gIdx = gIndexFor(0); gFrom = gIdx; gMoveAt = -9;
   cameraRow=0;cameraFrom=0;cameraTarget=0;cameraAt=-9;setPalette(0);
