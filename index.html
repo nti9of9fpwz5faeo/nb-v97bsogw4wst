@@ -27,6 +27,13 @@
   #scoreHud{position:relative}
   #diagLine{position:absolute;left:6px;bottom:4px;max-width:calc(100% - 12px);padding:2px 8px;border-radius:8px;background:#081221cc;color:#fff;font:700 11px/1.5 system-ui,sans-serif;pointer-events:none;z-index:3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #diagLine.hide{display:none}
+  #soundSettings{width:min(360px,100%);flex:none;font-size:12px;margin-top:6px;text-align:center}
+  #soundSettings summary{padding:7px;cursor:pointer}
+  #soundSettings input[type=range]{flex:1;margin-left:10px;accent-color:#c6ff44;touch-action:pan-x}
+  #soundSettings p{font-size:11px;margin:4px 0}
+  .corrBtns{display:flex;gap:6px}
+  .corrBtns button{border:2px solid #081221;border-radius:8px;padding:4px 10px;background:#1348b9;color:#fff;font-weight:800}
+  .corrBtns button[aria-pressed="true"]{background:#c6ff44;color:#081221}
   #diagSettings{width:min(360px,100%);flex:none;font-size:12px;margin-top:6px;text-align:center}
   #diagSettings summary{padding:7px;cursor:pointer}
   .diagRow{display:flex;justify-content:space-between;align-items:center;padding:6px 0;gap:10px}
@@ -282,7 +289,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v10</span>
+  <span id="verBadge">バージョン v11</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button><button class="difficultyBtn" id="endlessBtn" aria-pressed="false">エンドレス</button></div>
@@ -291,6 +298,7 @@
   <div id="myPanel" class="hide"><div id="myName"></div><div id="myBpmRow"><span>BPM</span><button id="myDown" aria-label="BPMを下げる">−</button><b id="myBpm">--</b><button id="myUp" aria-label="BPMを上げる">＋</button></div><p id="myNote">曲はこの端末の中だけで使います</p><button id="myPlay">この曲で遊ぶ</button></div>
   <div id="speedSettings"><span>ノーツスピード</span><button id="spDown" aria-label="おそく">−</button><b id="spVal">×1.0</b><button id="spUp" aria-label="はやく">＋</button></div>
   <details id="timingSettings"><summary>タイミング調整</summary><label for="timingRange">動きのタイミング <b id="timingValue">0 ms</b></label><input id="timingRange" type="range" min="-250" max="250" step="5" value="0"><p>動きが音より早い → ＋へ<br>動きが音より遅い → −へ</p><button id="timingReset">0に戻す</button></details>
+  <details id="soundSettings"><summary>音と拍のガイド</summary><label class="diagRow" for="guideToggle"><span>拍のガイド音</span><input id="guideToggle" type="checkbox"></label><label class="diagRow" for="volSong"><span>曲</span><input id="volSong" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volGuide"><span>ガイド</span><input id="volGuide" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volSe"><span>ブレイク音</span><input id="volSe" type="range" min="0" max="100" step="5"></label><div class="diagRow"><span>Neon Rushの拍補正</span><span class="corrBtns"><button data-corr="0">0ms</button><button data-corr="-30">−30ms</button></span></div><p>ガイド音をオンにすると、ブロックの移動音の代わりに拍ごとに短い音が鳴ります。拍補正は次のプレイから反映されます。</p></details>
   <details id="diagSettings"><summary>判定診断モード</summary><label class="diagRow" for="diagToggle"><span>診断モード</span><input id="diagToggle" type="checkbox"></label><label class="diagRow" for="diagOutput"><span>音の出力</span><select id="diagOutput"><option value="unknown">不明</option><option value="speaker">スピーカー</option><option value="wired">有線イヤホン</option><option value="bluetooth">Bluetooth</option></select></label><p>オンにすると、ブレイクのズレを画面の下に小さく表示し、記録を残します。</p><button id="diagOpen">前回の記録を見る</button></details>
   <p>まずは迫るノーツをブレイク。<br>すき間を見つけて、進もう。</p>
 </div>
@@ -653,22 +661,28 @@ function songTime(){
 function beatTime(n){
   const beats=activeChart?.beats;
   if(!beats)return OFFSET+n*SPB;
-  if(n<0)return beats[0]/rate+n*SPB;
-  if(n>=beats.length)return beats[beats.length-1]/rate+(n-beats.length+1)*SPB;
-  return beats[n]/rate;
+  const c=runSongCorrMs/1000; // 曲別の拍補正（曲の再生位置の秒）
+  if(n<0)return (beats[0]+c)/rate+n*SPB;
+  if(n>=beats.length)return (beats[beats.length-1]+c)/rate+(n-beats.length+1)*SPB;
+  return (beats[n]+c)/rate;
 }
 // beatTime() と同じ時間の基準（再生倍率で割った実時間）で一番近い拍を探す
 function nearestBeat(t){
   if(!activeChart)return Math.round((t-OFFSET)/SPB);
-  const b=activeChart.beats,first=b[0]/rate,last=b[b.length-1]/rate;
+  const b=activeChart.beats,first=beatTime(0),last=beatTime(b.length-1);
   if(t<first)return Math.round((t-first)/SPB);
   if(t>last)return b.length-1+Math.round((t-last)/SPB);
-  const x=t*rate;
+  const x=t*rate-runSongCorrMs/1000; // beatTime()と同じ補正を戻して、元の譜面の時刻で探す
   let lo=0,hi=b.length-1;
   while(lo<hi){const m=(lo+hi)>>1;if(b[m]<x)lo=m+1;else hi=m;}
   return lo>0&&x-b[lo-1]<b[lo]-x?lo-1:lo;
 }
 // 譜面の値：0＝なし、1＝通常、2＝青（2回で壊れる）。その難易度の譜面がなければNORMALを使う
+// ===== 曲別の拍補正（その曲の拍位置そのものを直す）=====
+// 判定・ノーツの動き・拍の表示・ガイド音は、すべて beatTime()／nearestBeat() を通るので、ここで1回だけ足す
+const SONG_BEAT_CORR = { 'charts/neon_rush.json': { key: 'neon_rush', options: [0, -30], def: -30 } }; // ms。元の譜面データはそのまま
+function songCorrSetting(chart){ const c = SONG_BEAT_CORR[chart]; if (!c) return 0; try{ const v = Number(localStorage.getItem('neon-blade-songcorr:' + c.key)); if (c.options.includes(v) && localStorage.getItem('neon-blade-songcorr:' + c.key) !== null) return v; }catch(e){} return c.def; }
+let runSongCorrMs = 0; // プレイ開始時に確定（途中では変えない）
 function chartVal(n){const s=activeChart?.spawn;return (s?.[runDifficulty]??s?.normal)?.[n]||0;}
 function chartSpawns(n){return !!chartVal(n);}
 // 種類を固定した譜面（fixedTypes）はランダムを使わない
@@ -939,7 +953,7 @@ function doAction(type, n, t, diff, rec){
       if ((target.hp||1) > 1){
         // 青 → 赤。そのマスに残るので、進まずにもう1回ブレイクする
         target.hp = (target.hp||1) - 1; target.crackAt = t; target.hit = true; target.hitBeat = n;
-        playSE('GOOD');
+        playSE(word); // 判定どおりの音（青ノーツだからといってGOODの音にしない）
       } else {
         notes.splice(notes.indexOf(target), 1);
         effects.push({ idx: target.idx, t });
@@ -981,6 +995,21 @@ function input(type, e, device){
 }
 
 // 判定で音を変える：PERFECT＝キーン付きで派手、GREAT＝ふつう、GOOD＝こもった小さめ
+// ===== 音量（曲／ガイド／ブレイク音を別々に）=====
+// 最後にまとめて少し下げ、重なっても音割れしにくくする（遅延が出るコンプレッサーは使わない）
+const MASTER_HEADROOM = 0.8;
+let vol = { song: 100, guide: 100, se: 100 }, guideOn = false, audioBus = null;
+try{ const v = JSON.parse(localStorage.getItem('neon-blade-vol') || 'null'); if (v) for (const k of ['song', 'guide', 'se']) if (Number.isFinite(v[k])) vol[k] = Math.max(0, Math.min(100, v[k])); guideOn = localStorage.getItem('neon-blade-guide') === '1'; }catch(e){}
+function buses(){
+  if (!audioBus && ctx){
+    const master = ctx.createGain(); master.gain.value = MASTER_HEADROOM; master.connect(ctx.destination);
+    const mk = () => { const g = ctx.createGain(); g.connect(master); return g; };
+    audioBus = { master, song: mk(), guide: mk(), se: mk() }; applyVolumes();
+  }
+  return audioBus;
+}
+function applyVolumes(){ if (!audioBus) return; for (const k of ['song', 'guide', 'se']) audioBus[k].gain.value = vol[k] / 100; }
+function useGuide(){ return guideOn || !!song?.local; } // 自分の曲は今までどおり常にガイドあり
 // ブロックが動く音（毎拍なので小さめ。拍ぴったりの時刻に予約して鳴らす）
 const MOVE_SE_VOL = 0.22;
 const moveVoices=new Set();let moveScheduler=null,nextMoveBeat=0;
@@ -993,28 +1022,31 @@ function startMoveScheduler(){
   const schedule=()=>{
     if(state!=='play')return;
     const now=ctx.currentTime;
+    // 予約時刻＝曲の再生位置と同じ時計（songStart＋拍の時刻）。曲別の拍補正は beatTime() に含まれる。
+    // 手動タイミング補正は足さない（音は曲と一緒に遅れて聞こえるので、曲と同じ時刻に鳴らす）
     while(songStart+beatTime(nextMoveBeat)<now+.12){
       const n=nextMoveBeat++,at=songStart+beatTime(n);
-      if(at>=now&&n>=INTRO_BEATS&&notes.length)playMoveSE(n,at);
-      if(at>=now&&song.local)playGuideClick(n,at);
+      if(at<now)continue;
+      if(useGuide()){ if(n>=0)playGuideClick(n,at); } // ガイド音を使うときは移動音を重ねない
+      else if(n>=INTRO_BEATS&&notes.length)playMoveSE(n,at);
     }
   };
   moveScheduler=setInterval(schedule,25);schedule();
 }
-// 自分の曲用のガイド音（拍ごとに「カッ」、4拍ごとに少し高く）
+// 拍のガイド音：短い「コッ」（中音域・余韻なし）。ノーツや操作に関係なく毎拍鳴らす。全部同じ高さ
 function playGuideClick(n,at){
-  const o=ctx.createOscillator(),g=ctx.createGain(),first=n%4===0;
-  o.type='square';o.frequency.value=first?1760:1320;
-  g.gain.setValueAtTime(0,at);g.gain.linearRampToValueAtTime(first?.22:.14,at+.002);g.gain.exponentialRampToValueAtTime(.0001,at+.05);
-  o.connect(g);g.connect(ctx.destination);
+  const o=ctx.createOscillator(),g=ctx.createGain();
+  o.type='triangle';o.frequency.setValueAtTime(1150,at);o.frequency.exponentialRampToValueAtTime(700,at+.03);
+  g.gain.setValueAtTime(0,at);g.gain.linearRampToValueAtTime(.5,at+.002);g.gain.exponentialRampToValueAtTime(.0001,at+.035);
+  o.connect(g);g.connect(buses().guide);
   moveVoices.add(o);o.onended=()=>{moveVoices.delete(o);o.disconnect();g.disconnect();};
-  o.start(at);o.stop(at+.06);
+  o.start(at);o.stop(at+.045);
 }
 function playMoveSE(n,at){
   if (!moveBuf || state !== 'play') return;
   const src = ctx.createBufferSource(), gn = ctx.createGain();
   src.buffer = moveBuf; gn.gain.value = MOVE_SE_VOL;
-  src.connect(gn); gn.connect(ctx.destination);
+  src.connect(gn); gn.connect(buses().guide);
   moveVoices.add(src);src.onended=()=>{moveVoices.delete(src);src.disconnect();gn.disconnect();};
   src.start(at??Math.max(ctx.currentTime,songStart+beatTime(n)));
 }
@@ -1028,7 +1060,7 @@ function playSE(word,heroId=selectedHero){
   else if (word === 'GREAT'){ src.playbackRate.value = 1.0; filt.frequency.value = 12000; gain.gain.value = 0.85; }
   else { src.playbackRate.value = 0.9; filt.frequency.value = 1800; gain.gain.value = 0.6; }
   if(custom)gain.gain.value*=CHARACTER_SE[heroId].gain;
-  src.connect(filt); filt.connect(gain); gain.connect(ctx.destination);
+  src.connect(filt); filt.connect(gain); gain.connect(buses().se);
   src.onended=()=>{src.disconnect();filt.disconnect();gain.disconnect();if(previewBreakVoice===src)previewBreakVoice=null;};
   src.start(now);
   if (word === 'PERFECT' && !custom){
@@ -1038,7 +1070,7 @@ function playSE(word,heroId=selectedHero){
       o.type = 'sine'; o.frequency.value = f;
       og.gain.setValueAtTime(0, now + .02); og.gain.linearRampToValueAtTime(v, now + .03);
       og.gain.exponentialRampToValueAtTime(.0001, now + .45);
-      o.connect(og); og.connect(ctx.destination); o.start(now + .02); o.stop(now + .5);
+      o.connect(og); og.connect(buses().se); o.start(now + .02); o.stop(now + .5);
     }
   }
   return src;
@@ -1579,7 +1611,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v10', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v11', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -1622,7 +1654,8 @@ function diagStart(){
   diagRun = { logVersion: DIAG_LOG_VERSION, appVersion: APP_VERSION, createdAt: new Date().toISOString(),
     device: { userAgent: navigator.userAgent, platform: navigator.userAgentData?.platform ?? navigator.platform ?? null, mobile: navigator.userAgentData?.mobile ?? null, language: navigator.language, screen: { w: screen.width, h: screen.height, dpr: window.devicePixelRatio }, maxTouchPoints: navigator.maxTouchPoints ?? null, audioOutput: diagOutput, audioOutputLabel: OUTPUT_LABEL[diagOutput], audioOutputNote: '音の出力は手動で選んだ値（自動判別していない）' },
     song: { name: song.name, file: song.file, baseBpm: song.bpm, offset: song.offset, chart: song.chart || null, chartVersion: activeChart?.chartVersion ?? null, chartBeats: activeChart?.beats?.length ?? null, local: !!song.local, tutorial: isTutorial() },
-    settings: { mode: endless ? 'endless' : 'normal', difficulty: runDifficulty, hero: runHeroId, noteSpeed, timingMs, scoreMode: scoreOn() },
+    settings: { mode: endless ? 'endless' : 'normal', difficulty: runDifficulty, hero: runHeroId, noteSpeed, timingMs, scoreMode: scoreOn(), songCorrMs: runSongCorrMs, songCorrLabel: activeChart && SONG_BEAT_CORR[song.chart] ? (runSongCorrMs === 0 ? '元の0ms' : '修正候補' + runSongCorrMs + 'ms') : '補正対象外', guideSound: useGuide() ? '専用ガイド音（移動音は鳴らさない）' : '移動音', volumes: { ...vol }, masterHeadroom: MASTER_HEADROOM },
+    timingModel: { judgedBeatTime: 'beatTime(n)＝(譜面の拍＋曲別補正)÷再生倍率', songTime: '出力時刻−songStart−手動補正', guideScheduleCtxTime: 'songStart＋beatTime(n)（曲別補正は含む・手動補正は含まない。ガイド音は曲と同じ時計で鳴らす）', note: '手動補正は画面と判定だけに効く。曲とガイド音は同じ出力経路で同じだけ遅れるため' },
     judgeWindows: { perfectMs: 45, greatMs: 90, acceptMsFormula: 'min(170, 1拍×0.36)', note: '受付限界は再生倍率で変わる。各入力に実際の値を記録' },
     audio: { sampleRate: ctx?.sampleRate ?? null, ...latencyInfo(), getOutputTimestamp: !!ctx?.getOutputTimestamp },
     limits: { maxEvents: DIAG_MAX_EVENTS, dropChunk: DIAG_DROP_CHUNK }, droppedEvents: 0, droppedNote: null, saveError: null, events: [] };
@@ -1648,7 +1681,7 @@ function diagInput(type, e, device, ev, handlerPerf, delayMs, tNow, t){
 function diagTarget(rec, n, t, diff){
   if (!rec) return;
   const bt = beatTime(n);
-  rec.target = { beat: n, beatTime: r4(bt), prevBeatTime: r4(beatTime(n - 1)), nextBeatTime: r4(beatTime(n + 1)), offsetMs: r2(diff * 1000), sign: 'マイナス＝早い、プラス＝遅い', windowsMs: { perfect: 45, great: 90, accept: r2(WINDOW * 1000) } };
+  rec.target = { beat: n, beatTime: r4(bt), beatTimeRaw: activeChart?.beats?.[n] != null ? r4(activeChart.beats[n] / rate) : null, songCorrMs: runSongCorrMs, guideScheduleCtxTime: r4(songStart + bt), guideExpectedAtSongTime: r4(bt - timingMs / 1000), guideSound: useGuide() ? 'guide' : 'move', prevBeatTime: r4(beatTime(n - 1)), nextBeatTime: r4(beatTime(n + 1)), offsetMs: r2(diff * 1000), sign: 'マイナス＝早い、プラス＝遅い', windowsMs: { perfect: 45, great: 90, accept: r2(WINDOW * 1000) } };
 }
 function diagInputEnd(rec, o){ if (rec) Object.assign(rec, o); }
 function diagResult(rec, o){
@@ -1730,6 +1763,16 @@ document.querySelectorAll('[data-diag]').forEach(b => b.addEventListener('click'
   tg.addEventListener('change', () => { diagOn = tg.checked; try{ localStorage.setItem('neon-blade-diag', diagOn ? '1' : '0'); }catch(e){} });
   out.addEventListener('change', () => { diagOutput = out.value; try{ localStorage.setItem('neon-blade-diag-output', diagOutput); }catch(e){} }); }
 window.addEventListener('pagehide', () => { if (diagRun && state !== 'ready') diagSave(); });
+{ const gt = document.getElementById('guideToggle'); gt.checked = guideOn;
+  gt.addEventListener('change', () => { guideOn = gt.checked; try{ localStorage.setItem('neon-blade-guide', guideOn ? '1' : '0'); }catch(e){} });
+  for (const [id, k] of [['volSong', 'song'], ['volGuide', 'guide'], ['volSe', 'se']]){
+    const r = document.getElementById(id); r.value = vol[k];
+    r.addEventListener('input', () => { vol[k] = Number(r.value); applyVolumes(); try{ localStorage.setItem('neon-blade-vol', JSON.stringify(vol)); }catch(e){} });
+  }
+  const corr = SONG_BEAT_CORR['charts/neon_rush.json'], btns = document.querySelectorAll('[data-corr]');
+  const paint = () => { const v = songCorrSetting('charts/neon_rush.json'); btns.forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.corr) === v))); };
+  btns.forEach(b => b.addEventListener('click', () => { try{ localStorage.setItem('neon-blade-songcorr:' + corr.key, b.dataset.corr); }catch(e){} paint(); }));
+  paint(); }
 
 // ===== 操作 =====
 function bindBtn(id, type){
@@ -1753,7 +1796,7 @@ function startMusicAt(rawPosition=0){
   const at=ctx.currentTime+delay;
   songSrc=ctx.createBufferSource();songSrc.buffer=songBuf;songSrc.playbackRate.value=rate;
   songGain=ctx.createGain();songGain.gain.value=1;
-  songSrc.connect(songGain);songGain.connect(ctx.destination);
+  songSrc.connect(songGain);songGain.connect(buses().song);
   const src=songSrc,gain=songGain;
   src.onended=()=>{src.disconnect();gain.disconnect();};
   songStart=at-offset;syncClock();songSrc.start(at,Math.min(offset*rate,songBuf.duration));
@@ -1787,6 +1830,7 @@ function startGame(){
   document.querySelectorAll('.overlay').forEach(o=>o.classList.add('hide'));
   reset();progFill.style.width='0%';
   lap=0;rate=song.rate||1;applyRate();
+  runSongCorrMs=activeChart?songCorrSetting(song.chart):0;
   diagStart();
   tutStep=0;tutDone=0;tutSpawned=0;tutStepAt=0;tutApplyUI();
   if(ctx.state==='suspended')ctx.resume();
