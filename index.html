@@ -57,16 +57,6 @@
   .endReason{margin:5px 0 0;font-size:13px;font-weight:900;color:#ffd0f4;-webkit-text-stroke:3px #081221;paint-order:stroke fill}
   .endReason:empty{display:none}
   .diagOpenBtn[hidden]{display:none}
-  #stepGauge{position:absolute;left:50%;top:100%;margin-top:21px;transform:translateX(-50%);width:120px;aspect-ratio:360/47;pointer-events:none;z-index:4}
-  #stepGauge.hide{display:none}
-  #stepGauge>img{width:100%;height:100%;display:block}
-  .sgFill{position:absolute;left:3.5%;top:25.8%;width:93.05%;height:48.4%;clip-path:inset(0 100% 0 0 round 999px)}
-  .sgFill img{width:100%;height:100%;display:block}
-  .sgFill::after{content:"";position:absolute;inset:0;background:#ff8be8;opacity:0;border-radius:999px}
-  #stepGauge.up .sgFill{animation:sgUp .35s ease-out}
-  #stepGauge.down .sgFill::after{animation:sgDown .35s ease-out}
-  @keyframes sgUp{0%{filter:brightness(1.6) drop-shadow(0 0 4px #c6ff44)}100%{filter:none}}
-  @keyframes sgDown{0%{opacity:.6}100%{opacity:0}}
   #lapGain{position:absolute;left:0;right:0;top:100%;margin-top:40px;font:800 13px/1.3 system-ui,sans-serif;letter-spacing:.04em;color:#ffe941;-webkit-text-stroke:3px #081221;paint-order:stroke fill;opacity:0;pointer-events:none;z-index:4}
   #warpHud{position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap;top:100%;margin-top:2px;font:800 13px/1.3 system-ui,sans-serif;letter-spacing:.04em;color:#fff;-webkit-text-stroke:3px #081221;paint-order:stroke fill;pointer-events:none;z-index:4;text-align:center}
   #warpHud.hide{display:none}
@@ -172,15 +162,6 @@
   #fieldWrap{position:relative}
   #judge{position:absolute;left:0;top:0;width:150px;height:52px;z-index:3;pointer-events:none;opacity:0;line-height:1.1;will-change:transform}
   #judge.pop{opacity:1}
-  #jGauge{display:none;align-items:center;justify-content:center;gap:4px;height:11px;margin-bottom:3px;flex:none}
-  #judge.withGauge{height:66px}
-  #judge.withGauge #jGauge{display:flex}
-  .jgBar{position:relative;width:64px;height:9px;flex:none}
-  .jgBar>img{width:100%;height:100%;display:block}
-  .jgFill{position:absolute;left:3.5%;top:25.8%;width:93.05%;height:48.4%;clip-path:inset(0 100% 0 0 round 999px)}
-  .jgFill img{width:100%;height:100%;display:block}
-  #jBonus{font-size:11px;font-weight:900;color:#c6ff44;-webkit-text-stroke:3px #09121e;paint-order:stroke fill;line-height:1;min-width:0}
-  #jBonus:empty{display:none}
   #jWord{font-size:23px;min-height:25px;-webkit-text-stroke:3.5px #071221;paint-order:stroke fill;color:var(--judge-color,#fff)!important}
   #jSub{font-size:12px;min-height:15px;margin-top:2px;-webkit-text-stroke:3px #071221}
   #victory{position:fixed;inset:0;z-index:8;pointer-events:auto;background:#04253a24}
@@ -296,9 +277,9 @@
   <div id="top">
   <div class="hudRow"><div id="hud" aria-label="体力5"></div><button id="pauseBtn" aria-label="一時停止・終了" disabled>Ⅱ</button></div>
   <div id="progress"><i id="progFill"></i></div>
-  <div id="scoreHud" class="hide" aria-live="off"><span id="scoreNum">0</span><div id="warpHud" class="hide"></div><div id="stepGauge" class="hide" aria-hidden="true"><img src="img/gauge-base.png" alt=""><div class="sgFill"><img src="img/gauge-fill.png" alt=""></div></div><div id="lapGain"></div></div>
+  <div id="scoreHud" class="hide" aria-live="off"><span id="scoreNum">0</span><div id="warpHud" class="hide"></div><div id="lapGain"></div></div>
   </div>
-  <div id="spot" class="hide"></div><div id="fieldWrap"><canvas id="cv"></canvas><div id="tip" class="hide"></div><div id="judge"><div id="jGauge" aria-hidden="true"><div class="jgBar"><img src="img/gauge-base.png" alt=""><div class="jgFill"><img src="img/gauge-fill.png" alt=""></div></div><b id="jBonus"></b></div><span id="jWord"></span><small id="jSub"></small></div><div id="diagLine" class="hide" aria-hidden="true"></div></div>
+  <div id="spot" class="hide"></div><div id="fieldWrap"><canvas id="cv"></canvas><div id="tip" class="hide"></div><div id="judge"><span id="jWord"></span><small id="jSub"></small></div><div id="diagLine" class="hide" aria-hidden="true"></div></div>
   <div id="controls">
     <button class="btn" id="bMove" aria-label="進む"><svg class="icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 8 9 31q-2 3 2 3h11v21h20V34h11q4 0 2-3Z" fill="#66dfe21a" stroke="#b6fbff" stroke-width="2.5" stroke-linejoin="round"/></svg><span>進む</span><svg class="bubbles" viewBox="0 0 50 50" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width=".8"><circle cx="36" cy="31" r="7"/><circle cx="23" cy="41" r="3.5"/><circle cx="42" cy="44" r="2"/><circle cx="32" cy="17" r="2.4"/><circle cx="16" cy="33" r="1.4"/><circle cx="42" cy="9" r="1"/></g></svg></button>
     <button class="btn" id="bBreak" aria-label="ブレイク"><svg class="icon" viewBox="0 0 64 64" aria-hidden="true"><rect x="16" y="17" width="35" height="35" rx="3" fill="#920d2588" stroke="#ff3550" stroke-width="2"/><path d="M33 20v29M19 34h29" stroke="#c01c93" stroke-width="1"/><path d="m6 57 13-22L59 6 47 29Z" fill="#b5fbff" stroke="#62eafa" stroke-width="1.5"/><path d="m9 54 43-34" stroke="#fff" stroke-width="1.5"/></svg><span>ブレイク</span><svg class="bubbles" viewBox="0 0 50 50" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width=".8"><circle cx="36" cy="31" r="7"/><circle cx="23" cy="41" r="3.5"/><circle cx="42" cy="44" r="2"/><circle cx="32" cy="17" r="2.4"/><circle cx="16" cy="33" r="1.4"/><circle cx="42" cy="9" r="1"/></g></svg></button>
@@ -312,7 +293,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v21</span>
+  <span id="verBadge">バージョン v22</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -402,9 +383,8 @@ function gaugeChange(delta, cause, inputId, noteId, t){
   const before = gauge; let gained = 0;
   gauge = Math.max(0, gauge + delta);
   while (gauge >= GAUGE_FULL){ gauge -= GAUGE_FULL; bonusSteps++; gained++; }
-  gaugeFxAt = performance.now(); gaugeFxDir = delta > 0 ? 1 : -1; updateGaugeHud(gaugeFxDir);
-  if (gained) setStepsHud();
-  showJudgeGauge(gauge, gained);
+  gaugeFxAt = performance.now(); gaugeFxDir = delta > 0 ? 1 : -1;
+  if (gained){ texts.push({ s: '+' + gained + '歩', idx: player.idx, t, col: '#c6ff44', big: true }); setStepsHud(); } // ＋1歩はキャラの位置に出す
   diagEv('gauge', { cause, inputId: inputId ?? null, noteId: noteId ?? null, delta, before, after: gauge, full: GAUGE_FULL, bonusGained: gained, moveSteps, bonusSteps, totalSteps: totalSteps() });
 }
 function distance(){ return courseLap * GOAL_INDEX + player.idx; }
@@ -663,7 +643,7 @@ function reset(){
   runScore = 0; movePrice = 0; runSteps = 0; courseLap = 0;
   secPerfect = 0; warpReady = false; sectionNo = 1; termWaitLogged = false; document.getElementById('lapGain').classList.remove('show');
   endReason = null;
-  moveSteps = 0; bonusSteps = 0; gauge = 0; gaugeFxAt = -1e9; updateGaugeHud(0);
+  moveSteps = 0; bonusSteps = 0; gauge = 0; gaugeFxAt = -1e9;
   document.getElementById('scoreNum').textContent = endlessScoreOn() ? '0マス' : speedOn() ? '0歩' : '0'; updateWarpHud(); document.getElementById('scoreHud').classList.toggle('hide', !(scoreOn() || endlessScoreOn() || speedOn()));
   notes = []; effects = []; texts = []; fx = [];
   setLockUI(true); tutClearUI();
@@ -980,7 +960,6 @@ function showJudge(word, sub, display){
     if (word === 'MISS') combo = 0; else { combo++; maxCombo = Math.max(maxCombo, combo); }
   }
   const el = document.getElementById('judge'), w = document.getElementById('jWord');
-  clearJudgeGauge();
   w.textContent = word; el.style.setProperty('--judge-color',JUDGE[word].col); w.style.color = JUDGE[word].col; w.style.textShadow = '0 2px 0 #07101c';
   document.getElementById('jSub').textContent = (!display && combo >= 2 ? combo + ' COMBO  ' : '') + (sub || '');
   placeJudge(songTime());
@@ -989,28 +968,9 @@ function showJudge(word, sub, display){
 }
 // 判定表示を消す（判定の時間切れ・リトライ・ポーズ・ワープ・曲のループで使う）
 function hideJudge(){
-  clearTimeout(jTimer); jTimer = null; clearJudgeGauge();
+  clearTimeout(jTimer); jTimer = null;
   const el = document.getElementById('judge'); el.classList.remove('pop');
   document.getElementById('jWord').textContent = ''; document.getElementById('jSub').textContent = '';
-}
-// ===== 判定に付くゲージ（エンドレスのみ）：その入力で増減した後の値を、判定と同時に出して同時に消す =====
-let jgTimer = null;
-function clearJudgeGauge(){
-  clearTimeout(jgTimer); jgTimer = null;
-  document.getElementById('judge').classList.remove('withGauge'); document.getElementById('jBonus').textContent = '';
-}
-function setJudgeGaugeFill(v){ document.querySelector('#jGauge .jgFill').style.clipPath = `inset(0 ${(1 - v / GAUGE_FULL) * 100}% 0 0 round 999px)`; }
-function showJudgeGauge(after, gained){
-  const el = document.getElementById('judge');
-  if (!el.classList.contains('pop')) return; // 判定が出ていないときは出さない
-  clearTimeout(jgTimer); jgTimer = null;
-  el.classList.add('withGauge');
-  if (gained){
-    // 満タンを一瞬見せてから、持ち越した残りを表示（判定が消えるより前に切り替える）
-    setJudgeGaugeFill(GAUGE_FULL); document.getElementById('jBonus').textContent = '+' + gained + '歩';
-    jgTimer = setTimeout(() => { jgTimer = null; setJudgeGaugeFill(after); }, 180);
-  } else { setJudgeGaugeFill(after); document.getElementById('jBonus').textContent = ''; }
-  placeJudge(songTime());
 }
 
 function freeMove(t, rec){
@@ -1270,7 +1230,7 @@ function renderResult(result){
   const label=ov.querySelector('.scoreLabel span'),help=ov.querySelector('.scoreHelp p');
   label.dataset.orig??=label.textContent;help.dataset.orig??=help.innerHTML;
   label.textContent=result.mode==='endless'?'合計歩数':result.endless?'到達距離':label.dataset.orig;
-  help.innerHTML=result.mode==='endless'?`記録は歩数です。進んだマス数に、判定ゲージのボーナスを足したものです。PERFECT・GREAT・GOODでゲージがたまり、満タンになるたびに＋1歩。受付時間外の入力でゲージが少し減ります（ライフは減りません）。コースの終わりに着くとワープして、曲は止まらずに0.1倍ずつ速くなります（最大2.2倍）。曲が終わったら頭から続きます。`:result.endless?`曲が終わるまでに進んだマス数が記録です（判定で増えたり減ったりしません）。コースの終わりでワープするには、そのコースでPERFECTを${WARP_PERFECT}回取る必要があります。足りないときは終わりで待ち、ブレイクを続けて達成すると自動でワープします。ライフがなくなると、その時点の距離が記録になります。`:help.dataset.orig;
+  help.innerHTML=result.mode==='endless'?`記録は歩数です。進んだマス数に、判定ゲージのボーナスを足したものです。PERFECT・GREAT・GOODでゲージがたまり、満タンになるたびに＋1歩。受付時間外の入力でゲージが少し減ります（ライフは減りません）。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`:result.endless?`曲が終わるまでに進んだマス数が記録です（判定で増えたり減ったりしません）。コースの終わりでワープするには、そのコースでPERFECTを${WARP_PERFECT}回取る必要があります。足りないときは終わりで待ち、ブレイクを続けて達成すると自動でワープします。ライフがなくなると、その時点の距離が記録になります。`:help.dataset.orig;
   text('reason',result.endless?result.reasonText:'');
   if(result.mode==='endless'){text('badge',`ワープ ${result.warps}回　到達 ×${result.speed.toFixed(1)}`);text('foot',`実移動 ${result.moveSteps}歩＋ボーナス ${result.bonusSteps}歩`);}
   else if(result.endless)text('badge',`ワープ ${result.warps}回`);
@@ -1511,15 +1471,6 @@ function drawCourse(t){
   }
 }
 
-// 判定ゲージ：歩数の下に表示（画像：img/gauge-base.png＝枠、img/gauge-fill.png＝中身）。数字は出さず、たまり具合だけ
-const SHOW_GAUGE = false; // 試遊中：ゲージは表示しない（視線がキャラから離れるため）。仕組みは裏で動く。true で上部に表示
-function updateGaugeHud(dir){
-  const el = document.getElementById('stepGauge');
-  el.classList.toggle('hide', !speedOn() || !SHOW_GAUGE);
-  if (!speedOn() || !SHOW_GAUGE) return;
-  el.querySelector('.sgFill').style.clipPath = `inset(0 ${(1 - gauge / GAUGE_FULL) * 100}% 0 0 round 999px)`;
-  if (dir){ el.classList.remove('up', 'down'); void el.offsetWidth; el.classList.add(dir > 0 ? 'up' : 'down'); }
-}
 function beatPulse(t){return t>=lastBeatAt&&lastBeatAt>=0?Math.max(0,1-(t-lastBeatAt)/.17)*lastBeatStrength:0;}
 function impactOffset(t){
   if(reduceMotion.matches||state!=='play')return 0;
@@ -1703,7 +1654,7 @@ function checkLines(t){
   if (!(state==='play' && player.idx >= LINES[lineK] && hp > 0)) return false;
   if (lineK === LINES.length - 1 && speedOn()){ // エンドレス：終端に着いたら条件なしでワープ（曲は頭から次の速度で）
     diagEv('warp', { fromRate: rate, toRate: Math.min(SPEED_MAX, rate + SPEED_STEP), gauge, ...diagCtx() });
-    endlessWarp(); updateWarpHud(); return true;
+    nextLap(t, false); updateWarpHud(); return true; // 曲は頭から、次の速度で
   }
   if (lineK === LINES.length - 1 && endlessScoreOn()){ // 終端：PERFECTが足りていればワープ、足りなければその場で待つ（ブレイクは続けられる）
     if (warpReady){ warp(t); return false; }
@@ -1738,7 +1689,7 @@ function loop(){
     if (isTutorial()){ const st=tutSt(); if(st?.auto && t-tutStepAt>=st.auto) tutAdvance(t); }
     if (state==='play' && !lapped && t > songBuf.duration / rate){
       if(isTutorial()&&!tutSt()?.live) tutLoopMusic();
-      else if(speedOn()) endlessLoopMusic(); // エンドレス：曲が終わったら頭から続ける（コースと記録はそのまま）
+      else if(speedOn()){ endReason = 'song_end'; end(false); } // エンドレス：曲が終わるまでにゴールできなければ終了
       else if(endless&&!isTutorial()){ endReason = 'finish'; end(true); } // 距離チャレンジ：曲が終わったら完走
       else end(scoreOn());
     }
@@ -1750,7 +1701,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v21', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v22', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -1950,47 +1901,6 @@ function nextCourse(t){
   revealEnd=REVEAL_ENDS[0];revealFrom=revealEnd;
   texts.push({ s: 'COURSE ' + (courseLap + 1), idx: 0, t, col: '#ffe941', big: true });
 }
-// ===== エンドレス：曲を止めずに加速する =====
-// 曲の再生位置はそのままで、再生速度だけ変える。songTime()＝再生位置÷速度なので、開始時刻をずらして合わせる
-function changeRateLive(r1){
-  const C = ctx.currentTime, raw = (C - songStart) * rate; // 今鳴らしている位置（曲の秒）
-  rate = r1; applyRate();
-  songStart = C - raw / r1;
-  if (songSrc){ try{ songSrc.playbackRate.setValueAtTime(r1, C); }catch(e){ songSrc.playbackRate.value = r1; } }
-}
-// コースを最初からにするが、曲は流したまま（拍の番号も続く）
-function resetCourseKeepSong(t){
-  player = { idx: 0, from: 0, at: t }; notes = []; effects = []; texts = []; fx = []; pendingCheck = []; earlyInput = null; acted = -1; nextGap = 4; runLen = 1;
-  lineK = 0; gIdx = gIndexFor(0); gFrom = gIdx; gMoveAt = -9;
-  cameraRow=0;cameraFrom=0;cameraTarget=0;cameraAt=-9;setPalette(lap % PALETTES.length);
-  revealEnd=REVEAL_ENDS[0];revealFrom=revealEnd;
-  charState = 'idle'; charUntil = 0; damageAt = -9; lastBeatAt = -9; hideJudge();
-}
-// ワープ地点＝倍速地点：コースは最初から、曲はそのまま続けて速度＋0.1（最大2.2）
-function endlessWarp(){
-  const r0 = rate;
-  lap++;
-  const r1 = Math.min(SPEED_MAX, 1 + lap * SPEED_STEP);
-  if (Math.abs(r1 - r0) > 1e-9) changeRateLive(r1);
-  const t = songTime();
-  diagEv('speed_up', { fromRate: r0, rate, lap, songPos: r4(t * rate), keepSong: true });
-  resetCourseKeepSong(t);
-  moveLocked = true; setLockUI(true); // 新しい周も、最初の1個を壊すまで進めない
-  stopMoveScheduler(); startMoveScheduler(); // ガイド音を新しい速度で予約し直す
-  showLapBanner(r1 > r0 ? `ワープ！　速度 ×${rate.toFixed(1)}` : `ワープ！　速度 ×${rate.toFixed(1)}（最大）`);
-  [784, 988, 1175].forEach((f, i) => uiTone(f, .12, i * .05));
-  texts.push({ s: 'LAP ' + (lap + 1), idx: 0, t, col: '#ffe941', big: true });
-}
-// 曲が最後まで終わったら、同じ速度で頭から続ける。キャラの位置・コース・ライフ・記録はそのまま（ノーツだけ消して仕切り直し）
-function endlessLoopMusic(){
-  diagEv('song_loop', { rate, lap, playerIdx: player.idx });
-  notes = []; effects = []; texts = []; fx = []; pendingCheck = []; earlyInput = null; acted = -1; nextBeat = 0;
-  player.from = player.idx; player.at = -9; gFrom = gIdx; gMoveAt = -9; cameraFrom = cameraTarget; cameraAt = -9; revealFrom = revealEnd;
-  charState = 'idle'; charUntil = 0; damageAt = -9; lastBeatAt = -9;
-  hideJudge();
-  stopMoveScheduler(); startMusicAt(); startMoveScheduler();
-  showLapBanner('曲がもう一度はじまります');
-}
 function nextLap(t, songEnded){
   if(!songEnded){ lap++; rate = Math.min(SPEED_MAX, 1 + lap * SPEED_STEP); applyRate(); diagEv('speed_up', { rate, lap }); } // 足し算で加速（掛け算ではない）
   else { diagAttempt++; diagEv('song_restart', { reason: 'ゴール前に曲が終わった。この挑戦の集計は破棄', lap, attempt: diagAttempt }); }
@@ -1998,7 +1908,8 @@ function nextLap(t, songEnded){
   showLapBanner(`ワープ！　速度 ×${rate.toFixed(1)}`);
   [784, 988, 1175].forEach((f, i) => uiTone(f, .12, i * .05));
   player = { idx: 0, from: 0, at: 0 }; notes = []; effects = []; texts = []; fx = [];
-  nextBeat = 0; acted = -1; pendingCheck = []; nextGap = 4; runLen = 1;
+  nextBeat = 0; acted = -1; pendingCheck = []; earlyInput = null; nextGap = 4; runLen = 1;
+  charState = 'idle'; charUntil = 0; damageAt = -9; lastBeatAt = -9; hideJudge(); // 曲が頭に戻るので、前の曲の時刻で残っている表示を消す
   lineK = 0; gIdx = gIndexFor(0); gFrom = gIdx; gMoveAt = -9;
   cameraRow=0;cameraFrom=0;cameraTarget=0;cameraAt=-9;setPalette(0);
   revealEnd=REVEAL_ENDS[0];revealFrom=revealEnd;
