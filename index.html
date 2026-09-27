@@ -293,7 +293,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v14</span>
+  <span id="verBadge">バージョン v15</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -1430,14 +1430,27 @@ function drawCourse(t){
   }
 }
 
-// 判定ゲージ：プレイヤーの足元に細いバー。数字は出さず、たまり具合だけ。増えた／減った直後だけ少し光る
+// 判定ゲージ：プレイヤーの足元に小さく表示（画像：img/gauge-base.png＝枠、img/gauge-fill.png＝中身）
+// 数字は出さず、たまり具合だけ。増えた直後は少し光り、減った直後はうっすらピンク
+const gaugeImg = { base: new Image(), fill: new Image() };
+gaugeImg.base.src = 'img/gauge-base.png'; gaugeImg.fill.src = 'img/gauge-fill.png';
+const GAUGE_INNER = { x: 0.035, y: 0.258, w: 0.9305, h: 0.484 }; // 枠画像の中で、中身が入る部分（割合）
 function drawStepGauge(){
   if(!speedOn()||state==='ready')return;
-  const p=cellXY(tween(player.from,player.idx,player.at,songTime())),w=cell*.72,h=Math.max(3,cell*.07),x=p.x-w/2,y=p.y+cell*.44;
-  const k=Math.max(0,1-(performance.now()-gaugeFxAt)/350),fr=gauge/GAUGE_FULL;
+  const p=cellXY(tween(player.from,player.idx,player.at,songTime())),k=Math.max(0,1-(performance.now()-gaugeFxAt)/350),fr=gauge/GAUGE_FULL;
+  const W=cell*1.25,H=W*gaugeImg.base.height/(gaugeImg.base.width||1)||W*.13,x=p.x-W/2,y=p.y+cell*.42;
+  const ix=x+W*GAUGE_INNER.x,iy=y+H*GAUGE_INNER.y,iw=W*GAUGE_INNER.w,ih=H*GAUGE_INNER.h;
   g.save();
-  rr(g,x,y,w,h,h/2);g.fillStyle='#08122199';g.fill();
-  if(fr>0){rr(g,x,y,w*fr,h,h/2);g.fillStyle=gaugeFxDir<0&&k>0?'#ff8be8':'#c6ff44';g.globalAlpha=.75+.25*k;if(k>0){g.shadowColor=g.fillStyle;g.shadowBlur=6*k;}g.fill();}
+  if(gaugeImg.base.complete&&gaugeImg.base.naturalWidth)g.drawImage(gaugeImg.base,x,y,W,H);
+  else{rr(g,x,y,W,H,H/2);g.fillStyle='#08122199';g.fill();}
+  if(fr>0){
+    g.save();rr(g,ix,iy,iw*fr,ih,ih/2);g.clip();
+    if(gaugeFxDir>0&&k>0){g.shadowColor='#c6ff44';g.shadowBlur=8*k;}
+    if(gaugeImg.fill.complete&&gaugeImg.fill.naturalWidth)g.drawImage(gaugeImg.fill,ix,iy,iw,ih);
+    else{g.fillStyle='#c6ff44';g.fillRect(ix,iy,iw,ih);}
+    if(gaugeFxDir<0&&k>0){g.globalAlpha=.55*k;g.fillStyle='#ff8be8';g.fillRect(ix,iy,iw,ih);}
+    g.restore();
+  }
   g.restore();
 }
 function beatPulse(t){return t>=lastBeatAt&&lastBeatAt>=0?Math.max(0,1-(t-lastBeatAt)/.17)*lastBeatStrength:0;}
@@ -1671,7 +1684,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v14', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v15', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
