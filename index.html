@@ -302,7 +302,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v34</span>
+  <span id="verBadge">バージョン v35</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -1445,7 +1445,7 @@ function renderResult(result){
   label.textContent=result.mode==='endless'?(result.scoring==='rush'?'進んだ距離':'ENDLESS SCORE'):result.endless?'到達距離':label.dataset.orig;
   help.innerHTML=result.mode==='endless'?(result.scoring==='rush'?`記録は進んだ距離（歩数）です。ブロックを壊すとキャラに力がたまります（PERFECTなら30回で満タン。GREAT・GOODでも少したまります）。${result.rushRelease==='auto'?'満タンになると自動で':'満タンになったら（キャラの横に「OK」）ブレイクボタンを長押しで'}必殺技が発動し、10マス一気に突き進みます。途中のブロックは全部吹き飛ばします。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`:result.scoring==='stepBonus'?`ブレイク（PERFECT 100／GREAT 80／GOOD 30）と前進（50）で点が入ります。PERFECT・GREATで壊すと、次の一歩が強くなります（PERFECTなら＋100、GREATなら＋50。持てるのは1回分）。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`:`進むとブレイクで点が入ります。PERFECT・GREATでコンボがつながり、10コンボで×2、25コンボで×3。倍率は点と歩数の両方にかかります（キャラが進むのは1マスずつ）。GOOD・受付時間外の入力・被弾でコンボは0に戻ります。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`):result.endless?`曲が終わるまでに進んだマス数が記録です（判定で増えたり減ったりしません）。コースの終わりでワープするには、そのコースでPERFECTを${WARP_PERFECT}回取る必要があります。足りないときは終わりで待ち、ブレイクを続けて達成すると自動でワープします。ライフがなくなると、その時点の距離が記録になります。`:help.dataset.orig;
   text('reason',result.endless?result.reasonText:'');
-  if(result.mode==='endless'){text('badge',`ワープ ${result.warps}回　到達 ×${result.speed.toFixed(1)}`);text('foot',result.scoring==='rush'?`解放：${result.rushRelease==='auto'?'自動':'自分で'}`:result.scoring==='stepBonus'?`${result.moveSteps}歩`:`記録 ${result.recordSteps}歩（実移動 ${result.moveSteps}マス）`);}
+  if(result.mode==='endless'){text('badge',`WARP ${result.warps}　SPEED ×${result.speed.toFixed(1)}`);text('foot',result.scoring==='rush'?`解放：${result.rushRelease==='auto'?'自動':'自分で'}`:result.scoring==='stepBonus'?`${result.moveSteps}歩`:`記録 ${result.recordSteps}歩（実移動 ${result.moveSteps}マス）`);}
   else if(result.endless)text('badge',`ワープ ${result.warps}回`);
   renderHeroCanvas(ov.querySelector('canvas'),result.heroId);
   ov.querySelector('details').open=false;ov.scrollTop=0;
@@ -1937,7 +1937,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v34', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v35', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2150,7 +2150,7 @@ function nextLap(t, songEnded){
   if(!songEnded){ lap++; rate = Math.min(SPEED_MAX, 1 + lap * SPEED_STEP); applyRate(); diagEv('speed_up', { rate, lap }); } // 足し算で加速（掛け算ではない）
   else { diagAttempt++; diagEv('song_restart', { reason: 'ゴール前に曲が終わった。この挑戦の集計は破棄', lap, attempt: diagAttempt }); }
   // 周回突破と速度アップを伝える（点のボーナスはなし）
-  showLapBanner(`ワープ！　SPEED ×${rate.toFixed(1)}`);
+  showLapBanner(`WARP!　SPEED ×${rate.toFixed(1)}`);
   [784, 988, 1175].forEach((f, i) => uiTone(f, .12, i * .05));
   player = { idx: 0, from: 0, at: 0 }; notes = []; effects = []; texts = []; fx = [];
   nextBeat = 0; acted = -1; pendingCheck = []; earlyInput = null; nextGap = 4; runLen = 1;
