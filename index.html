@@ -303,7 +303,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v18</span>
+  <span id="verBadge">バージョン v19</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -339,7 +339,7 @@ const SONGS = [
   { name: 'チュートリアル', file: 'audio/tutorial.mp3', bpm: 100, offset: 0.07, level: 'はじめて', tutorial: true },   // Neon Warmup（SUNO）
   { name: 'Shatter Forward', file: 'audio/shatter_forward.mp3', bpm: 130.3, offset: .002, level: '曲専用譜面', chart: 'charts/shatter_forward.json' },
   { name: 'Neon Rush', file: 'audio/neon_rush.mp3', bpm: 149.999, offset: .6213, level: '固定譜面テスト', chart: 'charts/neon_rush.json' }, // SUNO。音源を解析：150BPM一定、1拍目0.6213秒
-  { name: 'Zombie Protocol',     file: 'audio/song.mp3',    bpm: 129,   offset: 0.34, level: 'ふつう' },
+  { name: 'Zombie Protocol',     file: 'audio/song.mp3',    bpm: 129.3, offset: 0.12, level: 'ふつう', chart: 'charts/zombie_beats.json' }, // テンポが揺れる曲なので拍の位置だけ譜面で持つ（ノーツはランダム）
   { name: 'Stutter Bass Groove', file: 'audio/stutter.mp3', bpm: 150.1, offset: 0.0,  level: 'はやい', hard: true },
   { name: 'Bass Arcade',         file: 'audio/bass_arcade.mp3', bpm: 134.4, offset: 0.085, level: 'むずかしい', hard: true, dense: true },
   { name: 'Frostbite Breakbeat', file: 'audio/frostbite.mp3', bpm: 129.9, offset: 0.21, level: 'クール', hard: true },
@@ -668,7 +668,7 @@ let lineK = 0, gIdx = 0, gFrom = 0, gMoveAt = -9;
 function gIndexFor(k){ return Math.min(LINES[k] + G_AHEAD, EXIT_INDEX); }
 // Gが移動したとき、新しく空いた道にもブロックを並べて、すかすかにならないようにする
 function fillGap(from, to, t){
-  if(activeChart){pendingExtension={from,to};chartFill(Math.max(INTRO_BEATS,nextBeat-1),t);return;}
+  if(chartNotes()){pendingExtension={from,to};chartFill(Math.max(INTRO_BEATS,nextBeat-1),t);return;}
   let last = Math.max(-99, ...notes.map(x => x.idx));
   let i = Math.max(from, last + pickGap());
   while (i <= to){
@@ -725,6 +725,7 @@ function nearestBeat(t){
 const SONG_BEAT_CORR = { 'charts/neon_rush.json': { key: 'neon_rush', options: [0, -30], def: -30 } }; // ms。元の譜面データはそのまま
 function songCorrSetting(chart){ const c = SONG_BEAT_CORR[chart]; if (!c) return 0; try{ const v = Number(localStorage.getItem('neon-blade-songcorr:' + c.key)); if (c.options.includes(v) && localStorage.getItem('neon-blade-songcorr:' + c.key) !== null) return v; }catch(e){} return c.def; }
 let runSongCorrMs = 0; // プレイ開始時に確定（途中では変えない）
+function chartNotes(){return !!activeChart?.spawn;} // ノーツ配置まで決まっている譜面か（拍だけの譜面は false）
 function chartVal(n){const s=activeChart?.spawn;return (s?.[runDifficulty]??s?.normal)?.[n]||0;}
 function chartSpawns(n){return !!chartVal(n);}
 // 種類を固定した譜面（fixedTypes）はランダムを使わない
@@ -881,18 +882,18 @@ function onBeat(n, t){
     }
     if(!moveScheduler)playMoveSE(n);
   }
-  if(activeChart&&n>=INTRO_BEATS)chartFill(n,t);
+  if(chartNotes()&&n>=INTRO_BEATS)chartFill(n,t);
   // ブロックを出す
   if (tutSingle()){ if(!frozen) tutBeat(t); }
   else if (tutSt() && !tutSt().spawn){ /* 練習中はブロックを出さない */ }
   else if (n >= INTRO_BEATS && !frozen){
     const lastIdx = Math.max(-99, ...notes.map(x => x.idx));
-    if (activeChart ? chartSpawns(n)&&lastIdx<gIdx : gIdx - lastIdx >= nextGap){
-      notes.push({ id: noteId++, idx: gIdx, from: gIdx, at: t, pop: t, hp: activeChart ? chartHp(n, gIdx - lastIdx) : rollHp(gIdx - lastIdx) });
-      if(!activeChart)nextGap = pickGap();
+    if (chartNotes() ? chartSpawns(n)&&lastIdx<gIdx : gIdx - lastIdx >= nextGap){
+      notes.push({ id: noteId++, idx: gIdx, from: gIdx, at: t, pop: t, hp: chartNotes() ? chartHp(n, gIdx - lastIdx) : rollHp(gIdx - lastIdx) });
+      if(!chartNotes())nextGap = pickGap();
     }
   }
-  lastBeatAt = t;lastBeatStrength=activeChart?.accents[n]??1;
+  lastBeatAt = t;lastBeatStrength=activeChart?.accents?.[n]??1;
   // 拍の直前に押されていたら今実行
   if (earlyInput){
     if (earlyInput.n === n){ const q = earlyInput; earlyInput = null; doAction(q.type, n, t, q.diff, q.rec); }
@@ -1713,7 +1714,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v18', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v19', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2024,7 +2025,7 @@ async function pickSong(sg, btn){
     if(sg.chart&&!chartCache[sg.chart]){
       const r=await fetch(sg.chart);if(!r.ok)throw new Error('chart load');
       const c=await r.json();
-      if(!Array.isArray(c.beats)||c.beats.length<2||c.beats.some((v,i)=>!Number.isFinite(v)||v<0||(i&&v<=c.beats[i-1]))||!Array.isArray(c.spawn?.normal)||c.spawn.normal.length!==c.beats.length||(c.spawn.hard!=null&&(!Array.isArray(c.spawn.hard)||c.spawn.hard.length!==c.beats.length)))throw new Error('invalid chart'); // HARDの譜面はなくてもよい（NORMALを使う）
+      if(!Array.isArray(c.beats)||c.beats.length<2||c.beats.some((v,i)=>!Number.isFinite(v)||v<0||(i&&v<=c.beats[i-1]))||(!c.beatsOnly&&(!Array.isArray(c.spawn?.normal)||c.spawn.normal.length!==c.beats.length))||(c.spawn?.hard!=null&&(!Array.isArray(c.spawn.hard)||c.spawn.hard.length!==c.beats.length)))throw new Error('invalid chart'); // HARDの譜面はなくてもよい（NORMALを使う）
       chartCache[sg.chart]=c;
     }
     setSong(sg); songBuf = bufCache[sg.file];
