@@ -302,7 +302,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v38</span>
+  <span id="verBadge">バージョン v39</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -1052,6 +1052,7 @@ function setLockUI(on){ const b = document.getElementById('bMove'); b.classList.
 const RUSH_WINDUP_SEC = 0.6;  // 発動：ブロックがその場で回り出す時間
 const RUSH_CELL_SEC = 0.1;     // 駆け抜ける速さ（1マスあたり）
 const RUSH_GUARD_SEC = 0.6;    // 着地のあと、ダメージを受けない時間
+const RUSH_LAND_CLEAR = 3;     // 着地したとき、いちばん近いブロックをこのマス数より先まで押し返す（立て直す間をつくる）
 let rushAnim = null, rushGuardUntil = -9, rushFade = null, shards = [], slashMarks = [], mists = [], rushPoseUntil = -9;
 function poisonHero(){ return !!heroInfo().poison; }
 function rushGuard(t){ return !!rushAnim || t < rushGuardUntil; }
@@ -1179,6 +1180,11 @@ function drawRushAnim(t){
   }
   if (A.moved && t >= A.moveAt + A.dur){
     for (const b of A.blown) if (!b.done){ b.done = true; spawnShards(b.idx, t, b.purple ? 'purple' : b.hard ? 'hard' : 'pink'); }
+    // 駆け抜けている間も後ろのブロックは近づいてくるので、着地の瞬間に足元のは吹き飛ばし、先のブロックはまとめて押し返す
+    for (const nt of notes.filter(x => x.idx <= A.to)) blastNote(nt, t);
+    const ahead = notes.filter(x => x.idx > A.to), near = ahead.length ? Math.min(...ahead.map(x => x.idx)) : Infinity;
+    if (near < A.to + RUSH_LAND_CLEAR){ const sh = A.to + RUSH_LAND_CLEAR - near; for (const nt of ahead){ nt.from = nt.idx; nt.idx += sh; nt.at = t; } }
+    pendingCheck = [];
     fx.push({ type: 'stomp', idx: A.to, t, d: .35, strong: true });
     if (heroFx[selectedHero]){ addSlashMark(A.to, t, 2.6, !facesRight(A.to)); slashMarks[slashMarks.length - 1].life = .5; spawnShards(A.to, t, 'purple'); rushPoseUntil = t + .35; }
     texts.push({ s: '+' + (A.to - A.from) + ' STEPS', idx: A.to, t, col: '#c6ff44', big: true });
@@ -2021,7 +2027,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v38', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v39', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
