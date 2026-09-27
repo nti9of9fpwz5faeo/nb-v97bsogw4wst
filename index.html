@@ -302,7 +302,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v37</span>
+  <span id="verBadge">バージョン v38</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -1149,7 +1149,7 @@ function drawRushAnim(t){
     player.from = A.to; player.idx = A.to; player.at = t;
     moveSteps += A.to - A.from; recordSteps += A.to - A.from; setStepsHud();
     charState = 'move'; charUntil = A.moveAt + A.dur + 0.15;
-    uiTone(330, .18, 0); uiTone(660, .18, .02);
+    if (poisonHero()) POISON_SFX.dash(); else { uiTone(330, .18, 0); uiTone(660, .18, .02); }
   }
   const v = playerVis(t), spin = Math.max(0, t - A.t0), pc = cellXY(v);
   // 溜め：光の粒がキャラに吸い込まれる＋キャラの光がふくらむ
@@ -1173,7 +1173,7 @@ function drawRushAnim(t){
   // ブロック：その場で止まり、キャラが届いた瞬間に大きく砕ける（回転はさせない）
   for (const b of A.blown){
     if (b.done) continue;
-    if (A.moved && v >= b.idx - .3){ b.done = true; spawnShards(b.idx, t, b.purple ? 'purple' : b.hit ? 'red' : b.hard ? 'hard' : 'pink'); if (heroFx[selectedHero]) addSlashMark(b.idx, t, 1.5, !facesRight(b.idx)); else fx.push({ type: 'stomp', idx: b.idx, t, d: .18, strong: false }); playSE('PERFECT'); continue; }
+    if (A.moved && v >= b.idx - .3){ b.done = true; spawnShards(b.idx, t, b.purple ? 'purple' : b.hit ? 'red' : b.hard ? 'hard' : 'pink'); if (heroFx[selectedHero]) addSlashMark(b.idx, t, 1.5, !facesRight(b.idx)); else fx.push({ type: 'stomp', idx: b.idx, t, d: .18, strong: false }); if (poisonHero()) POISON_SFX.slash(); else playSE('PERFECT'); continue; }
     const p = cellXY(b.idx), sz = cell * .93 * 1.25, spr = b.purple ? purpleCv : b.hit ? crackCv : b.hard ? hardCv : noteCv;
     g.drawImage(spr, p.x - sz / 2, p.y - sz / 2, sz, sz);
   }
@@ -1182,7 +1182,7 @@ function drawRushAnim(t){
     fx.push({ type: 'stomp', idx: A.to, t, d: .35, strong: true });
     if (heroFx[selectedHero]){ addSlashMark(A.to, t, 2.6, !facesRight(A.to)); slashMarks[slashMarks.length - 1].life = .5; spawnShards(A.to, t, 'purple'); rushPoseUntil = t + .35; }
     texts.push({ s: '+' + (A.to - A.from) + ' STEPS', idx: A.to, t, col: '#c6ff44', big: true });
-    [523, 784, 1047].forEach((f, i) => uiTone(f, .16, i * .04));
+    if (poisonHero()) POISON_SFX.land(); else [523, 784, 1047].forEach((f, i) => uiTone(f, .16, i * .04));
     rushFade = { t, from: A.from, to: A.to };
     rushAnim = null;
   }
@@ -1205,8 +1205,8 @@ function doRush(t, rec, auto){
   rushGuardUntil = rushAnim.moveAt + rushAnim.dur + RUSH_GUARD_SEC;
   charState = 'slash'; charUntil = rushAnim.moveAt;
   rushUnits = 0;
-  // 溜めの音：だんだん高く
-  [392, 494, 587, 698, 880].forEach((f, i) => uiTone(f, .09, i * .1));
+  // 溜めの音：だんだん高く（ヴェノは毒が泡立つ音）
+  if (poisonHero()) POISON_SFX.windup(); else [392, 494, 587, 698, 880].forEach((f, i) => uiTone(f, .09, i * .1));
   diagEv('rush', { inputId: rec?.inputId ?? null, auto: !!auto, cells, from: P, to, windup: RUSH_WINDUP_SEC, blownAtStart: rushAnim.blown.length });
   return true;
 }
@@ -1495,6 +1495,41 @@ function renderResult(result){
 }
 initResultScreens();
 const uiVoices=new Set();
+// ===== ヴェノの必殺技の効果音（仮。プログラムで作った音）。ブレイク音の音量スライダーに従う =====
+let noiseBuf = null;
+function noiseBuffer(){
+  if (!noiseBuf){ const n = ctx.sampleRate; noiseBuf = ctx.createBuffer(1, n, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; }
+  return noiseBuf;
+}
+function sfxNoise(at, dur, type, freq, q, vol, freqEnd){
+  const src = ctx.createBufferSource(), f = ctx.createBiquadFilter(), gn = ctx.createGain();
+  src.buffer = noiseBuffer(); f.type = type; f.Q.value = q; f.frequency.setValueAtTime(freq, at); if (freqEnd) f.frequency.exponentialRampToValueAtTime(freqEnd, at + dur);
+  gn.gain.setValueAtTime(0, at); gn.gain.linearRampToValueAtTime(vol, at + .01); gn.gain.exponentialRampToValueAtTime(.0001, at + dur);
+  src.connect(f); f.connect(gn); gn.connect(buses().se); src.onended = () => { src.disconnect(); f.disconnect(); gn.disconnect(); };
+  src.start(at, Math.random() * .4); src.stop(at + dur + .02);
+}
+function sfxTone(at, dur, type, f0, f1, vol){
+  const o = ctx.createOscillator(), gn = ctx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, at); o.frequency.exponentialRampToValueAtTime(f1, at + dur);
+  gn.gain.setValueAtTime(0, at); gn.gain.linearRampToValueAtTime(vol, at + .005); gn.gain.exponentialRampToValueAtTime(.0001, at + dur);
+  o.connect(gn); gn.connect(buses().se); o.onended = () => { o.disconnect(); gn.disconnect(); }; o.start(at); o.stop(at + dur + .02);
+}
+const POISON_SFX = {
+  // 溜め：ゴボゴボ…と毒が泡立つ（低いうねり＋泡がはじける音）
+  windup(){ if (!ctx || ctx.state !== 'running') return; const t = ctx.currentTime;
+    sfxNoise(t, .7, 'lowpass', 250, 1.5, .3, 1400);
+    for (let i = 0; i < 10; i++){ const at = t + .03 + Math.random() * .55, f = 160 + Math.random() * 240; sfxTone(at, .07, 'sine', f, f * 2.4, .2); } },
+  // 走り出し：シュッ
+  dash(){ if (!ctx || ctx.state !== 'running') return; const t = ctx.currentTime; sfxNoise(t, .35, 'bandpass', 800, 1, .28, 5000); },
+  // 斬るたび：ジュッ！（焼けて溶ける音＋短い刃の音）
+  slash(){ if (!ctx || ctx.state !== 'running') return; const t = ctx.currentTime;
+    sfxNoise(t, .2, 'bandpass', 5000, 2.2, .4, 2200); sfxTone(t, .09, 'triangle', 1900, 700, .08); sfxNoise(t + .03, .35, 'highpass', 6500, .7, .09); },
+  // 着地：シャキーン＋ジュワッ
+  land(){ if (!ctx || ctx.state !== 'running') return; const t = ctx.currentTime;
+    sfxTone(t, .6, 'sine', 2637, 2590, .12); sfxTone(t, .6, 'sine', 3951, 3900, .07); sfxTone(t, .14, 'triangle', 1000, 280, .16);
+    sfxNoise(t + .05, .8, 'bandpass', 3800, 1.2, .32, 1300);
+    for (let i = 0; i < 6; i++){ const at = t + .12 + i * .07 + Math.random() * .03, f = 200 + Math.random() * 220; sfxTone(at, .06, 'sine', f, f * 2.2, .13); } }
+};
 function uiTone(frequency=780,duration=.065,delay=0){
   if(!ctx||ctx.state!=='running')return;
   const o=ctx.createOscillator(),gain=ctx.createGain(),at=ctx.currentTime+delay;
@@ -1986,7 +2021,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v37', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v38', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
