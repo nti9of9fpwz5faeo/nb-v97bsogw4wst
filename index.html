@@ -289,7 +289,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v11</span>
+  <span id="verBadge">バージョン v12</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button><button class="difficultyBtn" id="endlessBtn" aria-pressed="false">エンドレス</button></div>
@@ -1102,7 +1102,7 @@ function captureResult(clear){
   if(endlessScoreOn()){
     // 距離チャレンジ：到達距離（マス数）が記録。倍率は掛けない。自己ベストは曲・難易度ごとに保存
     Object.assign(result,{endless:true,score:distance(),unit:'マス',rank:'—',badge:'',warps:sectionNo-1,endReason,reasonText:END_REASON[endReason]||''});
-    const ekey=`neon-blade-distance-best-v2:${song.file}:${runDifficulty}:w${WARP_PERFECT}`; // 距離チャレンジ（ワープ条件つき）。旧ルール・条件ちがいの記録とは別
+    const ekey=`neon-blade-distance-best-v2:${song.file}:${runDifficulty}:w${WARP_PERFECT}`+(activeChart?.chartVersion?':'+activeChart.chartVersion:''); // 譜面が変わったら記録も別 // 距離チャレンジ（ワープ条件つき）。旧ルール・条件ちがいの記録とは別
     let prev=0;try{const v=Number(localStorage.getItem(ekey));if(Number.isInteger(v)&&v>=0)prev=v;}catch(e){}
     result.newBest=result.score>prev;result.best=result.newBest?result.score:prev;
     if(result.newBest){try{localStorage.setItem(ekey,String(result.score));}catch(e){}}
@@ -1611,7 +1611,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v11', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v12', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
