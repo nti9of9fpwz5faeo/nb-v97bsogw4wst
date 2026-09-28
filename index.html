@@ -302,7 +302,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v41</span>
+  <span id="verBadge">バージョン v42</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -395,6 +395,19 @@ let elScore = 0, moveSteps = 0, recordSteps = 0; // スコア／実際に進ん�
 let stepBonus = null; // 次の一歩ボーナス：null / 'PERFECT' / 'GREAT'
 let rushUnits = 0, rushGainAt = -1e9; // ため（RUSH_FULL で満タン）
 function rushReady(){ return rushUnits >= RUSH_FULL; }
+// 歩数の色：50・100・200・300…で変わる（200〜は赤）
+const STEP_TIERS = [ { min: 0, col: '#ffffff' }, { min: 50, col: '#8af3fa' }, { min: 100, col: '#c6ff44' }, { min: 200, col: '#ff4b5c' }, { min: 300, col: '#ffd23c' }, { min: 400, col: '#c59bff' }, { min: 500, col: '#ff64cc' } ];
+function stepColor(n){ let c = STEP_TIERS[0].col; for (const x of STEP_TIERS) if (n >= x.min) c = x.col; return c; }
+function isStepMilestone(n){ return n === 50 || (n >= 100 && n % 100 === 0); }
+function milestoneBetween(a, b){ let m = 0; for (let n = a + 1; n <= b; n++) if (isStepMilestone(n)) m = n; return m; } // a〜bの間で最後に踏んだ区切り
+// 区切りの歩数を踏んだ瞬間：その色で輝くエフェクト
+function stepMilestoneFx(idx, t, n){
+  const col = stepColor(n);
+  fx.push({ type: 'milestone', idx, t, d: .8, col });
+  texts = texts.filter(x => !x.step);
+  texts.push({ s: stepsLabel(n), idx, t, col, big: true, step: true });
+  [880, 1175, 1568].forEach((f, i) => uiTone(f, .1, i * .05));
+}
 function stepsLabel(n){ return n.toLocaleString('en-US') + (n === 1 ? ' STEP' : ' STEPS'); }
 function setStepsHud(){ const sn = document.getElementById('scoreNum'); if (rushOn()) sn.innerHTML = recordSteps.toLocaleString('en-US') + '<small class="unitEn"> STEPS</small>'; else sn.textContent = elScore.toLocaleString(); updateWarpHud(); }
 function elAdd(pts, steps){ elScore += pts; recordSteps += steps; setStepsHud(); }
@@ -1032,7 +1045,7 @@ function freeMove(t, rec){
   charState = 'move'; charUntil = t + 0.18;
   if (scoreOn()){ runSteps++; addScore(movePrice, t, true); }
   if (endlessScoreOn()){ setDistHud(); updateWarpHud(); }
-  if (rushOn()){ moveSteps++; recordSteps++; setStepsHud(); texts = texts.filter(x => !x.step); texts.push({ s: stepsLabel(recordSteps), idx: player.idx, t, col: '#ffffff', step: true }); /* 進むたびに今の歩数をキャラの位置に（重ならないよう最新の1つだけ） */ diagEv('el_move', { inputId: rec?.inputId ?? null, rushUnits, moveSteps }); }
+  if (rushOn()){ moveSteps++; recordSteps++; setStepsHud(); if (isStepMilestone(recordSteps)) stepMilestoneFx(player.idx, t, recordSteps); else { texts = texts.filter(x => !x.step); texts.push({ s: stepsLabel(recordSteps), idx: player.idx, t, col: stepColor(recordSteps), step: true }); } /* 進むたびに今の歩数をキャラの位置に（重ならないよう最新の1つだけ） */ diagEv('el_move', { inputId: rec?.inputId ?? null, rushUnits, moveSteps }); }
   else if (speedOn()){
     const m = comboMult(combo), used = EL_SCORING === 'stepBonus' ? stepBonus : null, bonus = used ? STEP_BONUS_PTS[used] : 0, pts = EL_MOVE_PTS * m + bonus;
     stepBonus = EL_SCORING === 'stepBonus' ? null : stepBonus; // 成功した前進1回で消費
@@ -1153,7 +1166,7 @@ function drawRushAnim(t){
   if (!A.moved && t >= A.moveAt){
     A.moved = true; A.blown.push(...takeBlown(A.to));
     player.from = A.to; player.idx = A.to; player.at = t;
-    moveSteps += A.to - A.from; recordSteps += A.to - A.from; setStepsHud();
+    A.stepsBefore = recordSteps; moveSteps += A.to - A.from; recordSteps += A.to - A.from; setStepsHud();
     charState = 'move'; charUntil = A.moveAt + A.dur + 0.15;
     if (poisonHero()) POISON_SFX.dash(); else { uiTone(330, .18, 0); uiTone(660, .18, .02); }
   }
@@ -1192,7 +1205,8 @@ function drawRushAnim(t){
     pendingCheck = [];
     fx.push({ type: 'stomp', idx: A.to, t, d: .35, strong: true });
     if (heroFx[selectedHero]){ addSlashMark(A.to, t, 2.6, !facesRight(A.to)); slashMarks[slashMarks.length - 1].life = .5; spawnShards(A.to, t, 'purple'); rushPoseUntil = t + .35; }
-    texts.push({ s: '+' + (A.to - A.from) + ' STEPS', idx: A.to, t, col: '#c6ff44', big: true });
+    const ms = milestoneBetween(A.stepsBefore ?? recordSteps, recordSteps);
+    if (ms) stepMilestoneFx(A.to, t, ms); else texts.push({ s: '+' + (A.to - A.from) + ' STEPS', idx: A.to, t, col: stepColor(recordSteps), big: true });
     if (poisonHero()) POISON_SFX.land(); else [523, 784, 1047].forEach((f, i) => uiTone(f, .16, i * .04));
     rushFade = { t, from: A.from, to: A.to };
     rushAnim = null;
@@ -1830,6 +1844,12 @@ function draw(t){
       g.globalAlpha=.28*(1-k);g.translate(p.x,p.y);if(f.flip)g.scale(-1,1);drawPose('move',0,0);
     }else if(f.type==='spark'){
       g.strokeStyle=heroInfo().accent;g.lineWidth=1;const sz=cell*(.6+.35*k);rr(g,p.x-sz/2,p.y-sz/2,sz,sz,3);g.stroke();
+    }else if(f.type==='milestone'){ // 区切りの歩数：その色で輝く
+      const e=1-Math.pow(1-k,3);
+      const R=cell*(.5+1.4*e),rg=g.createRadialGradient(p.x,p.y,0,p.x,p.y,R);
+      rg.addColorStop(0,f.col+'aa');rg.addColorStop(1,f.col+'00');g.globalAlpha=(1-k);g.fillStyle=rg;g.beginPath();g.arc(p.x,p.y,R,0,Math.PI*2);g.fill();
+      g.globalAlpha=(1-k);g.strokeStyle=f.col;g.lineWidth=4*(1-k)+1.5;g.beginPath();g.arc(p.x,p.y,cell*(.35+1.1*e),0,Math.PI*2);g.stroke();
+      g.lineWidth=2.5;g.beginPath();for(let i=0;i<8;i++){const a=i*Math.PI/4+k*.8,r0=cell*(.3+.5*e),r1=r0+cell*.35*(1-k);g.moveTo(p.x+Math.cos(a)*r0,p.y+Math.sin(a)*r0);g.lineTo(p.x+Math.cos(a)*r1,p.y+Math.sin(a)*r1);}g.stroke();
     }else if(f.type==='stomp'){ // 強い一歩：足元から広がる短い衝撃
       const col=f.strong?'#c6ff44':'#8af3fa',e=1-Math.pow(1-k,3);
       g.globalAlpha=.9*(1-k);g.strokeStyle=col;g.lineWidth=3*(1-k)+1;const sz=cell*(.7+.7*e);rr(g,p.x-sz/2,p.y-sz/2,sz,sz,6);g.stroke();
@@ -2032,7 +2052,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v41', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v42', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
