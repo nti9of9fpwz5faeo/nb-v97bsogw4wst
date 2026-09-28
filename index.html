@@ -282,30 +282,20 @@
   @media(max-height:590px){.resultSkip{padding:3px 8px;min-height:25px;margin-top:1px}.scorePanel{margin-bottom:5px}#songList{gap:6px}.songBtn{min-height:40px;padding:8px 12px}#startOv{padding-top:12px;padding-bottom:12px}#startOv h1{font-size:29px}#heroOpen{margin-top:6px}.eyebrow{margin-bottom:6px}#timingSettings{margin-top:3px}}
 
 
-  #coachPanel[hidden],#coachFeedback[hidden]{display:none}
-  #coachPanel{flex:none;width:min(100%,460px);padding:10px 14px 12px;border:2px solid #8af3fa66;border-radius:18px;background:#071832e8;text-align:center}
-  .coachMeta{display:flex;justify-content:space-between;align-items:center;color:#d6eeff;font-size:12px;gap:8px}
-  #coachRetry{font:inherit;color:#d6eeff;background:none;border:0;text-decoration:underline;min-height:30px;padding:3px 0}
-  #coachTitle{font-size:22px;line-height:1.3;color:#fff;margin:3px 0 6px;font-weight:900}
-  #coachHint{font-size:15px;line-height:1.5;margin:0;color:#e9f4ff}
-  #coachDots{display:flex;gap:5px;justify-content:center;margin-top:10px}
-  #coachDots i{height:5px;width:28px;background:#43617d;border-radius:4px}
-  #coachDots .current{background:#ffe768}#coachDots .done{background:#baff56}
-  #coachCount{font-variant-numeric:tabular-nums;color:#ffe768;font-weight:900;font-size:16px}
-  #coachFeedback{flex:none;width:min(100%,460px);min-height:55px;padding:7px 10px;text-align:center;font-size:17px;line-height:1.4;font-weight:800;color:#fff1b0}
-  #coachFeedback.success{color:#caff89}
+  #coachBubble[hidden]{display:none}
+  #coachBubble{position:absolute;top:0;left:0;width:max-content;max-width:min(252px,calc(100% - 8px));padding:8px 11px;border:2px solid #ffe768;border-radius:14px;background:#071832f2;box-shadow:0 3px 12px #0005;z-index:4;pointer-events:none;text-align:center;line-height:1.4}
+  #coachLabel{display:block;font-size:10px;color:#b9d6ef;letter-spacing:.04em;margin-bottom:2px}
+  #coachText{display:block;font-size:16px;font-weight:900;color:#fff3aa;white-space:normal}
+  #coachDetail{display:block;font-size:12px;color:#edf7ff;margin-top:2px}
+  #coachDetail[hidden]{display:none}
+  #coachBubble.success{border-color:#caff89}#coachBubble.red{border-color:#ff7d71}
+  #coachBubble.red #coachText{color:#ffb6aa}
   .coachSafe{font:700 12px/1.4 sans-serif;color:#dff7ff}
-  .coaching #controls button:disabled{opacity:.3;filter:saturate(.25);cursor:default}
-  .coaching #bBreak:disabled.flash{opacity:1;filter:none}
-  .coaching #controls button{transition:opacity .18s}
-  .coaching #progress{margin:7px 0 9px}
-  .coaching #fieldWrap{padding:3px 0}
   .coachDoneCard{width:min(390px,100%);padding:25px 20px;border:3px solid #8af3fa;border-radius:24px;background:#071832;text-align:center;box-shadow:0 12px 45px #0005}
   .coachDoneCard h2{margin:8px 0 14px;color:#caff89;font-size:30px}
   .coachDoneCard p{font-size:16px;line-height:1.8;color:#e3f4ff}
   .coachDoneCard .ovBtn{width:100%;margin:8px 0 0}
-  @media(max-height:680px){#coachPanel{padding:6px 10px 8px}#coachTitle{font-size:19px;margin:1px 0 4px}#coachHint{font-size:13px}#coachDots{margin-top:6px}#coachFeedback{font-size:15px;min-height:46px;padding:5px 8px}.coachMeta{font-size:11px}}
-  @media(orientation:landscape) and (max-height:480px){.coaching .hudRow{height:28px}.coaching #progress{margin:3px 0 5px}.coaching #coachPanel{padding:3px 10px 6px}.coaching #coachTitle{font-size:17px;margin:0 0 2px}.coaching #coachHint{font-size:12px}.coaching #coachRetry{min-height:22px}.coaching #coachDots{margin-top:4px}.coaching #coachFeedback{min-height:30px;font-size:13px;padding:4px}.coaching #controls{height:60px}.coaching #controls .icon{height:25px}}
+  @media(max-width:350px){#coachBubble{max-width:226px;padding:6px 9px}#coachText{font-size:15px}#coachDetail{font-size:11px}}
 
 </style>
 </head>
@@ -317,12 +307,7 @@
   <div id="progress"><i id="progFill"></i></div>
   <div id="scoreHud" class="hide" aria-live="off"><span id="scoreNum">0</span><div id="warpHud" class="hide"></div><div id="lapGain"></div></div>
   </div>
-  <section id="coachPanel" hidden aria-label="チュートリアルの説明">
-    <div class="coachMeta"><span>練習 <b id="coachStep">1 / 6</b></span><button id="coachRetry">この練習をやり直す</button><b id="coachCount">0 / 2</b></div>
-    <h2 id="coachTitle"></h2><p id="coachHint"></p><div id="coachDots" aria-hidden="true"></div>
-  </section>
-  <div id="spot" class="hide"></div><div id="fieldWrap"><canvas id="cv"></canvas><div id="tip" class="hide"></div><div id="judge"><span id="jWord"></span><small id="jSub"></small></div><div id="diagLine" class="hide" aria-hidden="true"></div></div>
-  <div id="coachFeedback" hidden role="status" aria-live="polite"></div>
+  <div id="spot" class="hide"></div><div id="fieldWrap"><canvas id="cv"></canvas><div id="coachBubble" hidden><small id="coachLabel"></small><strong id="coachText"></strong><span id="coachDetail"></span></div><div id="tip" class="hide"></div><div id="judge"><span id="jWord"></span><small id="jSub"></small></div><div id="diagLine" class="hide" aria-hidden="true"></div></div>
   <div id="controls">
     <button class="btn" id="bMove" aria-label="進む"><svg class="icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 8 9 31q-2 3 2 3h11v21h20V34h11q4 0 2-3Z" fill="#66dfe21a" stroke="#b6fbff" stroke-width="2.5" stroke-linejoin="round"/></svg><span>進む</span><svg class="bubbles" viewBox="0 0 50 50" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width=".8"><circle cx="36" cy="31" r="7"/><circle cx="23" cy="41" r="3.5"/><circle cx="42" cy="44" r="2"/><circle cx="32" cy="17" r="2.4"/><circle cx="16" cy="33" r="1.4"/><circle cx="42" cy="9" r="1"/></g></svg></button>
     <button class="btn" id="bBreak" aria-label="ブレイク"><svg class="icon" viewBox="0 0 64 64" aria-hidden="true"><rect x="16" y="17" width="35" height="35" rx="3" fill="#920d2588" stroke="#ff3550" stroke-width="2"/><path d="M33 20v29M19 34h29" stroke="#c01c93" stroke-width="1"/><path d="m6 57 13-22L59 6 47 29Z" fill="#b5fbff" stroke="#62eafa" stroke-width="1.5"/><path d="m9 54 43-34" stroke="#fff" stroke-width="1.5"/></svg><span>ブレイク</span><svg class="bubbles" viewBox="0 0 50 50" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width=".8"><circle cx="36" cy="31" r="7"/><circle cx="23" cy="41" r="3.5"/><circle cx="42" cy="44" r="2"/><circle cx="32" cy="17" r="2.4"/><circle cx="16" cy="33" r="1.4"/><circle cx="42" cy="9" r="1"/></g></svg></button>
@@ -335,14 +320,14 @@
 
 <div class="overlay hide" id="coachDoneOv" role="dialog" aria-modal="true" aria-labelledby="coachDoneTitle">
   <div class="coachDoneCard"><span class="eyebrow">NICE BREAK!</span><h2 id="coachDoneTitle">練習クリア！</h2>
-  <p>枠の中心でブレイク<br>空いたら進む<br>青は2拍で2回</p>
+  <p>自分のマスでブレイク<br>空いたら自由に進む<br>青は2拍・紫は突進<br>力がたまったら必殺技！</p>
   <button class="ovBtn" id="coachAgain">もう一度練習する</button><button class="ovBtn sub" id="coachSongs">曲えらびへ</button></div>
 </div>
 
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v45</span>
+  <span id="verBadge">バージョン v46</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -375,7 +360,7 @@
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
 const SONGS = [
-  { name: 'チュートリアル', file: 'audio/tutorial.mp3', bpm: 100, offset: 0.005, level: '6つのやさしい練習', tutorial: true },   // Neon Warmup：100 BPM。音源の打音立ち上がりに合わせて70ms→5ms（v45）。
+  { name: 'チュートリアル', file: 'audio/tutorial.mp3', bpm: 100, offset: 0.005, level: '本編と同じ操作で練習', tutorial: true },   // Neon Warmup：100 BPM。音源の打音立ち上がりに合わせて70ms→5ms（v45）。
   { name: 'Shatter Forward', file: 'audio/shatter_forward.mp3', bpm: 130.3, offset: .002, level: '曲専用譜面', chart: 'charts/shatter_forward.json' },
   { name: 'Neon Rush', file: 'audio/neon_rush.mp3', bpm: 149.999, offset: .6213, level: '固定譜面テスト', chart: 'charts/neon_rush.json' }, // SUNO。音源を解析：150BPM一定、1拍目0.6213秒
   { name: 'Zombie Protocol',     file: 'audio/song.mp3',    bpm: 129.3, offset: 0.12, level: 'ふつう', chart: 'charts/zombie_beats.json', purple: 0.15 }, // 紫ノーツ（突進で壊す）を試す曲 // テンポが揺れる曲なので拍の位置だけ譜面で持つ（ノーツはランダム）
@@ -421,9 +406,9 @@ function endlessScoreOn(){ return playMode === 'distance' && !isTutorial(); } //
 const EL_SCORING = 'rush';
 // 必殺技：PERFECT＋4／GREAT＋2／GOOD＋1。満タン＝120（PERFECTなら30回）。満タンのときだけ発動でき、決まったマス数を突き進む
 const RUSH_GAIN = { PERFECT: 4, GREAT: 2, GOOD: 1 }, RUSH_FULL = 120, RUSH_CELLS = 10;
-let rushRelease = 'manual'; // 'manual'＝たまったら「進む」で解放 ／ 'auto'＝満タンの瞬間に自動で解放
+let rushRelease = 'manual'; // 'manual'＝満タンでブレイク長押し ／ 'auto'＝満タンで自動発動
 try { if (localStorage.getItem('neon-blade-rush-release') === 'auto') rushRelease = 'auto'; } catch(e){}
-function rushOn(){ return speedOn() && EL_SCORING === 'rush'; }
+function rushOn(){ return (isTutorial() && !!coach?.rushEnabled) || (speedOn() && EL_SCORING === 'rush'); }
 const EL_BREAK_PTS = { PERFECT: 100, GREAT: 80, GOOD: 30, MISS: 0 }; // ブレイクの基本点
 const STEP_BONUS_PTS = { PERFECT: 100, GREAT: 50 };                  // 次の一歩ボーナス（保持は1回分だけ。強い方に更新）
 const EL_MOVE_PTS = 50;                                               // 成功した前進1回の基本点
@@ -657,7 +642,7 @@ let cell=40,dpr=1,boardW=320,boardH=280;
 function layout(){
   const wrap=document.getElementById('fieldWrap'),box=wrap.getBoundingClientRect(),style=getComputedStyle(wrap);
   const h=box.height-parseFloat(style.paddingTop)-parseFloat(style.paddingBottom);
-  const viewRows=isTutorial()?2.5:VIEW_ROWS;
+  const viewRows=VIEW_ROWS;
   cell=Math.max(8,Math.min((Math.min(box.width,520)-PAD*2)/COLS,(h-PAD*2)/viewRows));
   boardW=COLS*cell+PAD*2;boardH=viewRows*cell+PAD*2;
   dpr=Math.min(window.devicePixelRatio||1,3);
@@ -681,6 +666,7 @@ window.addEventListener('resize', layout);
 const hud = document.getElementById('hud');
 const progFill = document.getElementById('progFill');
 function drawHud(){
+  if(isTutorial()&&coach){hud.innerHTML='<span class="coachSafe">練習 · ライフは減らない</span>';hud.setAttribute('aria-label','練習中。ライフは減りません');return;}
   hud.setAttribute('aria-label',`体力${hp}`);
   hud.innerHTML=Array.from({length:MAX_HP},(_,i)=>`<svg viewBox="0 0 40 38" class="${i>=hp?'lost':''}" aria-hidden="true"><path d="M20 34C14 29 3 21 3 12C3 2 15 0 20 9C25 0 37 2 37 12C37 21 26 29 20 34Z" fill="${i>=hp?'#7485a8':'#bdff32'}" stroke="#081221" stroke-width="3.5" stroke-linejoin="round"/></svg>`).join('');
 }
@@ -700,7 +686,8 @@ let pendingExtension=null;
 let moveLocked = true; // 最初のブロックを壊すまで進めない
 
 function reset(){
-  cancelResultReveal();cancelResume();stopMoveScheduler();
+  cancelResultReveal();cancelResume();stopMoveScheduler();stopRushHold();
+  coach=null;recentHits=[];
   pausedAt=null;resumeFloor=-Infinity;lastBeatStrength=1;pendingExtension=null;
   document.getElementById("pauseOv").classList.add("hide");
   document.getElementById("pauseBtn").disabled=false;
@@ -839,238 +826,181 @@ document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',(
   try{localStorage.setItem('neon-blade-mode',playMode);}catch(e){}
 }));
 
-// ===== チュートリアル v45：1マス前の枠・同じ時計の音・失敗しても再挑戦 =====
-// 本編の判定には触れず、チュートリアルだけを独立した練習にする。
+// ===== チュートリアル v46：本編の処理に、キャラを追う案内だけを足す =====
 const COACH_STEPS = [
-  { kind:'demo', title:'まずは、お手本', hint:'黄色い枠で「タン」に合わせて斬るよ', need:2, music:false },
-  { kind:'break', title:'ブレイクしてみよう', hint:'◆が黄色い枠の中心に来たらタップ', need:4, music:false },
-  { kind:'music', title:'曲に合わせてみよう', hint:'同じタイミング。曲の中の「タン」を聞こう', need:4, music:true },
-  { kind:'move', title:'空いていたら、進もう', hint:'「進む」を3回。拍に合わせなくてOK', need:3, music:true },
-  { kind:'mix', title:'斬って、進もう', hint:'ブレイク → 空いたマスへ「進む」', need:3, music:true },
-  { kind:'double', title:'青は、2拍で2回', hint:'タン・タンと1回ずつ。連打しなくてOK', need:2, music:true },
+  {kind:'break',label:'ブレイク',hint:'自分のマスに来た拍でタップ',detail:'回転するノーツを「ブレイク」で斬ろう',need:3},
+  {kind:'move',label:'自由に進む',hint:'空いたマスへ、好きな速さで',detail:'「進む」は拍に合わせなくてOK',need:4},
+  {kind:'blue',label:'青ノーツ',hint:'青 → 赤 → 破壊',detail:'1拍に1回。「ブレイク」を2回',need:2},
+  {kind:'purple',label:'紫ノーツ',hint:'紫は「進む」で突進',detail:'自分のマスに来る拍で押そう',need:2},
+  {kind:'rush',label:'必殺技 · エンドレス',hint:'斬るほど、キャラに力がたまる',detail:'練習用に、あと少しで満タン',need:1},
+  {kind:'free',label:'仕上げ',hint:'斬って、空いたら自由に進もう',detail:'今度は曲を聞いてやってみよう',need:4},
 ];
-let coach = null;
-function isTutorial(){ return !!song.tutorial; }
-function tutSt(){ return isTutorial() ? {safe:true} : null; }
-function tutSafe(){ return isTutorial(); }
-function tutWait(){ return false; }
-function tutFreeze(){ return false; }
-function tutSingle(){ return false; }
-function tutBeat(){} // 本編との共通フック。練習の出題は coachBeat が担当。
-function tutProgress(){}
+let coach=null;
+function isTutorial(){return !!song.tutorial;}
+function coachStep(){return coach&&COACH_STEPS[coach.step];}
+function coachMusicLevel(){return .7;}
 function tutClearUI(){
   document.getElementById('tip').classList.add('hide');
   document.getElementById('spot').classList.add('hide');
-  document.querySelectorAll('.btn.guide').forEach(b=>b.classList.remove('guide'));
   document.getElementById('app').classList.remove('coaching');
-  document.getElementById('coachPanel').hidden=true;
-  document.getElementById('coachFeedback').hidden=true;
+  document.getElementById('coachBubble').hidden=true;
 }
-function updateSpot(){} // 枠からボタンへ視線を移すスポットライトは練習では使わない。
-function coachStep(){ return coach && COACH_STEPS[coach.step]; }
-function coachMusicLevel(){ return coachStep()?.music ? .7 : 0; }
-function coachMixAudio(){
-  if(!songGain||!ctx)return;
-  const now=ctx.currentTime;
-  songGain.gain.cancelScheduledValues(now);
-  songGain.gain.setValueAtTime(songGain.gain.value,now);
-  songGain.gain.linearRampToValueAtTime(coachMusicLevel(),now+.3);
+function updateSpot(){}
+function coachStart(){
+  coach={step:0,done:0,moves:0,nextSpawn:INTRO_BEATS,quietUntil:0,message:'',messageUntil:0,messageGood:false,rushEnabled:false,rushStarted:false,rushLanded:false,finishAt:null,spawned:0};
+  document.getElementById('app').classList.add('coaching');
+  document.getElementById('coachBubble').hidden=false;
+  document.getElementById('hud').innerHTML='<span class="coachSafe">練習 · ライフは減らない</span>';
+  document.getElementById('hud').setAttribute('aria-label','練習中。ライフは減りません');
+  coachEnter(0,0);layout();
 }
-function coachMessage(message,t,good=false){
-  coach.message=message;coach.messageUntil=t+1.8;coach.messageGood=good;
-  coachUI();
+function coachEnter(step,t){
+  // 段階を変えてもキャラ・ノーツ・操作はリセットしない。
+  coach.step=step;coach.done=0;coach.message='';coach.messageUntil=0;coach.quietUntil=t+SPB*3;
+  coach.nextSpawn=Math.max(coach.nextSpawn,nearestBeat(t)+3);
+  if(step===4){
+    coach.rushEnabled=true;coach.rushStarted=false;coach.rushLanded=false;
+    rushUnits=RUSH_FULL-12; // 発動体験まで長く待たせない。案内にも練習用と明記する。
+    rushGainAt=performance.now();
+  }
+  coachUI();diagEv('tutorial_stage',{stage:step+1,kind:coachStep().kind});
+}
+function coachSay(message,t,good=false,duration=1.5){
+  if(!coach)return;coach.message=message;coach.messageGood=good;coach.messageUntil=t+duration;coachUI();
 }
 function coachUI(){
-  if(!coach||!isTutorial())return;
-  const st=coachStep(),transition=coach.advanceAt!==null,active=state==='play';
-  const moving=st.kind==='move'||(st.kind==='mix'&&coach.waitingMove);
-  document.getElementById('coachStep').textContent=`${coach.step+1} / ${COACH_STEPS.length}`;
-  document.getElementById('coachTitle').textContent=st.title;
-  document.getElementById('coachHint').textContent=coach.waitingMove?'空いたマスへ「進む」を押そう':st.hint;
-  document.getElementById('coachCount').textContent=`${coach.done} / ${st.need}`;
-  document.getElementById('coachDots').innerHTML=COACH_STEPS.map((s,i)=>`<i class="${i<coach.step?'done':i===coach.step?'current':''}"></i>`).join('');
-  const feedback=document.getElementById('coachFeedback');
-  feedback.textContent=coach.message||(st.kind==='demo'?'今は見ているだけでOK':moving?'進むタイミングは自由':'何度でも練習できるよ');
-  feedback.classList.toggle('success',!!coach.messageGood);
-  document.getElementById('bMove').disabled=!active||transition||!moving;
-  document.getElementById('bBreak').disabled=!active||transition||moving||st.kind==='demo';
-  document.getElementById('coachRetry').disabled=!active||transition;
-  progFill.style.width=`${100*(coach.step+coach.done/st.need)/COACH_STEPS.length}%`;
+  if(!isTutorial()||!coach)return;
+  const active=state==='play';
+  // 本編同様、最初のブレイク後は自由移動。説明のための入力ロックは作らない。
+  document.getElementById('bMove').disabled=!active;
+  document.getElementById('bBreak').disabled=!active;
+  progFill.style.width=`${100*(coach.step+Math.min(1,coach.done/coachStep().need))/COACH_STEPS.length}%`;
 }
-function coachEnter(step,t,n){
-  coach={step,done:0,nextSpawn:n+1,advanceAt:null,waitingMove:false,queued:null,expired:null,lastTapBeat:-1,lastMoveAt:-9,pulseUntil:-9,message:'',messageUntil:-9,messageGood:false};
-  notes=[];effects=[];fx=[];texts=[];earlyInput=null;pendingCheck=[];
-  player={idx:0,from:0,at:t};charState='idle';charUntil=t;moveLocked=false;
-  document.getElementById('bMove').classList.remove('locked','flash');
-  cameraRow=0;cameraFrom=0;cameraTarget=0;revealEnd=7;revealFrom=7;gIdx=7;gFrom=7;
-  hideJudge();coachMixAudio();coachUI();
-  diagEv('tutorial_stage',{stage:step+1,kind:coachStep().kind});
-}
-function coachStart(){
-  document.getElementById('app').classList.add('coaching');
-  document.getElementById('coachPanel').hidden=false;
-  document.getElementById('coachFeedback').hidden=false;
-  hud.innerHTML='<span class="coachSafe">練習中 · ライフは減らない</span>';
-  hud.setAttribute('aria-label','練習中。ライフは減りません');
-  coachEnter(0,0,INTRO_BEATS-1);layout();
-}
-function coachCompletePart(t){
-  coach.done++;coach.messageGood=true;
-  if(coach.done>=coachStep().need){
-    coach.advanceAt=t+SPB*2;
-    coach.message=coachStep().kind==='demo'?'次は、あなたの番！':'できた！ 次へ進もう';
-    coach.messageUntil=coach.advanceAt;
-  }
+function tutProgress(kind){
+  if(!isTutorial()||!coach||kind!=='move')return;
+  coach.moves++;
+  if(coachStep().kind==='move')coach.done++;
   coachUI();
 }
-function coachHit(nt,t,diff,rec,auto=false){
-  if(!notes.includes(nt))return;
-  const st=coachStep(),word=judgeOf(diff),beat=nt.targetBeat;
-  coach.lastTapBeat=beat;coach.queued=null;coach.expired=null;coach.pulseUntil=t+.16;
-  charState='slash';charUntil=t+.22;
-  fx.push({type:'cut',idx:nt.targetIdx,t,d:.18});
-  fx.push({type:'coachSlash',idx:nt.targetIdx,t,d:.14});
-  flashBtn('bBreak');playSE(word);
-  if(auto)showJudge('PERFECT','お手本',true);
-  else{
-    showJudge(word,Math.abs(diff)<=.045?'':diff<0?'少し早い':'少し遅い');
-    diagResult(rec,{status:'judged',judge:word,beat,offsetMs:r2(diff*1000),noteId:nt.id,noteIdx:nt.targetIdx,tutorialStage:coach.step+1});
-  }
-  if(nt.hp>1){
-    nt.hp--;nt.hit=true;nt.hitBeat=beat;nt.targetBeat++;nt.idx=nt.targetIdx;nt.from=nt.idx;
-    coachMessage('次の「タン」で、もう1回！',t,true);return;
-  }
-  notes.splice(notes.indexOf(nt),1);effects.push({idx:nt.targetIdx,t});
-  coach.nextSpawn=beat+1;
-  if(st.kind==='mix'){
-    coach.waitingMove=true;coachMessage('斬れた！ 空いたマスへ「進む」',t,true);return;
-  }
-  // 最初の2つの実技は、音の近くで押せたことも確かめる。成功数は失敗でリセットしない。
-  if((st.kind==='break'||st.kind==='music')&&word==='GOOD'){
-    coachMessage(diff<0?'斬れた！ 次はもう少し待ってみよう':'斬れた！ 次はもう少し早めに',t,true);return;
-  }
-  coachMessage(auto?'枠の中心で「タン」！':'いいタイミング！',t,true);
-  coachCompletePart(t);
-}
-function coachBeat(n,t){
-  lastBeatAt=t;lastBeatStrength=1;
-  if(!coach||coach.advanceAt!==null)return;
+function coachOnBreak(nt,word,t,charge=false){
+  if(!coach)return;
   const st=coachStep();
-  for(const nt of notes){nt.from=nt.idx;nt.idx=Math.max(nt.targetIdx,nt.targetIdx+nt.targetBeat-n);nt.at=t;}
-  const nt=notes[0];
-  if(nt&&nt.targetBeat===n){
-    coach.pulseUntil=t+.12;
-    if(st.kind==='demo')coachHit(nt,t,0,null,true);
-    else if(coach.queued?.id===nt.id){const q=coach.queued;coachHit(nt,t,q.diff,q.rec);}
-  }
-  if(st.kind==='move'||coach.waitingMove||coach.advanceAt!==null||notes.length||n<coach.nextSpawn)return;
-  const targetIdx=player.idx+1;
-  notes.push({coach:true,id:noteId++,idx:targetIdx+3,from:targetIdx+3,at:t,pop:t,hp:st.kind==='double'?2:1,targetIdx,targetBeat:n+3});
+  if(st.kind==='break'&&!charge&&word!=='GOOD')coach.done++;
+  if(st.kind==='blue'&&nt.hit&&!charge)coach.done++;
+  if(st.kind==='purple'&&charge)coach.done++;
+  if(st.kind==='free')coach.done++;
+  if(word==='GOOD')coachSay('もう少し、曲の拍に合わせよう',t);
+  coachUI();
 }
-function coachInput(type,t,tNow,rec,delayMs){
-  const st=coachStep();
-  if(!st||coach.advanceAt!==null||st.kind==='demo'){
-    diagInputEnd(rec,{status:'invalid',reason:'お手本・練習の切り替え中'});return;
-  }
-  if(type==='move'){
-    if(!(st.kind==='move'||(st.kind==='mix'&&coach.waitingMove))){
-      diagInputEnd(rec,{status:'invalid',reason:'ブレイクの練習中'});return;
-    }
-    if(tNow-coach.lastMoveAt<.16){diagInputEnd(rec,{status:'invalid',reason:'移動中'});return;}
-    coach.lastMoveAt=tNow;player.from=player.idx;player.idx++;player.at=tNow;
-    charState='move';charUntil=tNow+.18;flashBtn('bMove');uiTone(660,.045);
-    coach.waitingMove=false;coach.nextSpawn=nextBeat+1;
-    diagInputEnd(rec,{status:'immediate',reason:'練習の移動。拍の判定なし'});
-    coachMessage('進めた！',tNow,true);coachCompletePart(tNow);return;
-  }
-  if(type!=='break'||st.kind==='move'||coach.waitingMove){diagInputEnd(rec,{status:'invalid',reason:'今は進む練習'});return;}
-  let nt=notes[0];
-  // イベントの処理が受付期限より遅れた場合でも、実際に押した時刻で判定する。
-  const expired=coach.expired;
-  if(!nt&&expired&&(delayMs??0)<=LATE_INPUT_MAX_MS&&tNow-expired.at<.3&&Math.abs(t-beatTime(expired.note.targetBeat))<=WINDOW){
-    nt=expired.note;notes.push(nt);counts.MISS=Math.max(0,counts.MISS-1);combo=expired.combo;coach.expired=null;
-    diagEv('tutorial_miss_reverted',{inputId:rec?.inputId,noteId:nt.id});
-  }
-  if(!nt){diagInputEnd(rec,{status:'invalid',reason:'ブロック待ち'});return;}
-  const diff=t-beatTime(nt.targetBeat);
-  diagTarget(rec,nt.targetBeat,t,diff);
-  if(Math.abs(diff)>WINDOW){
-    diagInputEnd(rec,{status:'invalid',lifeLoss:false,offsetMs:r2(diff*1000),reason:'練習の受付時間外（ヒントのみ）'});
-    // 遠い段階のタップも言葉で説明するが、ライフと成功数は減らさない。
-    coachMessage(diff<0?'まだ早いよ。◆が枠に来るまで待とう':'少し遅かった。次のブロックで！',tNow);
-    return;
-  }
-  if(coach.queued||coach.lastTapBeat===nt.targetBeat){diagInputEnd(rec,{status:'invalid',reason:'この拍は受付済み'});return;}
-  if(tNow<beatTime(nt.targetBeat)){
-    coach.queued={id:nt.id,diff,rec};flashBtn('bBreak');
-    diagInputEnd(rec,{status:'queued',reason:'押した時刻で採点し、到着する拍で斬る'});
-  }else{diagInputEnd(rec,{status:'immediate',reason:'判定枠のブレイク'});coachHit(nt,tNow,diff,rec);}
+function coachOnTap(nt,t){
+  if(!coach)return;
+  if(nt.hit)coachSay('赤！ 次の拍でもう1回',t,true,SPB+WINDOW);
+}
+function coachOnMiss(t,reason,nt,inputId){
+  const collision=reason?.includes('進んだ先');
+  // 通常と同じMISS処理・巻き戻し記録を使い、ライフだけは減らさない。
+  diagEv('damage',{lifeLoss:false,tutorial:true,reason,causeInputId:inputId??null,noteId:nt?.id,noteIdx:nt?.idx,playerIdx:player.idx,hpBefore:hp,...diagCtx()});
+  showJudge('MISS',collision?'ノーツのいるマス':'次でもう一度');
+  coachSay(collision?(nt?.purple?'紫が来る拍に「進む」':'ノーツを斬ってから進もう'):nt?.hit?'赤は、次の拍でもう1回':'少し遅いよ。次の拍でやってみよう',t);
+  coach.nextSpawn=Math.max(coach.nextSpawn,nearestBeat(t)+2);
+}
+function coachSpawn(n,t,frozen){
+  if(!coach||n<INTRO_BEATS||frozen||rushAnim||rushGuard(t)||coach.finishAt!==null||n<coach.nextSpawn||t<coach.quietUntil)return;
+  if(coach.done>=coachStep().need)return;
+  const st=coachStep(),kind=st.kind;
+  if(kind==='rush'&&(rushReady()||coach.rushStarted))return;
+  const special=kind==='blue'||kind==='purple';
+  if(notes.length>=(special?1:2))return;
+  // 到着間隔だけを易しくする。移動・回転・判定・突進は本編の関数を共有。
+  const at=Math.min(gIdx,player.idx+4);
+  if(at<=player.idx||notes.some(nt=>Math.abs(nt.idx-at)<3))return;
+  const hp=kind==='blue'?2:kind==='free'&&coach.spawned%3===2?2:1;
+  notes.push({id:noteId++,idx:at,from:at,at:t,pop:t,hp,purple:kind==='purple'});
+  coach.spawned++;coach.nextSpawn=n+(kind==='move'?6:4);
 }
 function coachUpdate(t){
   if(!coach)return;
-  if(coach.advanceAt!==null&&t>=coach.advanceAt){
-    if(coach.step+1===COACH_STEPS.length){coachFinish();return;}
-    coachEnter(coach.step+1,t,nextBeat);return;
+  if(coach.message&&t>=coach.messageUntil){coach.message='';coach.messageGood=false;}
+  if(coach.rushStarted&&!rushAnim&&!coach.rushLanded){
+    coach.rushLanded=true;coach.done=1;coachSay('必殺技でまとめて突破！',t,true,2);
   }
-  const nt=notes[0];
-  if(nt&&t>beatTime(nt.targetBeat)+WINDOW){
-    coach.expired={note:{...nt},at:t,combo};notes=[];coach.queued=null;
-    coach.nextSpawn=Math.max(nextBeat,nt.targetBeat+2);
-    showJudge('MISS','次でもう一度');
-    diagEv('tutorial_miss',{noteId:nt.id,beat:nt.targetBeat,lifeLoss:false});
-    coachMessage(nt.hit?'赤くなったら、次の拍でもう1回':'少し遅かった。枠に来たらタップ',t);
+  if(coach.finishAt!==null){if(t>=coach.finishAt&&!rushAnim)coachFinish();return;}
+  if(coach.done>=coachStep().need&&!rushAnim&&notes.length===0){
+    if(coach.step===COACH_STEPS.length-1){coach.finishAt=t+1.2;coachSay('できた！ この感覚で本編へ',t,true,1.2);}
+    else coachEnter(coach.step+1,t);
   }
-  if(coach.message&&t>=coach.messageUntil){coach.message='';coach.messageGood=false;coachUI();}
+  coachUI();
 }
 function coachFinish(){
-  stopMoveScheduler();stopSong();hideJudge();state='clear';
+  stopRushHold();stopMoveScheduler();stopSong();hideJudge();state='clear';
   document.getElementById('pauseBtn').disabled=true;
+  document.getElementById('coachBubble').hidden=true;
   document.querySelectorAll('#controls button').forEach(b=>b.disabled=true);
-  document.getElementById('coachDoneOv').classList.remove('hide');
-  progFill.style.width='100%';
+  document.getElementById('coachDoneOv').classList.remove('hide');progFill.style.width='100%';
   diagEv('tutorial_complete',{counts:{...counts},lifeLoss:false});diagSave();
   [523,659,784].forEach((f,i)=>uiTone(f,.12,i*.1));
 }
 function tutLoopMusic(){
-  notes=[];effects=[];fx=[];texts=[];nextBeat=0;acted=-1;pendingCheck=[];earlyInput=null;
-  if(coach){coach.nextSpawn=INTRO_BEATS;coach.queued=null;coach.expired=null;coach.lastTapBeat=-1;coach.lastMoveAt=-9;coach.pulseUntil=-9;coach.message='';coach.messageUntil=-9;if(coach.advanceAt!==null)coach.advanceAt=SPB*2;}
-  lastBeatAt=-9;charUntil=0;charState='idle';player.from=player.idx;player.at=0;hideJudge();
-  stopMoveScheduler();startMusicAt();startMoveScheduler();coachUI();
-}
-function coachNoteView(nt,t){
-  const remaining=(beatTime(nt.targetBeat)-t)/SPB;
-  const ln=nt.hit?nt.targetIdx:nt.targetIdx+Math.max(0,Math.min(3,remaining));
-  return {ln,vis:ln,at:nt.at,moving:false,smooth:false};
+  if(rushAnim)return; // 必殺技の着地までは、音源末尾でも時刻を戻さない。
+  notes=[];effects=[];fx=[];texts=[];pendingCheck=[];earlyInput=null;recentHits=[];nextBeat=0;acted=-1;
+  if(coach){coach.nextSpawn=INTRO_BEATS;coach.quietUntil=SPB*3;coach.message='';coach.messageUntil=0;if(coach.finishAt!==null)coach.finishAt=SPB*2;}
+  lastBeatAt=-9;charUntil=0;charState='idle';player.from=player.idx;player.at=0;
+  rushFade=null;rushGuardUntil=-9;hurtGuardUntil=-9;rushPoseUntil=-9;shards=[];slashMarks=[];mists=[];
+  hideJudge();stopMoveScheduler();startMusicAt();startMoveScheduler();coachUI();
 }
 function drawCoachTarget(t){
-  if(!coach||!isTutorial())return;
-  const idx=playerVis(t)+1,p=cellXY(idx),r=cell*.51,L=cell*.2;
-  const pulse=t<coach.pulseUntil;
-  g.save();g.strokeStyle=pulse?'#ffffff':'#ffe768';g.lineWidth=Math.max(3,cell*.065);g.lineCap='round';
-  g.shadowColor='#ffe768';g.shadowBlur=pulse?14:4;
+  if(!coach||!isTutorial()||state==='ready'||state==='clear')return;
+  const p=cellXY(playerVis(t)),r=cell*.52,L=cell*.17;
+  g.save();g.strokeStyle='#ffe768';g.lineWidth=Math.max(2.5,cell*.055);g.lineCap='round';
   for(const sx of [-1,1])for(const sy of [-1,1]){g.beginPath();g.moveTo(p.x+sx*(r-L),p.y+sy*r);g.lineTo(p.x+sx*r,p.y+sy*r);g.lineTo(p.x+sx*r,p.y+sy*(r-L));g.stroke();}
-  g.fillStyle=pulse?'#fff':'#ffe768';
-  for(const sy of [-1,1]){g.beginPath();g.moveTo(p.x,p.y+sy*cell*.58);g.lineTo(p.x-cell*.105,p.y+sy*cell*.78);g.lineTo(p.x+cell*.105,p.y+sy*cell*.78);g.closePath();g.fill();}
-  g.shadowBlur=0;g.font=`900 ${Math.max(12,cell*.3)}px sans-serif`;g.textAlign='center';
-  g.fillText(pulse?'ここ！':'斬る枠',p.x,p.y-cell*.99);
+  g.fillStyle='#ffe768';
+  for(const sy of [-1,1]){g.beginPath();g.moveTo(p.x,p.y+sy*cell*.56);g.lineTo(p.x-cell*.07,p.y+sy*cell*.69);g.lineTo(p.x+cell*.07,p.y+sy*cell*.69);g.closePath();g.fill();}
   g.restore();
 }
-document.getElementById('coachRetry').addEventListener('click',()=>{if(state==='play'&&isTutorial())coachEnter(coach.step,songTime(),nextBeat);});
+function placeCoachBubble(t){
+  const bubble=document.getElementById('coachBubble');
+  if(!isTutorial()||!coach||!['play','paused','resuming'].includes(state)){bubble.hidden=true;return;}
+  bubble.hidden=!!rushAnim;if(rushAnim)return;
+  const st=coachStep(),red=notes.find(nt=>nt.hit&&nt.idx<=player.idx);
+  const urgent=notes.some(nt=>nt.idx<=player.idx+1);
+  let hint=st.hint,detail=st.detail;
+  if(st.kind==='rush'){
+    if(rushReady()){hint=rushRelease==='auto'?'満タンで自動発動':'満タン！ ブレイクを長押し';detail=rushRelease==='auto'?'まとめて突き進むよ':'押したまま待つと発動';}
+    else if(rushRelease==='auto')detail='練習用にあと少し。満タンで自動発動';
+  }
+  if(red){hint='赤！ 次の拍でもう1回';detail='「ブレイク」';}
+  else if(coach.message&&t<coach.messageUntil){hint=coach.message;detail='';}
+  else if(urgent&&st.kind!=='rush')detail='';
+  const heading=`${coach.step+1}/${COACH_STEPS.length} ${st.label}`;
+  const title=document.getElementById('coachLabel'),text=document.getElementById('coachText'),sub=document.getElementById('coachDetail');
+  if(title.textContent!==heading)title.textContent=heading;
+  if(text.textContent!==hint)text.textContent=hint;
+  if(sub.textContent!==detail)sub.textContent=detail;
+  sub.hidden=!detail;bubble.classList.toggle('success',!!coach.messageGood);bubble.classList.toggle('red',!!red);
+  const wrap=document.getElementById('fieldWrap').getBoundingClientRect(),canvas=cv.getBoundingClientRect(),p=cellXY(playerVis(t));
+  const x=canvas.left-wrap.left+p.x,y=canvas.top-wrap.top+p.y,w=bubble.offsetWidth,h=bubble.offsetHeight;
+  const left=Math.max(4,Math.min(wrap.width-w-4,x-w/2));
+  const tops=[y-cell*.85-h,y+cell*.85].map(v=>Math.max(4,Math.min(wrap.height-h-4,v)));
+  const pre=notesWillMove(),nb=beatTime(nextBeat),vp=playerVis(t);
+  // 上下の候補を比べ、近づくノーツ・キャラに重なる側を避ける。
+  const occupied=[{x,y},...notes.map(nt=>{const q=cellXY(noteView(nt,t,pre,nb,vp).vis);return {x:canvas.left-wrap.left+q.x,y:canvas.top-wrap.top+q.y};})];
+  const penalty=top=>occupied.reduce((sum,q)=>sum+(q.x+cell*.62>left&&q.x-cell*.62<left+w&&q.y+cell*.7>top&&q.y-cell*.7<top+h?1:0),0);
+  let top=tops[0];if(penalty(tops[1])<penalty(top))top=tops[1];
+  bubble.style.transform=`translate(${Math.round(left)}px,${Math.round(top)}px)`;
+}
 document.getElementById('coachAgain').addEventListener('click',startGame);
 document.getElementById('coachSongs').addEventListener('click',returnToSongs);
 
 function onBeat(n, t){
-  if(isTutorial()){coachBeat(n,t);return;}
   // 赤いブロックが残っている間は全部その場で足踏み。ただし1拍だけ。
   const red = notes.find(nt => nt.hit);
-  if (red && n > (red.hitBeat ?? n) + 1 && !tutSafe()){     // 1拍待っても壊せてない → ダメージ
+  if (red && n > (red.hitBeat ?? n) + 1){     // 1拍待っても壊せてない → ダメージ
     notes.splice(notes.indexOf(red), 1);
     if (hitGuard(t)){ blastNote(red, t); } else {
     rememberHit((red.hitBeat ?? n - 2) + 1, red); // 2回目は hitBeat+1 の拍で壊す予定だった
     damage(t, '赤ノーツを1拍以内に壊せなかった', red, null); }
   }
-  // 練習中は、ブロックが目の前に来たらプレイヤーが押すまで待つ
-  const frozen = notes.some(nt => nt.hit) || tutFreeze() || (tutWait() && notes.some(nt => nt.idx <= player.idx));
+  const frozen = notes.some(nt => nt.hit); // 青→赤の次の1拍だけ足踏み（本編・練習共通）
   if (n >= INTRO_BEATS && notes.length){
     for (const nt of notes){
       nt.from = nt.idx;
@@ -1080,8 +1010,7 @@ function onBeat(n, t){
   }
   if(chartNotes()&&n>=INTRO_BEATS)chartFill(n,t);
   // ブロックを出す
-  if (tutSingle()){ if(!frozen) tutBeat(t); }
-  else if (tutSt() && !tutSt().spawn){ /* 練習中はブロックを出さない */ }
+  if (isTutorial())coachSpawn(n,t,frozen);
   else if (n >= INTRO_BEATS && !frozen){
     const lastIdx = Math.max(-99, ...notes.map(x => x.idx));
     if (chartNotes() ? chartSpawns(n)&&lastIdx<gIdx : gIdx - lastIdx >= nextGap){
@@ -1100,7 +1029,6 @@ function onBeat(n, t){
 }
 
 function checkHit(t, reason, inputId, beat){
-  if (tutSafe()) return;   // 練習中はダメージなし
   for (const nt of [...notes]){
     if (nt.idx <= player.idx && !nt.hit){
       if (hitGuard(t)){ blastNote(nt, t); diagEv('hit_guard', { noteId: nt.id, rush: rushGuard(t) }); continue; } // 解放中・着地直後は当たらずに吹き飛ばす
@@ -1133,6 +1061,7 @@ function tryRevertLateHit(n, evPerf, handlerPerf, rec){
   return true;
 }
 function damage(t, reason, nt, inputId, sub){
+  if(isTutorial()){coachOnMiss(t,reason,nt,inputId);return;}
   diagEv('damage', { lifeLoss: true, reason: reason || null, causeInputId: inputId ?? null, noteId: nt?.id ?? null, noteIdx: nt?.idx ?? null, noteHp: nt?.hp ?? null, playerIdx: player.idx, hpBefore: hp, ...diagCtx() });
   hp--; drawHud(); damageAt = t; hurtGuardUntil = t + HURT_GUARD_SEC;
   const veil = document.getElementById('impactVeil');
@@ -1215,7 +1144,7 @@ function freeMove(t, rec){
   charState = 'move'; charUntil = t + 0.18;
   if (scoreOn()){ runSteps++; addScore(movePrice, t, true); }
   if (endlessScoreOn()){ setDistHud(); updateWarpHud(); }
-  if (rushOn()){ const sm = stepComboMult(combo), before = recordSteps; moveSteps++; recordSteps += sm; setStepsHud(); const ms = milestoneBetween(before, recordSteps); if (ms) stepMilestoneFx(player.idx, t, recordSteps, sm); else { texts = texts.filter(x => !x.step); texts.push({ s: stepsLabel(recordSteps), idx: player.idx, t, col: stepColor(recordSteps), step: true, mult: sm }); } /* 進むたびに今の歩数をキャラの位置に（重ならないよう最新の1つだけ） */ diagEv('el_move', { inputId: rec?.inputId ?? null, rushUnits, moveSteps }); }
+  if (rushOn()&&!isTutorial()){ const sm = stepComboMult(combo), before = recordSteps; moveSteps++; recordSteps += sm; setStepsHud(); const ms = milestoneBetween(before, recordSteps); if (ms) stepMilestoneFx(player.idx, t, recordSteps, sm); else { texts = texts.filter(x => !x.step); texts.push({ s: stepsLabel(recordSteps), idx: player.idx, t, col: stepColor(recordSteps), step: true, mult: sm }); } /* 進むたびに今の歩数をキャラの位置に（重ならないよう最新の1つだけ） */ diagEv('el_move', { inputId: rec?.inputId ?? null, rushUnits, moveSteps }); }
   else if (speedOn()){
     const m = comboMult(combo), used = EL_SCORING === 'stepBonus' ? stepBonus : null, bonus = used ? STEP_BONUS_PTS[used] : 0, pts = EL_MOVE_PTS * m + bonus;
     stepBonus = EL_SCORING === 'stepBonus' ? null : stepBonus; // 成功した前進1回で消費
@@ -1400,6 +1329,7 @@ function doRush(t, rec, auto){
   rushGuardUntil = rushAnim.moveAt + rushAnim.dur + RUSH_GUARD_SEC;
   charState = 'slash'; charUntil = rushAnim.moveAt;
   rushUnits = 0;
+  if(isTutorial()&&coachStep()?.kind==='rush')coach.rushStarted=true;
   // 溜めの音：だんだん高く（ヴェノは毒が泡立つ音）
   if (poisonHero()) POISON_SFX.windup(); else [392, 494, 587, 698, 880].forEach((f, i) => uiTone(f, .09, i * .1));
   diagEv('rush', { inputId: rec?.inputId ?? null, auto: !!auto, cells, from: P, to, windup: RUSH_WINDUP_SEC, blownAtStart: rushAnim.blown.length });
@@ -1420,6 +1350,7 @@ function doAction(type, n, t, diff, rec){
     effects.push({ idx: target.idx, t, purple: true });
     playSE(word); flashBtn('bMove');
     showJudge(word, sub);
+    if(isTutorial())coachOnBreak(target,word,t,true);
     if (word === 'PERFECT') countPerfect(t);
     const elPts = speedOn() ? elBreak(word, sub) : null;
     diagResult(rec, { status: 'judged', judge: word, charge: true, points: elPts, combo: speedOn() ? combo : null, beat: n, offsetMs: r2(diff * 1000), noteId: target.id, playerFrom: player.idx, playerTo: player.idx + 1 });
@@ -1458,11 +1389,14 @@ function doAction(type, n, t, diff, rec){
       } else {
         notes.splice(notes.indexOf(target), 1);
         effects.push({ idx: target.idx, t });
-        tutProgress('break');
         if (moveLocked){ moveLocked = false; setLockUI(false); }
         playSE(word);
       }
       showJudge(word, sub);
+      if(isTutorial()){
+        if(hpBefore>1)coachOnTap(target,t);else coachOnBreak(target,word,t);
+        if(rushOn()&&!rushAnim){rushUnits=Math.min(RUSH_FULL,rushUnits+(RUSH_GAIN[word]||0));rushGainAt=performance.now();}
+      }
       if (word === 'PERFECT') countPerfect(t);
       const elPts = speedOn() ? elBreak(word, sub) : null;
       diagResult(rec, { status: 'judged', judge: word, points: elPts, stepBonus: speedOn() ? stepBonus : null, combo: speedOn() ? combo : null, mult: speedOn() ? comboMult(combo) : null, sectionPerfect: endlessScoreOn() ? secPerfect : null, warpReady: endlessScoreOn() ? warpReady : null, beat: n, offsetMs: r2(diff * 1000), noteId: target.id, noteIdx: target.idx, noteHpBefore: hpBefore, noteHpAfter: hpBefore > 1 ? target.hp : 0, destroyed: hpBefore <= 1, playerIdx: player.idx, lockBefore, lockAfter: moveLocked });
@@ -1482,7 +1416,6 @@ function input(type, e, device){
   const t = tNow - (delayMs ?? 0) / 1000;
   const rec = diagInput(type, e, device, ev, handlerPerf, delayMs, tNow, t);
   if (ev.perf != null && ev.perf < resumePerf){ diagInputEnd(rec, { status: 'invalid', reason: 'ポーズ解除前に押された入力' }); if (type === 'break') diagShow('無効：ポーズ解除前の入力'); return; }
-  if (isTutorial()){coachInput(type,t,tNow,rec,delayMs);return;}
   if (rushAnim && type !== 'rush'){ diagInputEnd(rec, { status: 'invalid', reason: '必殺技の発動中' }); return; }
   if (type === 'rush'){
     if (rushOn() && rushRelease === 'manual' && rushReady() && !moveLocked && !rushAnim){ diagInputEnd(rec, { status: 'immediate', reason: 'ため解放（判定なし）' }); doRush(tNow, rec, false); }
@@ -1506,6 +1439,7 @@ function input(type, e, device){
     }
     diagInputEnd(rec, { status: 'miss', judge: 'MISS', lifeLoss: false, reason: (n < 0 ? '最初の拍より前' : '受付時間外') + '（加点なし・ライフは減らない・ノーツはそのまま）', offsetMs: r2(diff * 1000) });
     showJudge('MISS', 'タイミングずれ');
+    if(isTutorial())coachSay(diff<0?'まだ早い。自分のマスでタップ':'少し遅い。次の拍でやってみよう',tNow);
     if (speedOn()) showElLine(0, 'タイミングずれ'); // 入力MISS：点なし・コンボ0（ライフは減らない）
     diagShow('MISS：受付時間外（' + msText(diff * 1000) + '）');
     return;
@@ -1534,7 +1468,7 @@ function buses(){
   return audioBus;
 }
 function applyVolumes(){ if (!audioBus) return; for (const k of ['song', 'guide', 'se']) audioBus[k].gain.value = vol[k] / 100; }
-function useGuide(){ return isTutorial() || guideOn || !!song?.local; } // 自分の曲は今までどおり常にガイドあり
+function useGuide(){ return (isTutorial() && (!coach || coach.step<5)) || guideOn || !!song?.local; } // 自分の曲は今までどおり常にガイドあり
 // ブロックが動く音（毎拍なので小さめ。拍ぴったりの時刻に予約して鳴らす）
 const MOVE_SE_VOL = 0.22;
 const moveVoices=new Set();let moveScheduler=null,nextMoveBeat=0;
@@ -1789,6 +1723,12 @@ function placeJudge(t){
   let top=y-(el.classList.contains('minor')?cell*1.6:cell*.64)-h; // 小さい判定は、歩数の文字より上に
   if(top<4)top=y+cell*.65;
   top=Math.max(4,Math.min(b.height-h-4,top));
+  if(isTutorial()&&coach){
+    const br=document.getElementById('coachBubble').getBoundingClientRect();
+    const below=y+cell*.8;
+    top=(below+h>br.top-b.top&&below<br.bottom-b.top)?y-cell*.8-h:below;
+    top=Math.max(4,Math.min(b.height-h-4,top));
+  }
   el.style.transform=`translate(${Math.round(left)}px,${Math.round(top)}px)`;
 }
 
@@ -1883,7 +1823,6 @@ function drawVictory(){
 
 // ===== 描画 =====
 function cellXY(idx){
-  if(isTutorial())return {x:PAD+(7-Math.max(0,Math.min(7,idx))+.5)*cell,y:boardH*.54};
   const i = Math.max(0, Math.min(path.length - 1, idx));
   const a = path[Math.floor(i)], b = path[Math.ceil(i)], f = i - Math.floor(i);
   return { x: PAD + (a.c + (b.c - a.c) * f + 0.5) * cell, y: PAD + (a.r + (b.r - a.r) * f - cameraRow + 0.5) * cell };
@@ -1936,7 +1875,7 @@ function tileAlpha(i,t){
 }
 function floorTile(p,i,t){
   const a=tileAlpha(i,t);if(a<=0||p.y < -cell||p.y>boardH+cell)return;
-  const s=cell*.96,locked=!isTutorial()&&i>LINES[lineK],color=PALETTES[lineK%PALETTES.length][2];
+  const s=cell*.96,locked=i>LINES[lineK],color=PALETTES[lineK%PALETTES.length][2];
   g.save();g.globalAlpha=a;g.translate(p.x,p.y);
   const scale=reduceMotion.matches?1:.85+.15*a;g.scale(scale,scale);
   rr(g,-s/2,-s/2,s,s,cell*.075);g.fillStyle=locked?'#8997f0':color;g.fill();
@@ -1949,7 +1888,6 @@ function floorTile(p,i,t){
   g.restore();
 }
 function drawCourse(t){
-  if(isTutorial()){for(let i=0;i<8;i++)floorTile(cellXY(i),i,t);return;}
   for(let i=0;i<=revealEnd;i++)floorTile(cellXY(i),i,t);
   const s=cellXY(0);g.save();g.strokeStyle='#071423';g.lineWidth=4;
   g.beginPath();g.arc(s.x,s.y,cell*.30,0,Math.PI*2);g.stroke();g.strokeStyle='#e1ffff';g.lineWidth=2;g.stroke();g.restore();
@@ -1980,12 +1918,11 @@ function impactOffset(t){
 function notesWillMove(){
   if(nextBeat<INTRO_BEATS||!notes||!notes.length)return false;
   const n=nextBeat,red=notes.find(nt=>nt.hit);
-  const redGone=!!red&&n>(red.hitBeat??n)+1&&!tutSafe();
-  return !(notes.some(nt=>nt.hit&&!(redGone&&nt===red))||tutFreeze()||(tutWait()&&notes.some(nt=>nt.idx<=player.idx)));
+  const redGone=!!red&&n>(red.hitBeat??n)+1;
+  return !notes.some(nt=>nt.hit&&!(redGone&&nt===red));
 }
 // ノーツの表示位置。拍ちょうどに次のマスへ着くよう、拍のMOVE_ANIM前から動き始める
 function noteView(nt,t,pre,nb,vp){
-  if(nt.coach)return coachNoteView(nt,t);
   const smooth=noteSpeed>1&&state!=='ready';
   let ln,at=nt.at,moving=nt.from!==nt.idx;
   if(pre&&t>nb-MOVE_ANIM&&t<nb){ln=tween(nt.idx,nt.idx-1,nb-MOVE_ANIM,t);at=nb-MOVE_ANIM;moving=true;}
@@ -2003,7 +1940,7 @@ function draw(t){
   // 音の時計を基準に表示だけ動かす。入力ボタンと当たり判定の座標は固定。
   cv.style.transform=`translateY(${impactOffset(t).toFixed(2)}px)`;
   cameraRow=cameraAtTime(t);
-  drawCourse(t);if(!isTutorial())drawLineAndG(t);
+  drawCourse(t);drawLineAndG(t);
   document.getElementById('beatWash').style.opacity=(isTutorial()||reduceMotion.matches)?'0':(beatPulse(t)*.13).toFixed(3);
   const pulse=beatPulse(t),pp=cellXY(playerVis(t));
   if(pulse>0&&!isTutorial()){
@@ -2014,9 +1951,7 @@ function draw(t){
   for(const f of fx){
     const k=Math.max(0,(t-f.t)/f.d),p=cellXY(f.idx);
     g.save();g.globalAlpha=1-k;
-    if(f.type==='coachSlash'){
-      const a=cellXY(playerVis(t));g.strokeStyle='#dcffff';g.lineWidth=3;g.beginPath();g.moveTo(a.x,a.y-cell*.1);g.lineTo(p.x-cell*.3,p.y+cell*.2);g.stroke();
-    }else if(f.type==='ghost'){
+    if(f.type==='ghost'){
       g.globalAlpha=.28*(1-k);g.translate(p.x,p.y);if(f.flip)g.scale(-1,1);drawPose('move',0,0);
     }else if(f.type==='spark'){
       g.strokeStyle=heroInfo().accent;g.lineWidth=1;const sz=cell*(.6+.35*k);rr(g,p.x-sz/2,p.y-sz/2,sz,sz,3);g.stroke();
@@ -2043,20 +1978,19 @@ function draw(t){
     // ×1.0は「ドクッ」と止まる動き。速くしたときは止まらずなめらかに流れる
     const V=noteView(nt,t,pre,nb,vp),smooth=V.smooth,vis=V.vis;
     if(drawn&&drawn.length<4)drawn.push({id:nt.id,logicalIdx:nt.idx,drawnIdx:r4(vis)});
-    if(!nt.coach&&noteSpeed>1&&vis>gIdx+.5)continue;          // Gより奥はまだ見えない
+    if(noteSpeed>1&&vis>gIdx+.5)continue;          // Gより奥はまだ見えない
     const p=cellXY(vis);
-    const emerge=!nt.coach&&noteSpeed>1?Math.min(1,Math.max(0,gIdx+.5-vis)):1; // Gから出てくる
+    const emerge=noteSpeed>1?Math.min(1,Math.max(0,gIdx+.5-vis)):1; // Gから出てくる
     const pop=(nt.pop!=null?Math.min(1,Math.max(0,(t-nt.pop)/.16)):1)*emerge;
     const body=cell*.93*pop,sz=body*1.25;
     let rk=V.at>-9&&(V.moving||nt.spin===nt.at)?Math.min(1,Math.max(0,(t-V.at)/.2)):1;
     let ang=(1-Math.pow(1-rk,3))*Math.PI;
     if(smooth){rk=0;ang=vis*Math.PI*.5;}   // なめらかモードはずっとゆっくり回転
     g.save();g.translate(p.x,p.y);
-    if(!nt.coach&&!reduceMotion.matches&&rk<1)g.rotate(ang);
+    if(!reduceMotion.matches&&rk<1)g.rotate(ang);
     const pulse=reduceMotion.matches?0:beatPulse(t)*.025;g.scale(1+pulse,1+pulse);
     const spr=nt.purple?purpleCv:nt.hit?crackCv:((nt.hp||1)>1?hardCv:noteCv);
     g.drawImage(spr,-sz/2,-sz/2,sz,sz);
-    if(nt.coach){const d=cell*.13;g.fillStyle='#fff';g.beginPath();g.moveTo(0,-d);g.lineTo(d,0);g.lineTo(0,d);g.lineTo(-d,0);g.closePath();g.fill();}
     g.restore();
   }
 
@@ -2085,6 +2019,7 @@ function draw(t){
   if(isTutorial())drawCoachTarget(t);
   drawRushOk(t);
   updateSpot(t);
+  placeCoachBubble(t);
   if(document.getElementById('judge').classList.contains('pop'))placeJudge(t);
   texts=texts.filter(x=>t-x.t<(x.step?.75:.5));g.textAlign='center';g.font=`600 ${Math.max(10,Math.round(cell*.26))}px sans-serif`;
   for(const x of texts){
@@ -2188,9 +2123,9 @@ function drawChar(t){
 // ===== ループ =====
 // ラインに着いたか調べる。エンドレスで周回したら true
 function checkLines(t){
-  if(isTutorial())return false;
   if (!(state==='play' && player.idx >= LINES[lineK] && hp > 0)) return false;
   if (lineK === LINES.length - 1 && rushGuard(t)) return false; // 必殺技の駆け抜け・着地が終わってからワープ
+  if(isTutorial()&&lineK===LINES.length-1){nextCourse(t);coach.nextSpawn=nextBeat+2;return true;}
   if (lineK === LINES.length - 1 && speedOn()){ // エンドレス：終端に着いたら条件なしでワープ（曲は頭から次の速度で）
     diagEv('warp', { fromRate: rate, toRate: Math.min(SPEED_MAX, rate + SPEED_STEP), combo, ...diagCtx() });
     nextLap(t, false); updateWarpHud(); return true; // 曲は頭から、次の速度で
@@ -2205,7 +2140,7 @@ function checkLines(t){
   else {
     lineK++; gFrom = gIdx; gIdx = gIndexFor(lineK); gMoveAt = t;
     advanceView(t);
-    if(!tutSingle()) fillGap(gFrom + 1, gIdx, t);
+    if(!isTutorial()) fillGap(gFrom + 1, gIdx, t);
     texts.push({ s: '突破！', idx: player.idx, t, col: '#50e6ff' });
   }
   return false;
@@ -2240,7 +2175,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v45', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v46', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2481,6 +2416,7 @@ function startGame(){
   if(isTutorial())coachUI();
 }
 function pauseGame(){
+  stopRushHold();
   if(state==='resuming'){cancelResume();state='paused';}
   else if(state==='play'){
     pausedAt=songTime();state='paused';stopSong();stopMoveScheduler();hideJudge();
@@ -2515,7 +2451,7 @@ async function resumeGame(){
 }
 function returnToSongs(){
   if(state==='play'||state==='paused'||state==='resuming'){diagEv('quit',{});diagSave();}
-  cancelResume();cancelResultReveal();stopMoveScheduler();stopSong();
+  cancelResume();cancelResultReveal();stopMoveScheduler();stopSong();stopRushHold();
   clearTimeout(resultTimer);resultTimer=null;victoryAt=-1;
   for(const v of victoryVoices){try{v.stop();}catch(e){}}victoryVoices.clear();
   state='ready';pausedAt=null;earlyInput=null;pendingCheck=[];
