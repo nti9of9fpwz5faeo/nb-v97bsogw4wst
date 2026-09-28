@@ -72,6 +72,9 @@
   #jSub{font-size:10px;margin-top:5px;color:#a7bec5;letter-spacing:.12em;min-height:10px}
   #judge.pop #jWord{animation:jpop .28s ease-out}
   .stepGain{color:#c6ff44}
+  #judge.minor #jWord{font-size:14px!important;min-height:14px;-webkit-text-stroke:2.5px #09121e;letter-spacing:.04em}
+  #judge.minor{height:30px!important;min-width:90px}
+  #judge.minor #jSub{font-size:9px}
   #judge.multUp #jSub{color:#c6ff44!important;animation:jpop .3s ease-out}
   #judge{min-width:150px;width:auto!important;white-space:nowrap}
   @keyframes jpop{0%{transform:scale(1.18);opacity:.4}45%{transform:scale(.98);opacity:1}100%{transform:scale(1)}}
@@ -302,7 +305,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v42</span>
+  <span id="verBadge">バージョン v43</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -398,14 +401,17 @@ function rushReady(){ return rushUnits >= RUSH_FULL; }
 // 歩数の色：50・100・200・300…で変わる（200〜は赤）
 const STEP_TIERS = [ { min: 0, col: '#ffffff' }, { min: 50, col: '#8af3fa' }, { min: 100, col: '#c6ff44' }, { min: 200, col: '#ff4b5c' }, { min: 300, col: '#ffd23c' }, { min: 400, col: '#c59bff' }, { min: 500, col: '#ff64cc' } ];
 function stepColor(n){ let c = STEP_TIERS[0].col; for (const x of STEP_TIERS) if (n >= x.min) c = x.col; return c; }
+// コンボで1歩が2歩・3歩ぶんになる（試し。やめるときは全部 mult:1 に）
+const STEP_COMBO_TIERS = [ { min: 0, mult: 1 }, { min: 20, mult: 2 }, { min: 50, mult: 3 } ];
+function stepComboMult(c){ let m = 1; for (const x of STEP_COMBO_TIERS) if (c >= x.min) m = x.mult; return m; }
 function isStepMilestone(n){ return n === 50 || (n >= 100 && n % 100 === 0); }
 function milestoneBetween(a, b){ let m = 0; for (let n = a + 1; n <= b; n++) if (isStepMilestone(n)) m = n; return m; } // a〜bの間で最後に踏んだ区切り
 // 区切りの歩数を踏んだ瞬間：その色で輝くエフェクト
-function stepMilestoneFx(idx, t, n){
+function stepMilestoneFx(idx, t, n, mult){
   const col = stepColor(n);
   fx.push({ type: 'milestone', idx, t, d: .8, col });
   texts = texts.filter(x => !x.step);
-  texts.push({ s: stepsLabel(n), idx, t, col, big: true, step: true });
+  texts.push({ s: stepsLabel(n), idx, t, col, step: true, milestone: true, mult: mult || 1 });
   [880, 1175, 1568].forEach((f, i) => uiTone(f, .1, i * .05));
 }
 function stepsLabel(n){ return n.toLocaleString('en-US') + (n === 1 ? ' STEP' : ' STEPS'); }
@@ -677,6 +683,7 @@ function reset(){
   runScore = 0; movePrice = 0; runSteps = 0; courseLap = 0;
   secPerfect = 0; warpReady = false; sectionNo = 1; termWaitLogged = false; document.getElementById('lapGain').classList.remove('show');
   endReason = null;
+  document.getElementById('judge').classList.toggle('minor', rushOn());
   elScore = 0; moveSteps = 0; recordSteps = 0; elLastMult = 1; stepBonus = null; rushUnits = 0; rushAnim = null; rushGuardUntil = -9; hurtGuardUntil = -9; rushFade = null; shards = []; slashMarks = []; mists = []; rushPoseUntil = -9;
   document.getElementById('scoreNum').textContent = endlessScoreOn() ? '0マス' : '0'; if (rushOn()) setStepsHud(); updateWarpHud(); document.getElementById('scoreHud').classList.toggle('hide', !(scoreOn() || endlessScoreOn() || speedOn()));
   notes = []; effects = []; texts = []; fx = [];
@@ -1045,7 +1052,7 @@ function freeMove(t, rec){
   charState = 'move'; charUntil = t + 0.18;
   if (scoreOn()){ runSteps++; addScore(movePrice, t, true); }
   if (endlessScoreOn()){ setDistHud(); updateWarpHud(); }
-  if (rushOn()){ moveSteps++; recordSteps++; setStepsHud(); if (isStepMilestone(recordSteps)) stepMilestoneFx(player.idx, t, recordSteps); else { texts = texts.filter(x => !x.step); texts.push({ s: stepsLabel(recordSteps), idx: player.idx, t, col: stepColor(recordSteps), step: true }); } /* 進むたびに今の歩数をキャラの位置に（重ならないよう最新の1つだけ） */ diagEv('el_move', { inputId: rec?.inputId ?? null, rushUnits, moveSteps }); }
+  if (rushOn()){ const sm = stepComboMult(combo), before = recordSteps; moveSteps++; recordSteps += sm; setStepsHud(); const ms = milestoneBetween(before, recordSteps); if (ms) stepMilestoneFx(player.idx, t, recordSteps, sm); else { texts = texts.filter(x => !x.step); texts.push({ s: stepsLabel(recordSteps), idx: player.idx, t, col: stepColor(recordSteps), step: true, mult: sm }); } /* 進むたびに今の歩数をキャラの位置に（重ならないよう最新の1つだけ） */ diagEv('el_move', { inputId: rec?.inputId ?? null, rushUnits, moveSteps }); }
   else if (speedOn()){
     const m = comboMult(combo), used = EL_SCORING === 'stepBonus' ? stepBonus : null, bonus = used ? STEP_BONUS_PTS[used] : 0, pts = EL_MOVE_PTS * m + bonus;
     stepBonus = EL_SCORING === 'stepBonus' ? null : stepBonus; // 成功した前進1回で消費
@@ -1615,7 +1622,7 @@ function placeJudge(t){
   const p=cellXY(playerVis(t));
   const x=a.left-b.left+p.x,y=a.top-b.top+p.y,w=el.offsetWidth,h=el.offsetHeight;
   const left=Math.max(4,Math.min(b.width-w-4,x-w/2));
-  let top=y-cell*.64-h;
+  let top=y-(el.classList.contains('minor')?cell*1.6:cell*.64)-h; // 小さい判定は、歩数の文字より上に
   if(top<4)top=y+cell*.65;
   top=Math.max(4,Math.min(b.height-h-4,top));
   el.style.transform=`translate(${Math.round(left)}px,${Math.round(top)}px)`;
@@ -1908,8 +1915,17 @@ function draw(t){
   drawRushOk(t);
   updateSpot(t);
   if(document.getElementById('judge').classList.contains('pop'))placeJudge(t);
-  texts=texts.filter(x=>t-x.t<.5);g.textAlign='center';g.font=`600 ${Math.max(10,Math.round(cell*.26))}px sans-serif`;
+  texts=texts.filter(x=>t-x.t<(x.step?.75:.5));g.textAlign='center';g.font=`600 ${Math.max(10,Math.round(cell*.26))}px sans-serif`;
   for(const x of texts){
+    if(x.step){ // 歩数：大きく目立たせる
+      const k=(t-x.t)/.75,p=cellXY(x.idx),fs=Math.round(cell*(x.milestone?.72:.52)),pop=k<.14?1.35-(k/.14)*.35:1;
+      g.save();g.font=`1000 ${fs}px system-ui,sans-serif`;const hw=g.measureText(x.s).width/2*pop;
+      const f2=Math.round(fs*.55),mw=x.mult>1?f2*1.6:0,bx=Math.max(hw+4,Math.min(boardW-hw-4-mw,p.x)),by=Math.max(fs,p.y-cell*.9-k*cell*.4);
+      g.translate(bx,by);g.scale(pop,pop);g.globalAlpha=k<.7?1:1-(k-.7)/.3;
+      g.lineJoin='round';g.lineWidth=Math.max(4,fs*.2);g.strokeStyle='#081221';g.strokeText(x.s,0,0);g.fillStyle=x.col;g.fillText(x.s,0,0);
+      if(x.mult>1){const w0=g.measureText(x.s).width/2;g.font=`1000 ${f2}px system-ui,sans-serif`;g.textAlign='left';g.lineWidth=Math.max(3,f2*.22);g.strokeText('×'+x.mult,w0+f2*.25,-fs*.05);g.fillStyle='#ffd23c';g.fillText('×'+x.mult,w0+f2*.25,-fs*.05);} // コンボ倍率は右に小さく
+      g.restore();continue;
+    }
     const p=cellXY(x.idx),k=(t-x.t)/.5;
     // 画面端でもヒントが切れない位置に置く。
     const half=g.measureText(x.s).width/2;
@@ -2052,7 +2068,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v42', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v43', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
