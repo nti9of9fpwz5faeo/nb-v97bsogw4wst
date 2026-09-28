@@ -305,7 +305,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v43</span>
+  <span id="verBadge">バージョン v44</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -1173,7 +1173,7 @@ function drawRushAnim(t){
   if (!A.moved && t >= A.moveAt){
     A.moved = true; A.blown.push(...takeBlown(A.to));
     player.from = A.to; player.idx = A.to; player.at = t;
-    A.stepsBefore = recordSteps; moveSteps += A.to - A.from; recordSteps += A.to - A.from; setStepsHud();
+    A.stepsBefore = recordSteps; A.mult = stepComboMult(combo); moveSteps += A.to - A.from; recordSteps += (A.to - A.from) * A.mult; setStepsHud(); // 必殺技にもコンボ倍率（50コンボなら10×3＝30歩）
     charState = 'move'; charUntil = A.moveAt + A.dur + 0.15;
     if (poisonHero()) POISON_SFX.dash(); else { uiTone(330, .18, 0); uiTone(660, .18, .02); }
   }
@@ -1213,7 +1213,7 @@ function drawRushAnim(t){
     fx.push({ type: 'stomp', idx: A.to, t, d: .35, strong: true });
     if (heroFx[selectedHero]){ addSlashMark(A.to, t, 2.6, !facesRight(A.to)); slashMarks[slashMarks.length - 1].life = .5; spawnShards(A.to, t, 'purple'); rushPoseUntil = t + .35; }
     const ms = milestoneBetween(A.stepsBefore ?? recordSteps, recordSteps);
-    if (ms) stepMilestoneFx(A.to, t, ms); else texts.push({ s: '+' + (A.to - A.from) + ' STEPS', idx: A.to, t, col: stepColor(recordSteps), big: true });
+    if (ms) stepMilestoneFx(A.to, t, recordSteps, A.mult); else { texts = texts.filter(x => !x.step); texts.push({ s: '+' + (A.to - A.from) * (A.mult || 1) + ' STEPS', idx: A.to, t, col: stepColor(recordSteps), step: true, milestone: true, mult: A.mult || 1 }); }
     if (poisonHero()) POISON_SFX.land(); else [523, 784, 1047].forEach((f, i) => uiTone(f, .16, i * .04));
     rushFade = { t, from: A.from, to: A.to };
     rushAnim = null;
@@ -2068,7 +2068,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v43', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v44', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
