@@ -330,7 +330,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v49</span>
+  <span id="verBadge">バージョン v50</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -370,7 +370,7 @@ const SONGS = [
   { name: 'Stutter Bass Groove', file: 'audio/stutter.mp3', bpm: 150.1, offset: 0.0,  level: 'はやい', hard: true },
   { name: 'Bass Arcade',         file: 'audio/bass_arcade.mp3', bpm: 134.4, offset: 0.085, level: 'むずかしい', hard: true, dense: true },
   { name: 'Frostbite Breakbeat', file: 'audio/frostbite.mp3', bpm: 129.9, offset: 0.21, level: 'クール', hard: true },
-  { name: 'Metronomic Drive',    file: 'audio/metronomic_drive.mp3', bpm: 197.29, offset: 0.0835, level: 'むずかしい', chart: 'charts/metronomic_beats.json' }, // BPM約197。後半でわずかに遅れるので拍データで追従
+  { name: 'Metronomic Drive',    file: 'audio/metronomic_drive.mp3', bpm: 147.96, offset: 0.0842, level: 'ふつう', chart: 'charts/metronomic_beats.json' }, // 実際は約148BPM（197は測り間違い）。テンポがゆるやかに揺れるので拍データで追従
 ];
 let difficulty='normal';
 try{if(localStorage.getItem('neon-blade-difficulty')==='hard')difficulty='hard';}catch(e){}
@@ -788,6 +788,8 @@ function chartNotes(){return !!activeChart?.spawn;} // ノーツ配置まで決�
 function chartVal(n){const s=activeChart?.spawn;return (s?.[runDifficulty]??s?.normal)?.[n]||0;}
 function chartSpawns(n){return !!chartVal(n);}
 // 種類を固定した譜面（fixedTypes）はランダムを使わない
+const PURPLE_RATE = 0.15; // 紫ノーツの出る割合（全曲共通。曲ごとに song.purple で上書きできる）
+function chartPurple(n,pr){ const h=((n+1)*2654435761)>>>0; return (h%1000)/1000 < pr; } // 種類固定の譜面用：拍番号で決まる
 function chartHp(n,gap){return activeChart?.fixedTypes?(chartVal(n)===2?2:1):rollHp(gap);}
 function chartFill(n,t){
   if(!pendingExtension)return;
@@ -1071,7 +1073,8 @@ function onBeat(n, t){
   else if (n >= INTRO_BEATS && !frozen){
     const lastIdx = Math.max(-99, ...notes.map(x => x.idx));
     if (chartNotes() ? chartSpawns(n)&&lastIdx<gIdx : gIdx - lastIdx >= nextGap){
-      const purple = !chartNotes() && !isTutorial() && !moveLocked && (song?.purple || 0) > 0 && rand() < song.purple; // 紫＝突進ノーツ（周の最初の1個にはしない）
+      const pr = isTutorial() ? 0 : (song?.purple ?? PURPLE_RATE), fixedPurple = chartNotes() && activeChart?.fixedTypes;
+      const purple = !moveLocked && pr > 0 && (fixedPurple ? chartPurple(n, pr) : rand() < pr); // 紫＝突進ノーツ（周の最初の1個にはしない）
       notes.push({ id: noteId++, idx: gIdx, from: gIdx, at: t, pop: t, hp: purple ? 1 : chartNotes() ? chartHp(n, gIdx - lastIdx) : rollHp(gIdx - lastIdx), purple });
       if(!chartNotes())nextGap = pickGap(); // 紫も連続ブロックに混ざる（突進で後ろを押し返すので空けない）
     }
@@ -2251,7 +2254,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v49', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v50', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
