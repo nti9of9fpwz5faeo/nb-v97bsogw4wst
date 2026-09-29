@@ -72,9 +72,9 @@
   #jSub{font-size:10px;margin-top:5px;color:#a7bec5;letter-spacing:.12em;min-height:10px}
   #judge.pop #jWord{animation:jpop .28s ease-out}
   .stepGain{color:#c6ff44}
-  #judge.minor #jWord{font-size:14px!important;min-height:14px;-webkit-text-stroke:2.5px #09121e;letter-spacing:.04em}
-  #judge.minor{height:30px!important;min-width:90px}
-  #judge.minor #jSub{font-size:9px}
+  #judge.minor #jWord{font-size:21px!important;min-height:21px;-webkit-text-stroke:3.5px #09121e;letter-spacing:.02em}
+  #judge.minor{height:42px!important;min-width:120px}
+  #judge.minor #jSub{font-size:11px}
   #judge.multUp #jSub{color:#c6ff44!important;animation:jpop .3s ease-out}
   #judge{min-width:150px;width:auto!important;white-space:nowrap}
   @keyframes jpop{0%{transform:scale(1.18);opacity:.4}45%{transform:scale(.98);opacity:1}100%{transform:scale(1)}}
@@ -330,7 +330,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v47</span>
+  <span id="verBadge">バージョン v48</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -1795,7 +1795,7 @@ function placeJudge(t){
   const p=cellXY(playerVis(t));
   const x=a.left-b.left+p.x,y=a.top-b.top+p.y,w=el.offsetWidth,h=el.offsetHeight;
   const left=Math.max(4,Math.min(b.width-w-4,x-w/2));
-  let top=y-(el.classList.contains('minor')?cell*1.6:cell*.64)-h; // 小さい判定は、歩数の文字より上に
+  let top=y-cell*.64-h; // 小さい判定は、歩数の文字より上に
   if(top<4)top=y+cell*.65;
   top=Math.max(4,Math.min(b.height-h-4,top));
   if(isTutorial()&&coach){
@@ -2099,9 +2099,9 @@ function draw(t){
   texts=texts.filter(x=>t-x.t<(x.step?.75:.5));g.textAlign='center';g.font=`600 ${Math.max(10,Math.round(cell*.26))}px sans-serif`;
   for(const x of texts){
     if(x.step){ // 歩数：大きく目立たせる
-      const k=(t-x.t)/.75,p=cellXY(x.idx),fs=Math.round(cell*(x.milestone?.72:.52)),pop=k<.14?1.35-(k/.14)*.35:1;
+      const k=(t-x.t)/.75,p=cellXY(x.idx),fs=Math.round(cell*(x.milestone?.5:.36)),pop=k<.14?1.3-(k/.14)*.3:1;
       g.save();g.font=`1000 ${fs}px system-ui,sans-serif`;const hw=g.measureText(x.s).width/2*pop;
-      const f2=Math.round(fs*.55),mw=x.mult>1?f2*1.6:0,bx=Math.max(hw+4,Math.min(boardW-hw-4-mw,p.x)),by=Math.max(fs,p.y-cell*.9-k*cell*.4);
+      const f2=Math.round(fs*.55),mw=x.mult>1?f2*1.6:0,bx=Math.max(hw+4,Math.min(boardW-hw-4-mw,p.x)),by=Math.min(boardH-fs*.4,p.y+cell*.78+k*cell*.15); // 足元の下に出て、少しだけ沈みながら消える
       g.translate(bx,by);g.scale(pop,pop);g.globalAlpha=k<.7?1:1-(k-.7)/.3;
       g.lineJoin='round';g.lineWidth=Math.max(4,fs*.2);g.strokeStyle='#081221';g.strokeText(x.s,0,0);g.fillStyle=x.col;g.fillText(x.s,0,0);
       if(x.mult>1){const w0=g.measureText(x.s).width/2;g.font=`1000 ${f2}px system-ui,sans-serif`;g.textAlign='left';g.lineWidth=Math.max(3,f2*.22);g.strokeText('×'+x.mult,w0+f2*.25,-fs*.05);g.fillStyle='#ffd23c';g.fillText('×'+x.mult,w0+f2*.25,-fs*.05);} // コンボ倍率は右に小さく
@@ -2250,7 +2250,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v47', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v48', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
