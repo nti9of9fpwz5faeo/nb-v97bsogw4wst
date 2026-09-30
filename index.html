@@ -301,6 +301,7 @@
 
 
 </style>
+<link rel="stylesheet" href="workshop.css?v=51">
 </head>
 <body>
 <div id="app">
@@ -330,7 +331,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v50</span>
+  <span id="verBadge">バージョン v51</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -359,6 +360,8 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
+<script src="progression.js?v=51"></script>
+<script src="workshop.js?v=51"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -441,7 +444,7 @@ function stepMilestoneFx(idx, t, n, mult){
   [880, 1175, 1568].forEach((f, i) => uiTone(f, .1, i * .05));
 }
 function stepsLabel(n){ return n.toLocaleString('en-US') + (n === 1 ? ' STEP' : ' STEPS'); }
-function setStepsHud(){ const sn = document.getElementById('scoreNum'); if (rushOn()) sn.innerHTML = recordSteps.toLocaleString('en-US') + '<small class="unitEn"> STEPS</small>'; else sn.textContent = elScore.toLocaleString(); updateWarpHud(); }
+function setStepsHud(){ NBWorkshop.steps(recordSteps); const sn = document.getElementById('scoreNum'); if (rushOn()) sn.innerHTML = recordSteps.toLocaleString('en-US') + '<small class="unitEn"> STEPS</small>'; else sn.textContent = elScore.toLocaleString(); updateWarpHud(); }
 function elAdd(pts, steps){ elScore += pts; recordSteps += steps; setStepsHud(); }
 function distance(){ return courseLap * GOAL_INDEX + player.idx; }
 function setDistHud(){ document.getElementById('scoreNum').textContent = distance() + 'マス'; }
@@ -676,7 +679,7 @@ function drawHud(){
 }
 const PALETTES=[['#034afb','#00bff2','#11d6fb'],['#6500ed','#ed12eb','#c0ff3e'],['#006cd9','#00d5b0','#ffe941'],['#9820ed','#ff519b','#42f4ea'],['#0052f0','#06b7ff','#8eff50'],['#7316e7','#e92deb','#ffda35']];
 function setPalette(k){
-  const p=PALETTES[k%PALETTES.length],app=document.getElementById('app');
+  const p=NBWorkshop.palette(k,PALETTES[k%PALETTES.length]),app=document.getElementById('app');
   app.style.setProperty('--sky1',p[0]);app.style.setProperty('--sky2',p[1]);app.dataset.zone=k%2;
 }
 
@@ -690,6 +693,7 @@ let pendingExtension=null;
 let moveLocked = true; // 最初のブロックを壊すまで進めない
 
 function reset(){
+  NBWorkshop.suspendRun();
   cancelResultReveal();cancelResume();stopMoveScheduler();stopRushHold();
   coach=null;recentHits=[];
   pausedAt=null;resumeFloor=-Infinity;lastBeatStrength=1;pendingExtension=null;
@@ -721,7 +725,7 @@ function reset(){
   nextGap = 4; runLen = 1;
   lineK = 0; gIdx = gIndexFor(0); gMoveAt = -9; gFrom = gIdx;
   counts = { PERFECT: 0, GREAT: 0, GOOD: 0, MISS: 0 }; combo = 0; maxCombo = 0;
-  drawHud();
+  drawHud(); NBWorkshop.resetRun();
 }
 let lineK = 0, gIdx = 0, gFrom = 0, gMoveAt = -9;
 function gIndexFor(k){ return Math.min(LINES[k] + G_AHEAD, EXIT_INDEX); }
@@ -1395,6 +1399,7 @@ function doRush(t, rec, auto){
   if(isTutorial()&&coachStep()?.kind==='rush'){if(coach.demoActing)coach.demoRushStarted=true;else coach.rushStarted=true;}
   // 溜めの音：だんだん高く（ヴェノは毒が泡立つ音）
   if (poisonHero()) POISON_SFX.windup(); else [392, 494, 587, 698, 880].forEach((f, i) => uiTone(f, .09, i * .1));
+  NBWorkshop.rush();
   diagEv('rush', { inputId: rec?.inputId ?? null, auto: !!auto, cells, from: P, to, windup: RUSH_WINDUP_SEC, blownAtStart: rushAnim.blown.length });
   return true;
 }
@@ -1413,6 +1418,7 @@ function doAction(type, n, t, diff, rec){
     effects.push({ idx: target.idx, t, purple: true });
     playSE(word); flashBtn('bMove');
     showJudge(word, sub);
+    NBWorkshop.judged(word,n,t);
     if(isTutorial())coachOnBreak(target,word,t,true);
     if (word === 'PERFECT') countPerfect(t);
     const elPts = speedOn() ? elBreak(word, sub) : null;
@@ -1460,6 +1466,7 @@ function doAction(type, n, t, diff, rec){
         if(hpBefore>1)coachOnTap(target,t);else coachOnBreak(target,word,t);
         if(rushOn()&&!rushAnim){rushUnits=Math.min(RUSH_FULL,rushUnits+(RUSH_GAIN[word]||0));rushGainAt=performance.now();}
       }
+      NBWorkshop.judged(word,n,t);
       if (word === 'PERFECT') countPerfect(t);
       const elPts = speedOn() ? elBreak(word, sub) : null;
       diagResult(rec, { status: 'judged', judge: word, points: elPts, stepBonus: speedOn() ? stepBonus : null, combo: speedOn() ? combo : null, mult: speedOn() ? comboMult(combo) : null, sectionPerfect: endlessScoreOn() ? secPerfect : null, warpReady: endlessScoreOn() ? warpReady : null, beat: n, offsetMs: r2(diff * 1000), noteId: target.id, noteIdx: target.idx, noteHpBefore: hpBefore, noteHpAfter: hpBefore > 1 ? target.hp : 0, destroyed: hpBefore <= 1, playerIdx: player.idx, lockBefore, lockAfter: moveLocked });
@@ -1635,14 +1642,14 @@ function captureResult(clear){
   let previous=0;
   try{const v=Number(localStorage.getItem(key));if(Number.isInteger(v)&&v>=0&&(scoreOn()||v<=SCORE_MAX))previous=v;}catch(e){}
   result.newBest=clear&&!endlessScoreOn()&&!speedOn()&&result.score>previous; // 距離チャレンジは下で別に保存
-  result.best=result.newBest?result.score:previous;
+  result.best=result.newBest?result.score:previous;result.previousBest=previous;
   if(result.newBest){try{localStorage.setItem(key,String(result.score));}catch(e){}}
   if(speedOn()){
     // エンドレス：ブレイクで得た点の合計。自己ベストは曲・難易度ごと（距離チャレンジ・旧方式とは別）
     Object.assign(result,{endless:true,mode:'endless',scoring:EL_SCORING,rushRelease,score:EL_SCORING==='rush'?recordSteps:elScore,unit:EL_SCORING==='rush'?' STEPS':'',moveSteps,recordSteps,rank:'—',badge:'',warps:lap,speed:rate,endReason,reasonText:END_REASON[endReason]||''});
     const skey=`neon-blade-${EL_SCORING==='rush'?'rush-'+rushRelease:EL_SCORING==='stepBonus'?'stepbonus':'combo'}-best-v1:${song.file}:${runDifficulty}`+(activeChart?.chartVersion?':'+activeChart.chartVersion:'');
     let prev=0;try{const v=Number(localStorage.getItem(skey));if(Number.isInteger(v)&&v>=0)prev=v;}catch(e){}
-    result.newBest=result.score>prev;result.best=result.newBest?result.score:prev;
+    result.newBest=result.score>prev;result.best=result.newBest?result.score:prev;result.previousBest=prev;
     if(result.newBest){try{localStorage.setItem(skey,String(result.score));}catch(e){}}
   }
   if(endlessScoreOn()){
@@ -1650,25 +1657,13 @@ function captureResult(clear){
     Object.assign(result,{endless:true,score:distance(),unit:'マス',rank:'—',badge:'',warps:sectionNo-1,endReason,reasonText:END_REASON[endReason]||''});
     const ekey=`neon-blade-distance-best-v2:${song.file}:${runDifficulty}:w${WARP_PERFECT}`+(activeChart?.chartVersion?':'+activeChart.chartVersion:''); // 譜面が変わったら記録も別 // 距離チャレンジ（ワープ条件つき）。旧ルール・条件ちがいの記録とは別
     let prev=0;try{const v=Number(localStorage.getItem(ekey));if(Number.isInteger(v)&&v>=0)prev=v;}catch(e){}
-    result.newBest=result.score>prev;result.best=result.newBest?result.score:prev;
+    result.newBest=result.score>prev;result.best=result.newBest?result.score:prev;result.previousBest=prev;
     if(result.newBest){try{localStorage.setItem(ekey,String(result.score));}catch(e){}}
   }
+  NBWorkshop.finish(result);
   return result;
 }
-function resultMarkup(prefix,clear){
-  return `<div class="resultSheet">
-    <header class="resultHeader"><h2 class="resultTitle">${clear?'CLEAR!':'GAME OVER'}</h2><p class="endReason" data-result-reason></p><p class="resultSong"><span data-result-song></span><span class="resultDifficulty" data-result-difficulty></span></p></header>
-    <div class="resultHero"><div class="resultPortrait"><canvas id="${prefix}Hero" width="400" height="280" aria-hidden="true"></canvas><strong class="resultHeroName" data-result-hero></strong></div><div class="resultRank" aria-label="ランク"><small>RANK</small><strong data-result-rank></strong></div></div>
-    <dl class="judgmentList" aria-label="判定の内訳">${[['PERFECT','#fff064'],['GREAT','#5de8ff'],['GOOD','#bcff66'],['MISS','#ff93b6']].map(([k,col])=>`<div class="judgmentRow" data-judgment="${k}" style="--tone:${col}"><dt>${k}</dt><dd><span>0</span><small>回</small></dd></div>`).join('')}</dl>
-    <div class="resultStats"><div class="resultStat"><small>判定精度</small><b data-result-accuracy></b></div><div class="resultStat"><small>最大コンボ</small><b data-result-combo></b></div></div>
-    <div class="scorePanel"><div class="scoreLabel"><span>SCORE / 1,000,000</span><span class="newBest" data-result-new>NEW BEST!</span></div><strong class="scoreValue" data-result-score>0</strong><div class="bestValue">自己ベスト <span data-result-best>0</span></div></div>
-    <div class="resultFoot"><span class="resultBadge" data-result-badge></span><span data-result-foot></span></div>
-    <div class="resultActions"><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
-    <button class="resultSkip" data-result-skip>タップでまとめて表示</button>
-    <button class="ovBtn sub diagOpenBtn" data-diag hidden>判定診断を見る</button>
-    <details class="scoreHelp"><summary>スコアのしくみ</summary><p>${scoreOn()?`1マス進むごとに点が入ります。値段は直前のブレイクの判定で決まります（PERFECT 100／GREAT 80／GOOD 50／被弾・MISS 0）。ブレイクそのものでも、その1/10が入ります。曲が最後まで流れたら終了です。`:`判定精度 × 到達率 × 1,000,000点。PERFECT=100%、GREAT=80%、GOOD=50%、MISS=0%の平均が判定精度です。MISSは被弾とタイミング外の入力を含みます。<br>クリア時のランク：S 98万 / A 90万 / B 80万 / C 65万点以上。自己ベストは曲・難易度ごとに保存します。`}</p></details>
-  </div>`;
-}
+function resultMarkup(prefix,clear){ return NBWorkshop.resultMarkup(prefix,clear); }
 function initResultScreens(){
   for(const [id,clear] of [['clearOv',true],['overOv',false]]){
     const ov=document.getElementById(id);ov.classList.add('resultScreen');ov.innerHTML=resultMarkup(id,clear);
@@ -1701,6 +1696,9 @@ function renderResult(result){
   ov.querySelector('[data-diag]').hidden=!diagRun;
   ov.querySelectorAll('.resultPending,.resultReveal').forEach(el=>el.classList.remove('resultPending','resultReveal'));
   ov.querySelector('[data-result-skip]').disabled=false;
+  ov.querySelector('.scorePanel').classList.remove('scoreLanded');
+  ov.querySelectorAll('.resultSpark').forEach(el=>el.remove());
+  NBWorkshop.decorateResult(result,ov);
 }
 initResultScreens();
 const uiVoices=new Set();
@@ -1757,38 +1755,42 @@ function finishResultReveal(sound=false){
   const active=resultRevealActive;if(!active)return;
   cancelResultReveal();const {ov,result}=active;
   ov.querySelectorAll('.resultPending').forEach(el=>el.classList.remove('resultPending'));
-  ov.querySelector('[data-result-score]').textContent=result.score.toLocaleString('en-US')+(result.unit||'');
+  NBWorkshop.paintScore(ov.querySelector('[data-result-score]'),result.score,result);
   ov.querySelector('[data-result-new]').classList.toggle('show',result.newBest);
   ov.querySelector('[data-result-skip]').disabled=true;
+  NBWorkshop.finishReveal(result,ov);
   if(sound)uiTone(1046,.13);
 }
 function startResultReveal(result){
   cancelResultReveal();
   const ov=document.getElementById(result.clear?'clearOv':'overOv'),token=resultRevealToken;
   resultRevealActive={ov,result};
-  const rows=[...ov.querySelectorAll('.judgmentRow')],stats=ov.querySelector('.resultStats'),foot=ov.querySelector('.resultFoot'),score=ov.querySelector('.scorePanel'),rank=ov.querySelector('.resultRank');
-  [...rows,stats,foot,score,rank].forEach(el=>{el.classList.remove('resultReveal');el.classList.add('resultPending');});
-  ov.querySelector('[data-result-score]').textContent='0';ov.querySelector('[data-result-new]').classList.remove('show');
+  const stats=ov.querySelector('.resultStats'),score=ov.querySelector('.scorePanel'),rewards=ov.querySelector('.rewardPanel');
   const after=(ms,fn)=>resultRevealTimers.push(setTimeout(()=>{if(token===resultRevealToken)fn();},ms));
   const reveal=el=>{el.classList.remove('resultPending');el.classList.add('resultReveal');};
-  rows.forEach((row,i)=>after(250+i*230,()=>{reveal(row);uiTone(640+i*105);}));
-  after(1200,()=>{reveal(stats);uiTone(980);});
-  after(1430,()=>reveal(foot));
-  after(1640,()=>{
-    reveal(score);const start=performance.now(),duration=reduceMotion.matches?0:650;
+  [stats,score,rewards].forEach(el=>{el.classList.remove('resultReveal');el.classList.add('resultPending');});
+  ov.querySelector('[data-result-score]').textContent='0';ov.querySelector('[data-result-new]').classList.remove('show');
+  ov.querySelector('[data-result-gems]').textContent='＋0';
+  ov.querySelector('[data-result-balance]').textContent=Math.max(0,(result.rewards?.balance||0)-(result.rewards?.total||0)).toLocaleString('en-US');
+  if(reduceMotion.matches){finishResultReveal();return;}
+  after(150,()=>{reveal(stats);uiTone(659,.06);});
+  after(400,()=>{
+    reveal(score);const start=performance.now(),duration=720;let lastTick=-1;
     const animate=now=>{
       if(token!==resultRevealToken)return;
-      const p=duration?Math.min(1,(now-start)/duration):1;
-      ov.querySelector('[data-result-score]').textContent=Math.round(result.score*(1-Math.pow(1-p,3))).toLocaleString('en-US')+(result.unit||'');
+      const p=Math.min(1,(now-start)/duration),eased=1-Math.pow(1-p,3);
+      NBWorkshop.paintScore(ov.querySelector('[data-result-score]'),Math.round(result.score*eased),result);
+      const tick=Math.floor(p*6);if(tick!==lastTick&&p<1){lastTick=tick;uiTone(440+tick*65,.025);}
       if(p<1)scoreFrame=requestAnimationFrame(animate);
       else{
-        reveal(rank);ov.querySelector('[data-result-new]').classList.toggle('show',result.newBest);
-        ov.querySelector('[data-result-skip]').disabled=true;resultRevealActive=null;scoreFrame=null;
-        [784,988,1175].forEach((f,i)=>uiTone(f,result.clear?.18:.09,i*.045));
+        scoreFrame=null;ov.querySelector('[data-result-new]').classList.toggle('show',result.newBest);
+        ov.querySelector('.scorePanel').classList.add('scoreLanded');
+        (result.newBest?[784,988,1318]:[659,880]).forEach((f,i)=>uiTone(f,.12,i*.055));
       }
     };
-    uiTone(880,.09);scoreFrame=requestAnimationFrame(animate);
+    scoreFrame=requestAnimationFrame(animate);
   });
+  after(1300,()=>{reveal(rewards);rewards.classList.remove('rewardArrive');void rewards.offsetWidth;rewards.classList.add('rewardArrive');NBWorkshop.finishReveal(result,ov);if(result.rewards?.total)[1175,1568].forEach((f,i)=>uiTone(f,.09,i*.06));ov.querySelector('[data-result-skip]').disabled=true;resultRevealActive=null;});
 }
 document.querySelectorAll('[data-result-skip]').forEach(b=>b.addEventListener('click',()=>finishResultReveal(true)));
 
@@ -1954,7 +1956,7 @@ function tileAlpha(i,t){
 }
 function floorTile(p,i,t){
   const a=tileAlpha(i,t);if(a<=0||p.y < -cell||p.y>boardH+cell)return;
-  const s=cell*.96,locked=i>LINES[lineK],color=PALETTES[lineK%PALETTES.length][2];
+  const s=cell*.96,locked=i>LINES[lineK],color=NBWorkshop.palette(lineK,PALETTES[lineK%PALETTES.length])[2];
   g.save();g.globalAlpha=a;g.translate(p.x,p.y);
   const scale=reduceMotion.matches?1:.85+.15*a;g.scale(scale,scale);
   rr(g,-s/2,-s/2,s,s,cell*.075);g.fillStyle=locked?'#8997f0':color;g.fill();
@@ -2019,7 +2021,7 @@ function draw(t){
   // 音の時計を基準に表示だけ動かす。入力ボタンと当たり判定の座標は固定。
   cv.style.transform=`translateY(${impactOffset(t).toFixed(2)}px)`;
   cameraRow=cameraAtTime(t);
-  drawCourse(t);drawLineAndG(t);
+  NBWorkshop.drawAtmosphere(t);drawCourse(t);NBWorkshop.drawTile(t);drawLineAndG(t);
   document.getElementById('beatWash').style.opacity=(isTutorial()||reduceMotion.matches)?'0':(beatPulse(t)*.13).toFixed(3);
   const pulse=beatPulse(t),pp=cellXY(playerVis(t));
   if(pulse>0&&!isTutorial()){
@@ -2254,7 +2256,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v50', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v51', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2459,6 +2461,7 @@ function startMusicAt(rawPosition=0){
 // 1周まわった（または曲が終わった）ときに、速くして最初から
 // スコアモード：最後のラインに着いたらコースの頭から続ける。曲・拍・速さはそのまま
 function nextCourse(t){
+  NBWorkshop.nextCourse();
   courseLap++;
   player = { idx: 0, from: 0, at: t }; notes = []; effects = []; fx = []; pendingCheck = []; nextGap = 4; runLen = 1;
   lineK = 0; gIdx = gIndexFor(0); gFrom = gIdx; gMoveAt = -9;
@@ -2467,6 +2470,7 @@ function nextCourse(t){
   texts.push({ s: 'COURSE ' + (courseLap + 1), idx: 0, t, col: '#ffe941', big: true });
 }
 function nextLap(t, songEnded){
+  NBWorkshop.nextCourse();
   if(!songEnded){ lap++; rate = Math.min(SPEED_MAX, 1 + lap * SPEED_STEP); applyRate(); diagEv('speed_up', { rate, lap }); } // 足し算で加速（掛け算ではない）
   else { diagAttempt++; diagEv('song_restart', { reason: 'ゴール前に曲が終わった。この挑戦の集計は破棄', lap, attempt: diagAttempt }); }
   // 周回突破と速度アップを伝える（点のボーナスはなし）
@@ -2496,6 +2500,7 @@ function startGame(){
   if(isTutorial())coachUI();
 }
 function pauseGame(){
+  NBWorkshop.flush();
   stopRushHold();
   if(state==='resuming'){cancelResume();state='paused';}
   else if(state==='play'){
@@ -2530,6 +2535,7 @@ async function resumeGame(){
   };tick();
 }
 function returnToSongs(){
+  NBWorkshop.flush(); NBWorkshop.clearToasts();
   if(state==='play'||state==='paused'||state==='resuming'){diagEv('quit',{});diagSave();}
   cancelResume();cancelResultReveal();stopMoveScheduler();stopSong();stopRushHold();
   clearTimeout(resultTimer);resultTimer=null;victoryAt=-1;
@@ -2644,6 +2650,7 @@ document.getElementById('myPlay').addEventListener('click',()=>{
 });
 
 // ===== 起動 =====
+NBWorkshop.init();
 (async () => {
   layout();
   ctx = new (window.AudioContext || window.webkitAudioContext)();
