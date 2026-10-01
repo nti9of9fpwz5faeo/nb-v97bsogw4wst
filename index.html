@@ -301,7 +301,7 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=55">
+<link rel="stylesheet" href="workshop.css?v=56">
 </head>
 <body>
 <div id="app">
@@ -331,7 +331,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v55</span>
+  <span id="verBadge">バージョン v56</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -339,7 +339,7 @@
   <div id="songList"></div>
   <input id="myFile" type="file" accept="audio/*" hidden>
   <div id="myPanel" class="hide"><div id="myName"></div><div id="myBpmRow"><span>BPM</span><button id="myDown" aria-label="BPMを下げる">−</button><b id="myBpm">--</b><button id="myUp" aria-label="BPMを上げる">＋</button></div><p id="myNote">曲はこの端末の中だけで使います</p><button id="myPlay">この曲で遊ぶ</button></div>
-  <div id="speedSettings"><span>ノーツスピード</span><button id="spDown" aria-label="おそく">−</button><b id="spVal">×1.0</b><button id="spUp" aria-label="はやく">＋</button></div>
+
   <details id="timingSettings"><summary>タイミング調整</summary><label for="timingRange">動きのタイミング <b id="timingValue">0 ms</b></label><input id="timingRange" type="range" min="-250" max="250" step="5" value="0"><p>動きが音より早い → ＋へ<br>動きが音より遅い → −へ</p><button id="timingReset">0に戻す</button></details>
   <details id="soundSettings"><summary>音と拍のガイド</summary><label class="diagRow" for="guideToggle"><span>拍のガイド音</span><input id="guideToggle" type="checkbox"></label><label class="diagRow" for="volSong"><span>曲</span><input id="volSong" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volGuide"><span>ガイド</span><input id="volGuide" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volSe"><span>ブレイク音</span><input id="volSe" type="range" min="0" max="100" step="5"></label><div class="diagRow"><span>Neon Rushの拍補正</span><span class="corrBtns"><button data-corr="0">0ms</button><button data-corr="-30">−30ms</button></span></div><p>ガイド音をオンにすると、ブロックの移動音の代わりに拍ごとに短い音が鳴ります。拍補正は次のプレイから反映されます。</p><p><a href="check.html" style="color:#c6ff44;font-weight:800">曲のテンポのズレをチェックする</a></p></details>
   <details id="diagSettings"><summary>判定診断モード</summary><label class="diagRow" for="diagToggle"><span>診断モード</span><input id="diagToggle" type="checkbox"></label><label class="diagRow" for="diagOutput"><span>音の出力</span><select id="diagOutput"><option value="unknown">不明</option><option value="speaker">スピーカー</option><option value="wired">有線イヤホン</option><option value="bluetooth">Bluetooth</option></select></label><p>オンにすると、ブレイクのズレを画面の下に小さく表示し、記録を残します。</p><button id="diagOpen">前回の記録を見る</button></details>
@@ -360,10 +360,12 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
-<script src="progression.js?v=55"></script>
-<script src="chase.js?v=55"></script>
-<script src="sound.js?v=55"></script>
-<script src="workshop.js?v=55"></script>
+<script src="progression.js?v=56"></script>
+<script src="chase.js?v=56"></script>
+<script src="courses.js?v=56"></script>
+<script src="menu.js?v=56"></script>
+<script src="sound.js?v=56"></script>
+<script src="workshop.js?v=56"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -498,13 +500,13 @@ const FIRST_GAP = 3;      // スタートから一番近いブロックまでの
 // ===== コース（ジグザグ） =====
 // 長い直線 → 中くらい → 短い折り返し → 長い直線。最後の4マスは出現口用。
 const path = [];
-const WAYPOINTS = [[7,0],[0,0],[0,2],[5,2],[5,4],[2,4],[2,6],[7,6],[7,8],[0,8],[0,10],[2,10]];
-for(let k=0;k<WAYPOINTS.length;k++){
-  const [c,r]=WAYPOINTS[k];
-  if(!k){path.push({c,r});continue;}
-  const last=path[path.length-1],dc=Math.sign(c-last.c),dr=Math.sign(r-last.r);
-  for(let x=last.c+dc,y=last.r+dr;;x+=dc,y+=dr){path.push({c:x,r:y});if(x===c&&y===r)break;}
+let coursePattern = 0;
+const courseDeck = NBCourses.deck();
+function chooseCourse(tutorial=false){
+  coursePattern=tutorial?0:courseDeck.next();
+  path.splice(0,path.length,...NBCourses.build(coursePattern));
 }
+path.push(...NBCourses.build(0));
 // 縦の区間では直前の左右向きを維持する。
 function facesRight(idx){
   for(let i=Math.min(idx,path.length-2);i>=0;i--){
@@ -516,7 +518,7 @@ const EXIT_INDEX = path.length - 1;
 
 // ===== 画像 =====
 const IMG = {};
-const imgList = ['char_idle.png','char_move.png','char_slash.png','char_damage.png','characters/diamond-runners-v55.webp'];
+const imgList = ['char_idle.png','char_move.png','char_slash.png','char_damage.png','ninjas/novice.webp','ninjas/novice-idle.webp','ninjas/adept.webp','ninjas/master.webp','ninjas/divine.webp','gems/novice.webp','gems/adept.webp','gems/master.webp','gems/divine.webp'];
 function loadImg(n){return new Promise(res=>{const i=new Image();i.onload=()=>res();i.onerror=()=>res();i.src='img/'+n;IMG[n.split('.')[0]]=i;});}
 
 // 見た目だけの選択。HP・移動・判定にはキャラ別の変更を加えない。
@@ -589,6 +591,7 @@ function closeHeroPicker(confirm){
   clearTimeout(heroPoseTimer);
   if(confirm){selectedHero=previewHero;try{localStorage.setItem(HERO_STORAGE,selectedHero);}catch(e){}updateHeroMenu();}
   document.getElementById('heroOv').classList.add('hide');document.getElementById('startOv').classList.remove('hide');
+  NBMenu.show('home');
   document.getElementById('heroOpen').focus({preventScroll:true});
 }
 function initHeroPicker(){
@@ -606,7 +609,7 @@ function initHeroPicker(){
 }
 document.getElementById('heroOpen').addEventListener('click',()=>{
   if(state!=='ready'||pickingSong)return;
-  previewCharacter(selectedHero);document.getElementById('startOv').classList.add('hide');document.getElementById('heroOv').classList.remove('hide');
+  NBMenu.show('heroes');
   document.getElementById('heroBack').focus({preventScroll:true});
 });
 document.getElementById('heroBack').addEventListener('click',()=>closeHeroPicker(false));
@@ -717,6 +720,7 @@ function reset(){
   cv.style.transform = '';
   hp = MAX_HP; player = { idx: 0, from: 0, at: 0 }; moveLocked = true;
   runScore = 0; movePrice = 0; runSteps = 0; courseLap = 0;
+  chooseCourse(isTutorial());
   secPerfect = 0; warpReady = false; sectionNo = 1; termWaitLogged = false; document.getElementById('lapGain').classList.remove('show');
   endReason = null;
   document.getElementById('judge').classList.toggle('minor', rushOn());
@@ -747,8 +751,7 @@ function rand(){ spawnSeed = (spawnSeed * 16807) % 2147483647; return spawnSeed 
 
 // Use the device-output clock for visuals and judging, not frame-count accumulation.
 // ノーツスピード（見た目の速さだけ。当たるタイミングは変わらない）
-let noteSpeed=1;
-try{const v=Number(localStorage.getItem('neon-blade-note-speed'));if(v>=1&&v<=3)noteSpeed=v;}catch(e){}
+const noteSpeed=1; // Manual scroll-speed setting retired; warp playback acceleration remains.
 let clockOffset=0,timingMs=0;
 try{const v=Number(localStorage.getItem('neon-blade-timing-ms'));if(Number.isFinite(v))timingMs=Math.max(-250,Math.min(250,v));}catch(e){}
 function syncClock(){clockOffset=ctx.currentTime-performance.now()/1000;}
@@ -2259,7 +2262,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v55', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v56', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2465,7 +2468,7 @@ function startMusicAt(rawPosition=0){
 // スコアモード：最後のラインに着いたらコースの頭から続ける。曲・拍・速さはそのまま
 function nextCourse(t){
   NBWorkshop.nextCourse();
-  courseLap++;
+  courseLap++; chooseCourse();
   player = { idx: 0, from: 0, at: t }; notes = []; effects = []; fx = []; pendingCheck = []; nextGap = 4; runLen = 1;
   lineK = 0; gIdx = gIndexFor(0); gFrom = gIdx; gMoveAt = -9;
   cameraRow=0;cameraFrom=0;cameraTarget=0;cameraAt=-9;setPalette(courseLap % PALETTES.length);
@@ -2473,7 +2476,7 @@ function nextCourse(t){
   texts.push({ s: 'COURSE ' + (courseLap + 1), idx: 0, t, col: '#ffe941', big: true });
 }
 function nextLap(t, songEnded){
-  NBWorkshop.nextCourse();
+  NBWorkshop.nextCourse(); chooseCourse();
   if(!songEnded){ lap++; rate = Math.min(SPEED_MAX, 1 + lap * SPEED_STEP); applyRate(); diagEv('speed_up', { rate, lap }); } // 足し算で加速（掛け算ではない）
   else { diagAttempt++; diagEv('song_restart', { reason: 'ゴール前に曲が終わった。この挑戦の集計は破棄', lap, attempt: diagAttempt }); }
   // 周回突破と速度アップを伝える（点のボーナスはなし）
@@ -2491,7 +2494,7 @@ function nextLap(t, songEnded){
   texts.push({ s: 'LAP ' + (lap + 1), idx: 0, t: songTime(), col: '#ffe941', big: true });
 }
 function startGame(){
-  NBWorkshop.stopSongPreview();NBSound.stop();
+  NBWorkshop.stopSongPreview();NBSound.stop(); NBMenu.playing();
   document.querySelectorAll('.overlay').forEach(o=>o.classList.add('hide'));
   reset();progFill.style.width='0%';
   lap=0;rate=song.rate||1;applyRate();updateWarpHud(); // 速度を初期値に戻してから表示を更新
@@ -2548,7 +2551,7 @@ function returnToSongs(){
   tutClearUI();coach=null;
   document.getElementById('victory').classList.add('hide');
   document.querySelectorAll('.overlay').forEach(o=>o.classList.add('hide'));
-  document.getElementById('startOv').classList.remove('hide');
+  document.getElementById('startOv').classList.remove('hide'); NBMenu.show('songs');
 }
 document.getElementById('pauseBtn').addEventListener('click',pauseGame);
 document.getElementById('resumeBtn').addEventListener('click',resumeGame);
@@ -2558,15 +2561,6 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseGame()
 window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(state==='play')pauseGame();else if(state==='paused')resumeGame();}});
 document.querySelectorAll('[data-retry]').forEach(b=>b.addEventListener('click',startGame));
 document.querySelectorAll('[data-select]').forEach(b=>b.addEventListener('click',returnToSongs));
-function showSpeed(){document.getElementById('spVal').textContent='×'+noteSpeed.toFixed(1);}
-function changeSpeed(d){
-  if(state!=='ready')return;
-  noteSpeed=Math.max(1,Math.min(3,Math.round((noteSpeed+d)*2)/2));showSpeed();
-  try{localStorage.setItem('neon-blade-note-speed',String(noteSpeed));}catch(e){}
-}
-document.getElementById('spDown').addEventListener('click',()=>changeSpeed(-.5));
-document.getElementById('spUp').addEventListener('click',()=>changeSpeed(.5));
-showSpeed();
 function showTimingValue(){document.getElementById('timingValue').textContent=`${timingMs>0?'+':''}${timingMs} ms`;document.getElementById('timingRange').value=timingMs;}
 document.getElementById('timingRange').addEventListener('input',e=>{
   if(state!=='ready')return;timingMs=Number(e.target.value);showTimingValue();
@@ -2656,6 +2650,7 @@ document.getElementById('myPlay').addEventListener('click',()=>{
 
 // ===== 起動 =====
 NBWorkshop.init();
+NBMenu.init();
 (async () => {
   layout();
   ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2666,7 +2661,7 @@ NBWorkshop.init();
   loadAudio('audio/goal.mp3').then(ab => ctx.decodeAudioData(ab)).then(b => goalBuf = b).catch(() => {});
   await NBSound.load(); initHeroPicker();reset(); layout();
   state = 'ready';
-  document.getElementById('loadTxt').textContent = '曲をえらんでスタート';
+  document.getElementById('loadTxt').textContent = ''; NBMenu.ready();
   NBWorkshop.renderSongs();
   loop();
 })();

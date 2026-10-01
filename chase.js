@@ -1,29 +1,33 @@
-/* Beat-based chase: only spawn at section starts, rewards independent of speed. */
+/* Four ranked ninjas: discrete cells, timed teleports and legitimate ultimate catches. */
 (function(root){
   'use strict';
-  const rarities=[{id:'normal',name:'ダイヤ',reward:5,color:'#78ecff',weight:.70},{id:'rare',name:'スター',reward:12,color:'#ffd45e',weight:.25},{id:'rainbow',name:'レインボー',reward:30,color:'#efa6ff',weight:.05}];
-  const types=[{id:'slow',name:'のんびり',speed:.12,gap:5,color:'#7be3ce'},{id:'swift',name:'すばやい',speed:.20,gap:6,color:'#9689ff'},{id:'fast',name:'疾風',speed:.28,gap:7,color:'#ff888e'}];
-  function spawn(random=Math.random,{warp=false,rushCells=10}={}){
-    if(random()>=.35)return null;
-    const r=random();const rarity=r<.70?rarities[0]:r<.95?rarities[1]:rarities[2];
-    const v=random();const type=v<.5?types[0]:v<.85?types[1]:types[2];
-    // Same head start on every warp, independent of stored charge or player input.
-    // A saved ultimate still helps, but its ten-cell dash cannot claim a fresh spawn.
-    const gap=warp?Math.max(type.gap,rushCells+3+(type.gap-5)):type.gap;
-    return {rarity,type,gap,idx:gap,start:null,done:false,outcome:null,previousPlayer:0};
+  const types=[
+    {id:'novice',name:'初級',reward:5,color:'#73eaff',weight:.60,jump:3,wait:12},
+    {id:'adept',name:'中級',reward:15,color:'#ffd44f',weight:.30,jump:4,wait:11},
+    {id:'master',name:'上級',reward:40,color:'#e878ff',weight:.095,jump:6,wait:10},
+    {id:'divine',name:'神級',reward:150,color:'#fff4b1',weight:.005,jump:8,wait:9}
+  ];
+  function spawn(random=Math.random){
+    if(random()>=.28)return null;
+    const roll=random();let sum=0;const type=types.find(x=>(sum+=x.weight)>roll)||types[3];
+    return {type,rarity:type,trigger:14+Math.floor(random()*4),idx:null,visible:false,done:false,outcome:null,nextAt:null,surpriseUntil:null,events:[]};
   }
-  function advance(chase,t,spb,player,end,playing=true){
-    if(!chase||chase.done||!playing)return null;
-    if(chase.start===null)chase.start=t;
-    const previous=chase.idx;
-    chase.idx=chase.gap+Math.max(0,(t-chase.start)/spb-2)*chase.type.speed;
-    // Crossing detection handles purple jumps and ultimate movement without skipping a catch.
-    if(player>=chase.idx || (player>chase.previousPlayer&&player>=previous&&chase.previousPlayer<=previous&&chase.idx<end)){
-      chase.done=true;chase.outcome='caught';return 'caught';
+  function advance(n,t,spb,player,end,playing=true){
+    if(!n||n.done||!playing)return null;
+    if(!n.visible){
+      if(player<n.trigger)return null;
+      if(player>end-5){n.done=true;n.outcome='skipped';return null;}
+      n.visible=true;n.idx=Math.ceil(player)+2;n.surpriseUntil=t+.28;n.nextAt=t+.28;
+      n.events.push({idx:n.idx,t});return 'appeared';
     }
-    chase.previousPlayer=player;
-    if(chase.idx>=end){chase.done=true;chase.outcome='escaped';return 'escaped';}
+    if(player>=n.idx){n.done=true;n.outcome='caught';n.events.push({idx:n.idx,t});return 'caught';}
+    if(t>=n.nextAt){
+      n.events.push({idx:n.idx,t});n.idx+=n.type.jump;
+      if(n.idx>=end){n.done=true;n.outcome='escaped';return 'escaped';}
+      n.events.push({idx:n.idx,t});n.nextAt=t+n.type.wait*spb;return 'warped';
+    }
     return null;
   }
-  const api={rarities,types,spawn,advance};if(typeof module!=='undefined')module.exports=api;else root.NBChase=api;
+  const api={types,rarities:types,spawn,advance};
+  if(typeof module!=='undefined')module.exports=api;else root.NBChase=api;
 })(typeof window==='undefined'?globalThis:window);

@@ -31,12 +31,13 @@
   const heroes = [{id:'ninja',price:0},{id:'volt',price:350},{id:'prism',price:400},{id:'veno',price:450},{id:'echo',price:500}];
   const rankFloor = rank => 120 * (rank - 1) + 20 * (rank - 1) * (rank - 2);
   function rankInfo(xp) { let rank=1; while(rank<999 && xp>=rankFloor(rank+1))rank++; return {rank,xp,progress:xp-rankFloor(rank),need:rankFloor(rank+1)-rankFloor(rank)}; }
-  const fresh = () => ({version: 2, xp:0, songs:songs.filter(s=>!s.price).map(s=>s.id), heroes:['ninja'], gems: 0, earned: 0, stats: {hits: 0, steps: 0, combo: 0, rush: 0, tiles: 0}, claimed: [], themes: ['classic'], theme: 'classic'});
+  const fresh = () => ({version: 2, xp:0, songs:songs.filter(s=>!s.price).map(s=>s.id), heroes:['ninja'], testGrants: [], gems: 0, earned: 0, stats: {hits: 0, steps: 0, combo: 0, rush: 0, tiles: 0}, claimed: [], themes: ['classic'], theme: 'classic'});
   const integer = v => Number.isSafeInteger(v) && v >= 0;
   function validate(raw) {
     if (!raw || ![1,2].includes(raw.version) || !integer(raw.gems) || !integer(raw.earned) || !raw.stats || !Array.isArray(raw.claimed) || !Array.isArray(raw.themes)) throw Error('invalid save');
     const out = fresh();
     out.gems = raw.gems; out.earned = raw.earned;
+    out.testGrants = Array.isArray(raw.testGrants) ? raw.testGrants.filter(x=>x==='v56-shopping') : [];
     for (const key of Object.keys(out.stats)) {
       if (!integer(raw.stats[key])) throw Error('invalid stat');
       out.stats[key] = raw.stats[key];
@@ -99,6 +100,14 @@
       if(!flush()){state=before;dirty=true;return {ok:false,reason:'storage'};}
       return {ok:true,price:item.price};
     }
+    function grantShoppingTest(){
+      const id='v56-shopping';
+      if(state.testGrants.includes(id))return {ok:true,amount:0};
+      const before=JSON.parse(JSON.stringify(state));
+      state.gems+=100000;state.testGrants.push(id);dirty=true;
+      if(!flush()){state=before;dirty=true;return {ok:false,reason:'storage'};}
+      return {ok:true,amount:100000};
+    }
     function awardXP(amount){
       if(!integer(amount))return {xp:0,reward:0,unlocked:[]};
       const old=rankInfo(state.xp).rank;state.xp+=Math.min(amount,2000);const info=rankInfo(state.xp);
@@ -108,7 +117,7 @@
       return {...info,xp:Math.min(amount,2000),oldRank:old,reward,unlocked};
     }
     return {
-      get state() { return state; }, get error() { return error; }, update, flush, selectTheme, purchase, awardXP,
+      get state() { return state; }, get error() { return error; }, update, flush, selectTheme, purchase, awardXP, grantShoppingTest,
       nextMissions: () => groups.map(([stat]) => missions.find(m => m.stat === stat && !state.claimed.includes(m.id))).filter(Boolean)
     };
   }

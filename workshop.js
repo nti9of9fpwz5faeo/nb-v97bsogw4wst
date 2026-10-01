@@ -1,7 +1,7 @@
 /* v51: result presentation, local missions, optional gem tiles and course colors. */
 window.NBWorkshop = (() => {
   'use strict';
-  const GEM = '<span class="gemIcon" aria-hidden="true"></span>';
+  const GEM = '<img class="gemIcon" src="img/gems/novice.webp" alt="">';
   let previewSource=null, previewToken=0, previewButton=null;
   let ledger, run, tile, initialized = false, toastTimer, toastGap, toastQueue = [], returnFocus;
   const $ = id => document.getElementById(id);
@@ -51,7 +51,7 @@ window.NBWorkshop = (() => {
   }
   function suspendRun() { if (ledger) ledger.flush(); run = null; }
   function makeTile(serial) {
-    tile = NBChase.spawn(Math.random,{warp:serial>0,rushCells:RUSH_CELLS});
+    tile = NBChase.spawn(Math.random);
   }
   function nextCourse() {
     if (!active()) return;
@@ -102,36 +102,34 @@ window.NBWorkshop = (() => {
   }
   function drawTile(t) {
     if($('gemCue'))$('gemCue').hidden=true;
-    if(!initialized||!run||isTutorial()||!tile||tile.done||tile.idx>revealEnd)return;
-    const p=cellXY(tile.idx),r=tile.rarity;
-    if(p.y < -cell || p.y>boardH+cell)return;
-    const art=IMG['characters/diamond-runners-v55'],col=NBChase.types.indexOf(tile.type);
-    const beatAge=tile.start===null?0:Math.max(0,(t-tile.start)/SPB);
-    const pose=reduceMotion.matches?0:Math.floor(beatAge*(1.5+col*.35))%2;
-    const bounce=reduceMotion.matches?0:Math.sin(beatAge*Math.PI*2)*cell*.022;
-    const face=facesRight(Math.floor(tile.idx))?-1:1;
-    g.save();g.translate(p.x,p.y);
-    // Ground contact and a restrained trail; both are behind the character.
-    g.fillStyle='#071c3f44';g.beginPath();g.ellipse(0,cell*.29,cell*.26,cell*.075,0,0,Math.PI*2);g.fill();
-    g.save();g.scale(face,1);g.translate(0,bounce);
-    if(art?.complete&&art.naturalWidth){
-      const scale=cell/360,sy=pose?550:0,sh=pose?474:550,foot=pose?431:522;
-      g.drawImage(art,col*512,sy,512,sh,-245*scale,-foot*scale+cell*.30,512*scale,sh*scale);
-    }else{
-      const fallback=IMG.char_move;
-      if(fallback?.complete&&fallback.naturalWidth)g.drawImage(fallback,-cell*.55,-cell*.8,cell*1.1,cell*1.1);
+    if(!initialized||!run||isTutorial()||!tile)return;
+    tile.events=tile.events.filter(e=>t-e.t<.45);
+    for(const e of tile.events){
+      const age=Math.max(0,(t-e.t)/.45),p=cellXY(e.idx);
+      if(e.idx>revealEnd)continue;
+      g.save();g.globalAlpha=(1-age)*.8;g.fillStyle='#effaff';g.strokeStyle='#92afcb';g.lineWidth=1;
+      for(let i=0;i<6;i++){
+        const a=i*Math.PI/3,spread=cell*(.12+age*.36),radius=cell*(.11+age*.08);
+        g.beginPath();g.arc(p.x+Math.cos(a)*spread,p.y-cell*.15+Math.sin(a)*spread,radius,0,Math.PI*2);g.fill();g.stroke();
+      }g.restore();
     }
-    // The crystal sits on the carried satchel. Rarity is independent of ninja speed.
-    const gx=-cell*.25,gy=-cell*.17+bounce*.1,s=cell*.18;
-    const grad=g.createLinearGradient(gx-s,gy-s,gx+s,gy+s);
-    const colors=r.id==='rainbow'?['#ff9dbd','#fff49c','#83ffe0','#b3a7ff']:r.id==='rare'?['#fff6a3','#ffd354','#f39b20']:['#e6ffff','#79f0ff','#259be9'];
-    colors.forEach((color,i)=>grad.addColorStop(i/(colors.length-1),color));
-    g.shadowColor=r.color;g.shadowBlur=r.id==='rainbow'?9:4;g.fillStyle=grad;g.strokeStyle='#14314b';g.lineWidth=Math.max(1.4,cell*.025);
-    g.beginPath();g.moveTo(gx-s,gy-s*.25);g.lineTo(gx-s*.5,gy-s*.8);g.lineTo(gx+s*.5,gy-s*.8);g.lineTo(gx+s,gy-s*.25);g.lineTo(gx,gy+s);g.closePath();g.fill();g.stroke();g.shadowBlur=0;
-    g.strokeStyle='#ffffffc0';g.lineWidth=Math.max(.8,cell*.015);g.beginPath();g.moveTo(gx-s,gy-s*.25);g.lineTo(gx+s,gy-s*.25);g.moveTo(gx-s*.5,gy-s*.8);g.lineTo(gx,gy+s);g.lineTo(gx+s*.5,gy-s*.8);g.stroke();
+    if(!tile.visible||tile.done||tile.idx>revealEnd)return;
+    const p=cellXY(tile.idx),r=tile.type;
+    if(p.y < -cell || p.y>boardH+cell)return;
+    const art=IMG['ninjas/'+r.id],surprised=r.id==='novice'&&t<tile.surpriseUntil;
+    const displayArt=(!surprised&&r.id==='novice'&&IMG['ninjas/novice-idle']?.naturalWidth)?IMG['ninjas/novice-idle']:art;
+    g.save();g.translate(p.x,p.y);
+    g.fillStyle='#071c3f44';g.beginPath();g.ellipse(0,cell*.32,cell*.25,cell*.06,0,0,Math.PI*2);g.fill();
+    g.save();g.scale(facesRight(tile.idx)?-1:1,1);
+    if(displayArt?.naturalWidth){
+      const h=cell*1.15,w=h*displayArt.naturalWidth/displayArt.naturalHeight;
+      const pop=surprised&&!reduceMotion.matches?1.08:1;g.scale(pop,pop);
+      g.drawImage(displayArt,-w*.5,-h+cell*.34,w,h);
+    }
     g.restore();
-    g.font=`900 ${Math.max(10,Math.round(cell*.21))}px system-ui`;g.textAlign='center';g.lineWidth=3;g.strokeStyle='#071326';
-    const label='+'+r.reward;g.strokeText(label,0,-cell*.96+bounce);g.fillStyle=r.color;g.fillText(label,0,-cell*.96+bounce);g.restore();
+    const gem=IMG['gems/'+r.id];if(gem?.naturalWidth)g.drawImage(gem,-cell*.24,-cell*1.13,cell*.25,cell*.25);
+    g.font=`900 ${Math.max(10,Math.round(cell*.21))}px system-ui`;g.textAlign='left';g.lineWidth=3;g.strokeStyle='#071326';
+    const label='+'+r.reward;g.strokeText(label,cell*.03,-cell*.93);g.fillStyle=r.color;g.fillText(label,cell*.03,-cell*.93);g.restore();
   }
   function drawAtmosphere(t) {
     if (!initialized || isTutorial() || ledger.state.theme === 'classic') return;
@@ -164,11 +162,12 @@ window.NBWorkshop = (() => {
     const shop = tab === 'shop';
     $('collectionHeading').textContent = shop ? 'ショップ' : 'ミッション';
     $('collectionIntro').textContent = shop ? '集めたダイヤで、走る景色を変えよう。' : '達成した瞬間にダイヤGET。何度でも挑戦しよう。';
-    $('collectionBody').innerHTML = shop ? specialStageMarkup() + '<h3 class="collectionSection">コーステーマ</h3>' + NBProgression.themes.map(theme => {
+    $('collectionBody').innerHTML = shop ? '<div class="shopLinks"><button data-shop-page="songs">♫ 曲の解放</button><button data-shop-page="heroes">キャラクターの解放</button></div>' + '<h3 class="collectionSection">コーステーマ</h3>' + NBProgression.themes.map(theme => {
       const owned = ledger.state.themes.includes(theme.id), selected = ledger.state.theme === theme.id;
       const missing = Math.max(0, theme.price - ledger.state.gems);
       return `<article class="themeCard" style="--theme-a:${theme.colors[0]};--theme-b:${theme.colors[1]};--theme-floor:${theme.colors[2]}"><div class="themePreview ${theme.id}"><i></i><b>${theme.id === 'sunset' ? '☀' : theme.id === 'aurora' ? '✧' : '↗'}</b><span>${selected ? '選択中' : owned ? '解放済み' : 'THEME'}</span></div><div class="themeInfo"><h3>${theme.name}</h3><p>${theme.tag}</p><button data-theme="${theme.id}" ${selected || (!owned && missing) ? 'disabled' : ''}>${selected ? '使用中' : owned ? 'この景色で遊ぶ' : `${GEM} ${theme.price} で解放`}</button>${!owned && missing ? `<small>あと ${missing} ダイヤ</small>` : ''}</div></article>`;
-    }).join('') + '<p class="collectionNote">コーステーマは背景・床の見た目を変更します。<br>曲・譜面・キャラの強さは共通です。</p>' : ledger.nextMissions().map(missionCard).join('') + `<p class="collectionNote">達成済み ${ledger.state.claimed.length} / ${NBProgression.missions.length}<br>スタート・ワープ直後に、ときどき忍者が登場。<br>追いつくと5・12・30ダイヤ。色と速さの違いも見つけよう。<br>練習中のプレイはミッションの対象外です。</p>`;
+    }).join('') + '<p class="collectionNote">コーステーマは背景・床の見た目を変更します。<br>曲・譜面・キャラの強さは共通です。</p>' : ledger.nextMissions().map(missionCard).join('') + `<p class="collectionNote">達成済み ${ledger.state.claimed.length} / ${NBProgression.missions.length}<br>コースの中盤で、ときどき忍者が登場。<br>捕まえると5・15・40・150ダイヤ。<br>位が高いほど、遠くへドロン！<br>練習中のプレイはミッションの対象外です。</p>`;
+    $('collectionBody').querySelectorAll('[data-shop-page]').forEach(b=>b.addEventListener('click',()=>NBMenu.show(b.dataset.shopPage)));
     $('collectionBody').querySelectorAll('[data-theme]').forEach(button => button.addEventListener('click', () => {
       if (state !== 'ready') return;
       const theme = NBProgression.themes.find(t => t.id === button.dataset.theme);
@@ -189,13 +188,13 @@ window.NBWorkshop = (() => {
     stopSongPreview(); returnFocus = document.activeElement; $('collectionStatus').textContent = ''; panel(tab);
     $('collectionOv').classList.remove('hide'); $('collectionOv').scrollTop = 0; $('collectionClose').focus();
   }
-  function closePanel() { $('collectionOv').classList.add('hide'); returnFocus?.focus(); }
+  function closePanel() { $('collectionOv').classList.add('hide'); NBMenu.show('home'); }
   function init() {
     let storage;
     try { storage = localStorage; } catch (_) { storage = {getItem() { throw Error('storage unavailable'); }}; }
     ledger = NBProgression.create(storage); initialized = true;
     $('verBadge').insertAdjacentHTML('afterend','<p id="playerRank" class="playerRank"></p>');
-    $('songList').insertAdjacentHTML('afterend', `<section class="specialStageShelf" aria-label="特別ステージ">${specialStageMarkup()}</section>`);
+
     $('verBadge').insertAdjacentHTML('afterend', `<div class="collectionBar"><button id="missionsOpen">ミッション <span class="missionDot"></span></button><button id="themesOpen">${GEM}<b data-wallet>0</b><span>解放 ↗</span></button></div><p class="saveNote" data-save-note hidden></p>`);
     $('fieldWrap').insertAdjacentHTML('beforeend', '<div id="gemCue" hidden></div>');
     document.body.insertAdjacentHTML('beforeend', `<div id="missionToast" role="status" aria-live="polite"></div><div id="collectionOv" class="overlay hide" role="dialog" aria-modal="true" aria-labelledby="collectionHeading"><div class="collectionPanel"><header><button id="collectionClose" aria-label="曲えらびへ戻る">‹</button><h2 id="collectionHeading"></h2><span class="wallet">${GEM}<b data-wallet>0</b></span></header><p id="collectionIntro"></p><div id="collectionBody"></div><p id="collectionStatus" role="status"></p><p class="saveNote" data-save-note hidden></p></div></div>`);
@@ -260,21 +259,26 @@ window.NBWorkshop = (() => {
   function paintScore(el, value, result) {
     el.innerHTML = `<span>${fmt(value)}</span>${result.unit ? `<small>${escape(result.unit.trim())}</small>` : ''}`;
   }
+  function previewIcon(kind){
+    const paths={play:'<path d="M10 7l9 5-9 5z" fill="currentColor"/>',stop:'<rect x="8" y="8" width="8" height="8" rx="1" fill="currentColor"/>',loading:'<path d="M12 4a8 8 0 1 1-8 8" fill="none" stroke="currentColor" stroke-width="2"/>',retry:'<path d="M5 10a7 7 0 1 1 1 7M5 4v6h6" fill="none" stroke="currentColor" stroke-width="2"/>'};
+    return `<svg viewBox="0 0 24 24" aria-hidden="true" class="${kind==='loading'?'previewLoading':''}"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.4"/>${paths[kind]}</svg>`;
+  }
+  function shoppingGift(){const r=ledger.grantShoppingTest();refreshWallet();renderSongs();return r;}
   function ownsSong(sg){return ledger.state.songs.includes(sg.file)||!NBProgression.songs.some(x=>x.id===sg.file);}
-  function stopSongPreview(){previewToken++;if(previewSource){try{previewSource.stop();}catch(_){}previewSource=null;}if(previewButton){previewButton.textContent='▶ 15秒試聴';previewButton=null;}}
+  function stopSongPreview(){previewToken++;if(previewSource){try{previewSource.stop();}catch(_){}previewSource=null;}if(previewButton){previewButton.innerHTML=previewIcon('play');previewButton.setAttribute('aria-pressed','false');previewButton=null;}}
   async function previewSong(sg,button){
     if(state!=='ready'||pickingSong)return;
     const same=previewButton===button;stopSongPreview();if(same)return;
-    const token=previewToken;previewButton=button;button.textContent='読み込み中…';
+    const token=previewToken;previewButton=button;button.innerHTML=previewIcon('loading');
     try{
       await ctx.resume();const buffer=await ctx.decodeAudioData(await loadAudio(sg.file));
       if(token!==previewToken||state!=='ready')return;
       const src=ctx.createBufferSource(),gain=ctx.createGain();src.buffer=buffer;src.connect(gain);gain.connect(buses().song);
       const now=ctx.currentTime,duration=Math.min(15,buffer.duration),offset=Math.min(30,Math.max(0,buffer.duration*.35));
       gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.8,now+.15);gain.gain.setValueAtTime(.8,now+duration-.4);gain.gain.linearRampToValueAtTime(0,now+duration);
-      previewSource=src;button.textContent='■ 試聴を止める';src.start(now,Math.min(offset,buffer.duration-duration),duration);
+      previewSource=src;button.innerHTML=previewIcon('stop');button.setAttribute('aria-pressed','true');src.start(now,Math.min(offset,buffer.duration-duration),duration);
       src.onended=()=>{src.disconnect();gain.disconnect();if(previewSource===src)stopSongPreview();};
-    }catch(_){if(token===previewToken){stopSongPreview();button.textContent='試聴を再試行';}}
+    }catch(_){if(token===previewToken){stopSongPreview();button.innerHTML=previewIcon('retry');button.setAttribute('aria-label',sg.name+'の試聴を再試行');}}
   }
   function renderSongs(){
     const list=$('songList');list.replaceChildren();
@@ -296,7 +300,7 @@ window.NBWorkshop = (() => {
         if(b.dataset.confirm!=='yes'){b.dataset.confirm='yes';b.querySelector('small').textContent=`💎 ${item.price} を使って解放する`;return;}
         const result=ledger.purchase('songs',sg.file);if(result.ok){refreshWallet();renderSongs();}else b.querySelector('small').textContent=result.reason==='funds'?'ダイヤが足りません':ledger.error;
       });row.appendChild(b);
-      if(!tutorial){const preview=document.createElement('button');preview.className='songPreview';preview.textContent='▶ 15秒試聴';preview.setAttribute('aria-label',sg.name+'を15秒試聴');preview.addEventListener('click',()=>previewSong(sg,preview));row.appendChild(preview);}
+      if(!tutorial){const preview=document.createElement('button');preview.className='songPreview';preview.innerHTML=previewIcon('play');preview.setAttribute('aria-label',sg.name+'を試聴');preview.setAttribute('aria-pressed','false');preview.addEventListener('click',()=>previewSong(sg,preview));row.appendChild(preview);}
       if(tutorial)list.appendChild(row);else if(owned)playable.appendChild(row);else{locked.appendChild(row);lockedCount++;}
     }
     const upload=document.createElement('button');upload.className='songBtn';upload.innerHTML='<span>📁 自分の曲をえらぶ</span><small>この端末から</small>';upload.addEventListener('click',()=>{stopSongPreview();if(state==='ready'&&!pickingSong)myFile.click();});playable.appendChild(upload);
@@ -311,5 +315,5 @@ window.NBWorkshop = (() => {
   }
   function ownedHero(id){return ledger.state.heroes.includes(id);}
   function flush() { if (ledger) { ledger.flush(); refreshWallet(); } }
-  return {tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, palette, drawTile, drawAtmosphere, resultMarkup, decorateResult, finishReveal, paintScore, flush, clearToasts};
+  return {shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, palette, drawTile, drawAtmosphere, resultMarkup, decorateResult, finishReveal, paintScore, flush, clearToasts};
 })();
