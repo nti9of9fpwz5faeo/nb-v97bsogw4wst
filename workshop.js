@@ -157,16 +157,25 @@ window.NBWorkshop = (() => {
   function specialStageMarkup() {
     return NBProgression.specialStages.map(stage => `<article class="specialStageCard" aria-label="${escape(stage.name)}・近日追加"><div class="specialStageArt" aria-hidden="true">✦</div><div><small>SPECIAL STAGE</small><h3>${escape(stage.name)}</h3><p>${escape(stage.description)}</p><span class="comingSoon">近日追加</span></div></article>`).join('');
   }
+  function shoppingGiftMarkup(){
+    const claimed=ledger.state.testGrants.includes('v56-shopping');
+    return `<article class="themeCard"><div class="themeInfo"><h3>開発テスト用ダイヤ</h3><p>買い物を試すための、一度だけの受け取りです。</p><button id="shoppingGiftClaim" ${claimed?'disabled':''}>${claimed?'受け取り済み':GEM+' 100,000 ダイヤを受け取る'}</button></div></article>`;
+  }
   function panel(tab) {
     if (!initialized) return;
     const shop = tab === 'shop';
     $('collectionHeading').textContent = shop ? 'ショップ' : 'ミッション';
     $('collectionIntro').textContent = shop ? '集めたダイヤで、走る景色を変えよう。' : '達成した瞬間にダイヤGET。何度でも挑戦しよう。';
-    $('collectionBody').innerHTML = shop ? '<div class="shopLinks"><button data-shop-page="songs">♫ 曲の解放</button><button data-shop-page="heroes">キャラクターの解放</button></div>' + '<h3 class="collectionSection">コーステーマ</h3>' + NBProgression.themes.map(theme => {
+    $('collectionBody').innerHTML = shop ? shoppingGiftMarkup() + '<div class="shopLinks"><button data-shop-page="songs">♫ 曲の解放</button><button data-shop-page="heroes">キャラクターの解放</button></div>' + '<h3 class="collectionSection">コーステーマ</h3>' + NBProgression.themes.map(theme => {
       const owned = ledger.state.themes.includes(theme.id), selected = ledger.state.theme === theme.id;
       const missing = Math.max(0, theme.price - ledger.state.gems);
       return `<article class="themeCard" style="--theme-a:${theme.colors[0]};--theme-b:${theme.colors[1]};--theme-floor:${theme.colors[2]}"><div class="themePreview ${theme.id}"><i></i><b>${theme.id === 'sunset' ? '☀' : theme.id === 'aurora' ? '✧' : '↗'}</b><span>${selected ? '選択中' : owned ? '解放済み' : 'THEME'}</span></div><div class="themeInfo"><h3>${theme.name}</h3><p>${theme.tag}</p><button data-theme="${theme.id}" ${selected || (!owned && missing) ? 'disabled' : ''}>${selected ? '使用中' : owned ? 'この景色で遊ぶ' : `${GEM} ${theme.price} で解放`}</button>${!owned && missing ? `<small>あと ${missing} ダイヤ</small>` : ''}</div></article>`;
     }).join('') + '<p class="collectionNote">コーステーマは背景・床の見た目を変更します。<br>曲・譜面・キャラの強さは共通です。</p>' : ledger.nextMissions().map(missionCard).join('') + `<p class="collectionNote">達成済み ${ledger.state.claimed.length} / ${NBProgression.missions.length}<br>コースの中盤で、ときどき忍者が登場。<br>捕まえると5・15・40・150ダイヤ。<br>位が高いほど、遠くへドロン！<br>練習中のプレイはミッションの対象外です。</p>`;
+    $('shoppingGiftClaim')?.addEventListener('click',()=>{
+      if(state!=='ready')return;
+      const result=shoppingGift();panel('shop');
+      $('collectionStatus').textContent=result.ok?(result.amount?'100,000 ダイヤを追加しました！':'すでに受け取り済みです。'):ledger.error;
+    });
     $('collectionBody').querySelectorAll('[data-shop-page]').forEach(b=>b.addEventListener('click',()=>NBMenu.show(b.dataset.shopPage)));
     $('collectionBody').querySelectorAll('[data-theme]').forEach(button => button.addEventListener('click', () => {
       if (state !== 'ready') return;
