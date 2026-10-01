@@ -51,7 +51,7 @@ window.NBWorkshop = (() => {
   }
   function suspendRun() { if (ledger) ledger.flush(); run = null; }
   function makeTile(serial) {
-    tile = NBChase.spawn();
+    tile = NBChase.spawn(Math.random,{warp:serial>0,rushCells:RUSH_CELLS});
   }
   function nextCourse() {
     if (!active()) return;
@@ -103,23 +103,35 @@ window.NBWorkshop = (() => {
   function drawTile(t) {
     if($('gemCue'))$('gemCue').hidden=true;
     if(!initialized||!run||isTutorial()||!tile||tile.done||tile.idx>revealEnd)return;
-    const p=cellXY(tile.idx),c=tile.type.color,r=tile.rarity;
+    const p=cellXY(tile.idx),r=tile.rarity;
     if(p.y < -cell || p.y>boardH+cell)return;
-    g.save();g.translate(p.x,p.y);g.scale(cell/48,cell/48);
-    const bounce=reduceMotion.matches?0:Math.sin(t/SPB*Math.PI*2)*2;
-    g.translate(0,bounce-5);
-    // Compact masked runner, with a trailing scarf and a clearly visible reward.
-    g.fillStyle=c;g.beginPath();g.moveTo(-5,-5);g.lineTo(-27,-10);g.lineTo(-22,-1);g.closePath();g.fill();
-    g.strokeStyle='#15233f';g.lineWidth=7;g.lineCap='round';
-    const stride=reduceMotion.matches?3:Math.sin(t/SPB*Math.PI*2)*6;
-    g.beginPath();g.moveTo(-2,9);g.lineTo(-7-stride,20);g.moveTo(3,9);g.lineTo(8+stride,20);g.stroke();
-    g.fillStyle='#1e2849';g.beginPath();g.ellipse(0,3,9,12,0,0,Math.PI*2);g.fill();
-    g.beginPath();g.arc(0,-12,11,0,Math.PI*2);g.fill();g.fillStyle=c;g.fillRect(-9,-15,18,6);
-    g.fillStyle='#fff';g.fillRect(1,-14,5,3);
-    let fill=r.color;if(r.id==='rainbow'){fill=g.createLinearGradient(7,-26,30,-8);['#ff8cbd','#ffe68a','#8dffda','#8faaff'].forEach((v,i)=>fill.addColorStop(i/3,v));}
-    g.fillStyle=fill;g.strokeStyle='#fff';g.lineWidth=1.4;g.beginPath();g.moveTo(8,-17);g.lineTo(12,-24);g.lineTo(23,-24);g.lineTo(28,-17);g.lineTo(18,-5);g.closePath();g.fill();g.stroke();
-    g.font='bold 10px system-ui';g.textAlign='center';g.lineWidth=3;g.strokeStyle='#071326';g.strokeText('+'+r.reward,18,-29);g.fillStyle='#fff';g.fillText('+'+r.reward,18,-29);
+    const art=IMG['characters/diamond-runners-v55'],col=NBChase.types.indexOf(tile.type);
+    const beatAge=tile.start===null?0:Math.max(0,(t-tile.start)/SPB);
+    const pose=reduceMotion.matches?0:Math.floor(beatAge*(1.5+col*.35))%2;
+    const bounce=reduceMotion.matches?0:Math.sin(beatAge*Math.PI*2)*cell*.022;
+    const face=facesRight(Math.floor(tile.idx))?-1:1;
+    g.save();g.translate(p.x,p.y);
+    // Ground contact and a restrained trail; both are behind the character.
+    g.fillStyle='#071c3f44';g.beginPath();g.ellipse(0,cell*.29,cell*.26,cell*.075,0,0,Math.PI*2);g.fill();
+    g.save();g.scale(face,1);g.translate(0,bounce);
+    if(art?.complete&&art.naturalWidth){
+      const scale=cell/360,sy=pose?550:0,sh=pose?474:550,foot=pose?431:522;
+      g.drawImage(art,col*512,sy,512,sh,-245*scale,-foot*scale+cell*.30,512*scale,sh*scale);
+    }else{
+      const fallback=IMG.char_move;
+      if(fallback?.complete&&fallback.naturalWidth)g.drawImage(fallback,-cell*.55,-cell*.8,cell*1.1,cell*1.1);
+    }
+    // The crystal sits on the carried satchel. Rarity is independent of ninja speed.
+    const gx=-cell*.25,gy=-cell*.17+bounce*.1,s=cell*.18;
+    const grad=g.createLinearGradient(gx-s,gy-s,gx+s,gy+s);
+    const colors=r.id==='rainbow'?['#ff9dbd','#fff49c','#83ffe0','#b3a7ff']:r.id==='rare'?['#fff6a3','#ffd354','#f39b20']:['#e6ffff','#79f0ff','#259be9'];
+    colors.forEach((color,i)=>grad.addColorStop(i/(colors.length-1),color));
+    g.shadowColor=r.color;g.shadowBlur=r.id==='rainbow'?9:4;g.fillStyle=grad;g.strokeStyle='#14314b';g.lineWidth=Math.max(1.4,cell*.025);
+    g.beginPath();g.moveTo(gx-s,gy-s*.25);g.lineTo(gx-s*.5,gy-s*.8);g.lineTo(gx+s*.5,gy-s*.8);g.lineTo(gx+s,gy-s*.25);g.lineTo(gx,gy+s);g.closePath();g.fill();g.stroke();g.shadowBlur=0;
+    g.strokeStyle='#ffffffc0';g.lineWidth=Math.max(.8,cell*.015);g.beginPath();g.moveTo(gx-s,gy-s*.25);g.lineTo(gx+s,gy-s*.25);g.moveTo(gx-s*.5,gy-s*.8);g.lineTo(gx,gy+s);g.lineTo(gx+s*.5,gy-s*.8);g.stroke();
     g.restore();
+    g.font=`900 ${Math.max(10,Math.round(cell*.21))}px system-ui`;g.textAlign='center';g.lineWidth=3;g.strokeStyle='#071326';
+    const label='+'+r.reward;g.strokeText(label,0,-cell*.96+bounce);g.fillStyle=r.color;g.fillText(label,0,-cell*.96+bounce);g.restore();
   }
   function drawAtmosphere(t) {
     if (!initialized || isTutorial() || ledger.state.theme === 'classic') return;

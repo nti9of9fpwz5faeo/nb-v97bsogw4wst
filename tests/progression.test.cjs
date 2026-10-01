@@ -14,3 +14,17 @@ function spawn(vals){return chase.spawn(()=>vals.shift());}
 test('spawn limited to chance roll, rarity and speed are independent',()=>{assert.equal(spawn([.36]),null);const r=spawn([.1,.99,.1]);assert.equal(r.rarity.reward,30);assert.equal(r.type.id,'slow');const n=spawn([.1,.1,.99]);assert.equal(n.rarity.reward,5);assert.equal(n.type.id,'fast');});
 test('purple movement and ultimate sweep catch once; pause and escape never reward',()=>{const n=spawn([0,.99,0]);chase.advance(n,0,.5,0,40);assert.equal(chase.advance(n,1,.5,10,40),'caught');assert.equal(chase.advance(n,2,.5,11,40),null);const s=spawn([0,0,.99]);chase.advance(s,0,.5,0,40);chase.advance(s,20,.5,0,40,false);assert.equal(s.idx,7);assert.equal(chase.advance(s,100,.5,0,40),'escaped');assert.equal(chase.advance(s,101,.5,40,40),null);});
 test('speed follows beats at all playback rates and dense sections leave recovery room',()=>{for(const rate of [1,1.5,2.2]){const n=spawn([0,0,.99]);const spb=.5/rate;chase.advance(n,0,spb,0,40);chase.advance(n,10*spb,spb,0,40);assert.ok(n.idx<10);assert.equal(chase.advance(n,12*spb,spb,12,40),'caught');}});
+test('all warp ninja types start beyond one ultimate, without reacting to stored charge',()=>{
+ for(const typeRoll of [.1,.7,.99])for(const rate of [1,1.5,2.2]){
+   const values=[.1,.5,typeRoll];const n=chase.spawn(()=>values.shift(),{warp:true,rushCells:10}),spb=.5/rate;
+   assert.ok(n.idx>=13&&n.idx<=15);chase.advance(n,0,spb,0,39);
+   for(let frame=1;frame<=20;frame++)assert.equal(chase.advance(n,frame*.025/rate,spb,frame*.5,39),null);
+   assert.equal(n.done,false,'an immediate ten-cell ultimate must not collect a new warp spawn');
+   assert.equal(chase.advance(n,4*spb,spb,20,39),'caught','ordinary follow-up movement can still catch it');
+   assert.equal(chase.advance(n,5*spb,spb,21,39),null);
+ }
+});
+test('normal start stays approachable and head start follows changes to ultimate distance',()=>{
+ let values=[.1,.5,.1];assert.equal(chase.spawn(()=>values.shift()).idx,5);
+ values=[.1,.5,.1];assert.equal(chase.spawn(()=>values.shift(),{warp:true,rushCells:14}).idx,17);
+});
