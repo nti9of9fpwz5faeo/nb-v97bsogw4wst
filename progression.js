@@ -17,6 +17,10 @@
     {id: 'aurora', name: 'オーロラリンク', tag: '澄んだ光と、きらめく結晶', price: 60, colors: ['#1737b8', '#00bdab', '#99ffe0']},
     {id: 'sunset', name: 'サンセットドライブ', tag: '夕空を走る、黄金の回路', price: 160, colors: ['#6831c5', '#ff8975', '#ffdc8a']}
   ];
+  // Reserved content: no audio, price, purchase, or playable route until release.
+  const specialStages = [
+    {id: 'special-stage-01', name: '特別ステージ', description: '曲に合わせた特別な景色と演出。新しい挑戦を準備中。', status: 'coming-soon', songId: null, price: null}
+  ];
   const fresh = () => ({version: 1, gems: 0, earned: 0, stats: {hits: 0, steps: 0, combo: 0, rush: 0, tiles: 0}, claimed: [], themes: ['classic'], theme: 'classic'});
   const integer = v => Number.isSafeInteger(v) && v >= 0;
   function validate(raw) {
@@ -72,7 +76,7 @@
       nextMissions: () => groups.map(([stat]) => missions.find(m => m.stat === stat && !state.claimed.includes(m.id))).filter(Boolean)
     };
   }
-  const api = {KEY, missions, themes, create, validate};
+  const api = {KEY, missions, themes, specialStages, create, validate};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.NBProgression = api;
 })(typeof window === 'undefined' ? globalThis : window);

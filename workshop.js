@@ -145,12 +145,15 @@ window.NBWorkshop = (() => {
     const unit = m.stat === 'steps' ? ' STEPS' : m.stat === 'combo' ? 'コンボ' : '回';
     return `<article class="missionCard"><div><small>MISSION ${String(m.tier).padStart(2, '0')}</small><h3>${m.title}</h3><p>${m.label} ${fmt(m.target)}${unit}</p></div><b class="missionPrize">${GEM}＋${m.reward}</b><div class="missionTrack"><i style="width:${pct}%"></i></div><span class="missionProgress">${fmt(value)} / ${fmt(m.target)}</span></article>`;
   }
+  function specialStageMarkup() {
+    return NBProgression.specialStages.map(stage => `<article class="specialStageCard" aria-label="${escape(stage.name)}・近日追加"><div class="specialStageArt" aria-hidden="true">✦</div><div><small>SPECIAL STAGE</small><h3>${escape(stage.name)}</h3><p>${escape(stage.description)}</p><span class="comingSoon">近日追加</span></div></article>`).join('');
+  }
   function panel(tab) {
     if (!initialized) return;
     const shop = tab === 'shop';
-    $('collectionHeading').textContent = shop ? 'コーステーマ' : 'ミッション';
+    $('collectionHeading').textContent = shop ? 'ショップ' : 'ミッション';
     $('collectionIntro').textContent = shop ? '集めたダイヤで、走る景色を変えよう。' : '達成した瞬間にダイヤGET。何度でも挑戦しよう。';
-    $('collectionBody').innerHTML = shop ? NBProgression.themes.map(theme => {
+    $('collectionBody').innerHTML = shop ? specialStageMarkup() + '<h3 class="collectionSection">コーステーマ</h3>' + NBProgression.themes.map(theme => {
       const owned = ledger.state.themes.includes(theme.id), selected = ledger.state.theme === theme.id;
       const missing = Math.max(0, theme.price - ledger.state.gems);
       return `<article class="themeCard" style="--theme-a:${theme.colors[0]};--theme-b:${theme.colors[1]};--theme-floor:${theme.colors[2]}"><div class="themePreview ${theme.id}"><i></i><b>${theme.id === 'sunset' ? '☀' : theme.id === 'aurora' ? '✧' : '↗'}</b><span>${selected ? '選択中' : owned ? '解放済み' : 'THEME'}</span></div><div class="themeInfo"><h3>${theme.name}</h3><p>${theme.tag}</p><button data-theme="${theme.id}" ${selected || (!owned && missing) ? 'disabled' : ''}>${selected ? '使用中' : owned ? 'この景色で遊ぶ' : `${GEM} ${theme.price} で解放`}</button>${!owned && missing ? `<small>あと ${missing} ダイヤ</small>` : ''}</div></article>`;
@@ -180,6 +183,7 @@ window.NBWorkshop = (() => {
     let storage;
     try { storage = localStorage; } catch (_) { storage = {getItem() { throw Error('storage unavailable'); }}; }
     ledger = NBProgression.create(storage); initialized = true;
+    $('songList').insertAdjacentHTML('afterend', `<section class="specialStageShelf" aria-label="特別ステージ">${specialStageMarkup()}</section>`);
     $('verBadge').insertAdjacentHTML('afterend', `<div class="collectionBar"><button id="missionsOpen">ミッション <span class="missionDot"></span></button><button id="themesOpen">${GEM}<b data-wallet>0</b><span>解放 ↗</span></button></div><p class="saveNote" data-save-note hidden></p>`);
     $('fieldWrap').insertAdjacentHTML('beforeend', '<div id="gemCue" hidden></div>');
     document.body.insertAdjacentHTML('beforeend', `<div id="missionToast" role="status" aria-live="polite"></div><div id="collectionOv" class="overlay hide" role="dialog" aria-modal="true" aria-labelledby="collectionHeading"><div class="collectionPanel"><header><button id="collectionClose" aria-label="曲えらびへ戻る">‹</button><h2 id="collectionHeading"></h2><span class="wallet">${GEM}<b data-wallet>0</b></span></header><p id="collectionIntro"></p><div id="collectionBody"></div><p id="collectionStatus" role="status"></p><p class="saveNote" data-save-note hidden></p></div></div>`);
