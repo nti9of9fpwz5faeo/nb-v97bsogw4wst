@@ -266,6 +266,12 @@ window.NBWorkshop = (() => {
   }
   function renderSongs(){
     const list=$('songList');list.replaceChildren();
+    const makeGroup=(title,locked)=>{
+      const section=document.createElement('section');section.className='songGroup'+(locked?' lockedGroup':'');section.setAttribute('aria-label',title);
+      const heading=document.createElement('h3');heading.className='songGroupHeading';heading.textContent=title;section.appendChild(heading);return section;
+    };
+    const playable=makeGroup('プレイできる曲',false),locked=makeGroup('未解放の曲',true);
+    let lockedCount=0;
     for(const sg of SONGS){
       const item=NBProgression.songs.find(x=>x.id===sg.file),owned=ownsSong(sg),tutorial=sg===SONGS[0];
       const row=document.createElement('div');row.className='songRow';
@@ -279,9 +285,10 @@ window.NBWorkshop = (() => {
         const result=ledger.purchase('songs',sg.file);if(result.ok){refreshWallet();renderSongs();}else b.querySelector('small').textContent=result.reason==='funds'?'ダイヤが足りません':ledger.error;
       });row.appendChild(b);
       if(!tutorial){const preview=document.createElement('button');preview.className='songPreview';preview.textContent='▶ 15秒試聴';preview.setAttribute('aria-label',sg.name+'を15秒試聴');preview.addEventListener('click',()=>previewSong(sg,preview));row.appendChild(preview);}
-      list.appendChild(row);
+      if(tutorial)list.appendChild(row);else if(owned)playable.appendChild(row);else{locked.appendChild(row);lockedCount++;}
     }
-    const upload=document.createElement('button');upload.className='songBtn';upload.innerHTML='<span>📁 自分の曲をえらぶ</span><small>この端末から</small>';upload.addEventListener('click',()=>{stopSongPreview();if(state==='ready'&&!pickingSong)myFile.click();});list.appendChild(upload);
+    const upload=document.createElement('button');upload.className='songBtn';upload.innerHTML='<span>📁 自分の曲をえらぶ</span><small>この端末から</small>';upload.addEventListener('click',()=>{stopSongPreview();if(state==='ready'&&!pickingSong)myFile.click();});playable.appendChild(upload);
+    list.appendChild(playable);if(lockedCount)list.appendChild(locked);
   }
   function heroLabel(id){const item=NBProgression.heroes.find(h=>h.id===id);return ledger.state.heroes.includes(id)?'このキャラで遊ぶ':`💎 ${item.price} で解放`;}
   function selectHero(id,button){
