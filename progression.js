@@ -31,7 +31,10 @@
   const heroes = [{id:'ninja',price:0},{id:'volt',price:350},{id:'prism',price:400},{id:'veno',price:450},{id:'echo',price:500}];
   const rankFloor = rank => 120 * (rank - 1) + 20 * (rank - 1) * (rank - 2);
   function rankInfo(xp) { let rank=1; while(rank<999 && xp>=rankFloor(rank+1))rank++; return {rank,xp,progress:xp-rankFloor(rank),need:rankFloor(rank+1)-rankFloor(rank)}; }
-  const fresh = () => ({version: 2, xp:0, songs:songs.filter(s=>!s.price).map(s=>s.id), heroes:['ninja'], testGrants: [], gems: 0, earned: 0, stats: {hits: 0, steps: 0, combo: 0, rush: 0, tiles: 0}, claimed: [], themes: ['classic'], theme: 'classic'});
+  const dayKey = (now=Date.now()) => new Date(now+9*3600000).toISOString().slice(0,10);
+  const dailyMissions=[{id:'hits',stat:'hits',title:'リズムに乗ろう',label:'GREAT以上',target:150,reward:5},{id:'steps',stat:'steps',title:'今日の一歩',label:'合計STEPS',target:150,reward:5},{id:'rush',stat:'rush',title:'必殺技を決めよう',label:'必殺技',target:3,reward:5}];
+  const songMissions=[{id:'hits150',stat:'hits',target:150,label:'GREAT以上 150回',reward:5},{id:'steps100',stat:'steps',target:100,label:'100 STEPS到達',reward:5},{id:'hits500',stat:'hits',target:500,label:'GREAT以上 500回',reward:8},{id:'steps250',stat:'steps',target:250,label:'250 STEPS到達',reward:8},{id:'hits1500',stat:'hits',target:1500,label:'GREAT以上 1,500回',reward:12},{id:'steps500',stat:'steps',target:500,label:'500 STEPS到達',reward:12}];
+  const fresh = () => ({version: 2, daily:{day:dayKey(),stats:{hits:0,steps:0,rush:0},claimed:[]}, songStats:{}, adReward:null, xp:0, songs:songs.filter(s=>!s.price).map(s=>s.id), heroes:['ninja'], testGrants: [], gems: 0, earned: 0, stats: {hits: 0, steps: 0, combo: 0, rush: 0, tiles: 0}, claimed: [], themes: ['classic'], theme: 'classic'});
   const integer = v => Number.isSafeInteger(v) && v >= 0;
   function validate(raw) {
     if (!raw || ![1,2].includes(raw.version) || !integer(raw.gems) || !integer(raw.earned) || !raw.stats || !Array.isArray(raw.claimed) || !Array.isArray(raw.themes)) throw Error('invalid save');
@@ -51,6 +54,9 @@
       out.songs=[...new Set([...out.songs,...raw.songs.filter(id=>songs.some(s=>s.id===id))])];
       out.heroes=[...new Set(['ninja',...raw.heroes.filter(id=>heroes.some(h=>h.id===id))])];
     }
+    if(raw.daily && /^\d{4}-\d{2}-\d{2}$/.test(raw.daily.day) && raw.daily.stats && ['hits','steps','rush'].every(k=>integer(raw.daily.stats[k])) && Array.isArray(raw.daily.claimed))out.daily={day:raw.daily.day,stats:{...raw.daily.stats},claimed:raw.daily.claimed.filter(id=>dailyMissions.some(m=>m.id===id))};
+    for(const [id,v] of Object.entries(raw.songStats||{}))if(songs.some(s=>s.id===id)&&v&&integer(v.hits)&&integer(v.steps)&&Array.isArray(v.claimed))out.songStats[id]={hits:v.hits,steps:v.steps,claimed:v.claimed.filter(id=>songMissions.some(m=>m.id===id))};
+    if(raw.adReward&&typeof raw.adReward.id==='string'&&integer(raw.adReward.amount)&&typeof raw.adReward.claimed==='boolean')out.adReward={...raw.adReward};
     return out;
   }
   function create(storage) {
@@ -68,11 +74,23 @@
       catch (_) { error = '保存できませんでした。ページを閉じると今回の進行が失われる可能性があります。'; return false; }
     }
     function schedule() { dirty = true; if (!timer) timer = setTimeout(flush, 1000); }
-    function update(add = {}, maxima = {}, tileReward = 0) {
+    function daily(){const today=dayKey();if(today>state.daily.day){state.daily={day:today,stats:{hits:0,steps:0,rush:0},claimed:[]};schedule();}return state.daily;}
+    function songProgress(id){return state.songStats[id]||{hits:0,steps:0,claimed:[]};}
+    function update(add = {}, maxima = {}, tileReward = 0, context = {}) {
       for (const key of ['hits', 'rush', 'tiles']) if (integer(add[key])) state.stats[key] += add[key];
       for (const key of ['steps', 'combo']) if (integer(maxima[key])) state.stats[key] = Math.max(state.stats[key], maxima[key]);
       const awarded = missions.filter(m => !state.claimed.includes(m.id) && state.stats[m.stat] >= m.target);
       state.claimed.push(...awarded.map(m => m.id));
+      const d=daily();for(const k of ['hits','steps','rush'])if(integer(add[k]))d.stats[k]+=add[k];
+      const dailyAwards=dailyMissions.filter(m=>!d.claimed.includes(m.id)&&d.stats[m.stat]>=m.target);
+      d.claimed.push(...dailyAwards.map(m=>m.id));
+      awarded.push(...dailyAwards.map(m=>({...m,id:'daily-'+d.day+'-'+m.id,title:'デイリー：'+m.title})));
+      if(songs.some(s=>s.id===context.songId)){
+        const v=state.songStats[context.songId] ||= {hits:0,steps:0,claimed:[]};
+        if(integer(add.hits))v.hits+=add.hits;if(integer(maxima.steps))v.steps=Math.max(v.steps,maxima.steps);
+        const won=songMissions.filter(m=>!v.claimed.includes(m.id)&&v[m.stat]>=m.target);v.claimed.push(...won.map(m=>m.id));
+        awarded.push(...won.map(m=>({...m,title:'曲ミッション：'+m.label})));
+      }
       const reward = (integer(tileReward) ? tileReward : 0) + awarded.reduce((n, m) => n + m.reward, 0);
       state.gems += reward; state.earned += reward;
       schedule();
@@ -108,6 +126,12 @@
       if(!flush()){state=before;dirty=true;return {ok:false,reason:'storage'};}
       return {ok:true,amount:100000};
     }
+    function prepareAdReward(id,amount){if(typeof id!=='string'||!integer(amount))return false;state.adReward={id,amount,claimed:false};schedule();return flush();}
+    function claimAdReward(id){
+      const r=state.adReward;if(!r||r.id!==id||r.claimed||!r.amount)return {ok:false,reason:'invalid'};
+      const before=JSON.parse(JSON.stringify(state));r.claimed=true;state.gems+=r.amount;state.earned+=r.amount;dirty=true;
+      if(!flush()){state=before;dirty=true;return {ok:false,reason:'storage'};}return {ok:true,amount:r.amount};
+    }
     function awardXP(amount){
       if(!integer(amount))return {xp:0,reward:0,unlocked:[]};
       const old=rankInfo(state.xp).rank;state.xp+=Math.min(amount,2000);const info=rankInfo(state.xp);
@@ -117,11 +141,11 @@
       return {...info,xp:Math.min(amount,2000),oldRank:old,reward,unlocked};
     }
     return {
-      get state() { return state; }, get error() { return error; }, update, flush, selectTheme, purchase, awardXP, grantShoppingTest,
+      get state() { return state; }, get error() { return error; }, update, flush, selectTheme, purchase, awardXP, grantShoppingTest, daily, songProgress, prepareAdReward, claimAdReward,
       nextMissions: () => groups.map(([stat]) => missions.find(m => m.stat === stat && !state.claimed.includes(m.id))).filter(Boolean)
     };
   }
-  const api = {KEY, missions, themes, specialStages, songs, heroes, rankInfo, create, validate};
+  const api = {dayKey, dailyMissions, songMissions, KEY, missions, themes, specialStages, songs, heroes, rankInfo, create, validate};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.NBProgression = api;
 })(typeof window === 'undefined' ? globalThis : window);

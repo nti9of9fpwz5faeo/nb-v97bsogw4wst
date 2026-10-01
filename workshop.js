@@ -27,12 +27,12 @@ window.NBWorkshop = (() => {
   }
   function refreshWallet() {
     if (!ledger) return;
-    const rank=NBProgression.rankInfo(ledger.state.xp); if($('playerRank'))$('playerRank').textContent=`PLAYER RANK ${rank.rank}　${rank.progress} / ${rank.need} XP`;
+    const rank=NBProgression.rankInfo(ledger.state.xp); if($('playerRank'))$('playerRank').innerHTML=`<span class="rankBadge"><small>RANK</small><b>${rank.rank}</b></span><span class="rankInfo"><strong>次のランクまで ${rank.need-rank.progress} XP</strong><progress value="${rank.progress}" max="${rank.need}"></progress><small>${rank.progress} / ${rank.need} XP</small></span>`;
     document.querySelectorAll('[data-wallet]').forEach(el => el.textContent = fmt(ledger.state.gems));
     document.querySelectorAll('[data-save-note]').forEach(el => { el.textContent = ledger.error; el.hidden = !ledger.error; });
   }
   function apply(add, maxima, gems = 0) {
-    const change = ledger.update(add, maxima, gems);
+    const change = ledger.update(add, maxima, gems, {songId:song.file});
     if (run) {
       run.gems += change.reward; run.tileGems += gems;
       run.missions.push(...change.awarded);
@@ -46,7 +46,7 @@ window.NBWorkshop = (() => {
   function resetRun() {
     if (!initialized) return;
     ledger.flush(); clearToasts();
-    run = {gems: 0, tileGems: 0, missions: [], rushes: 0, serial: 0, hits:0, seen: new Set(), finished: false};
+    run = {gems: 0, tileGems: 0, missions: [], rushes: 0, serial: 0, hits:0, stepValue:0, id:globalThis.crypto?.randomUUID?.() || String(Date.now())+Math.random(), seen: new Set(), finished: false};
     makeTile(0); refreshWallet();
   }
   function suspendRun() { if (ledger) ledger.flush(); run = null; }
@@ -66,7 +66,7 @@ window.NBWorkshop = (() => {
     run.hits++; apply({hits: 1}, {combo});
   }
   function steps(value) {
-    if (active() && value > ledger.state.stats.steps) apply({}, {steps: value});
+    if(active()&&value>run.stepValue){const delta=value-run.stepValue;run.stepValue=value;apply({steps:delta},{steps:value});}
   }
   function tick(t){
     if(!active()||!tile)return;
@@ -92,6 +92,9 @@ window.NBWorkshop = (() => {
     clearToasts(); ledger.flush(); refreshWallet();
     result.rewards = {total: run?.gems || 0, tiles: run?.tileGems || 0, missions: [...(run?.missions || [])], balance: ledger.state.gems};
     result.rushes = run?.rushes || 0;
+    if(run&&!run.finished&&!isTutorial()){
+      result.rewardId=run.id;result.adEligible=ledger.prepareAdReward(run.id,result.rewards.total);
+    }
     if (run) run.finished = true;
   }
   function palette(index, fallback) {
@@ -161,36 +164,39 @@ window.NBWorkshop = (() => {
     const claimed=ledger.state.testGrants.includes('v56-shopping');
     return `<article class="themeCard"><div class="themeInfo"><h3>開発テスト用ダイヤ</h3><p>買い物を試すための、一度だけの受け取りです。</p><button id="shoppingGiftClaim" ${claimed?'disabled':''}>${claimed?'受け取り済み':GEM+' 100,000 ダイヤを受け取る'}</button></div></article>`;
   }
+  function dailyCards(){
+    const d=ledger.daily();
+    return '<h3 class="collectionSection">デイリーミッション</h3><p class="dailyReset">毎日 0:00 更新（日本時間）</p>'+NBProgression.dailyMissions.map(m=>{
+      const v=Math.min(m.target,d.stats[m.stat]),done=d.claimed.includes(m.id);
+      return `<article class="missionCard"><div><small>${done?'達成済み':'TODAY'}</small><h3>${m.title}</h3><p>${m.label} ${m.target}${m.stat==='steps'?' STEPS':'回'}</p></div><b class="missionPrize">${GEM}＋${m.reward}</b><progress max="${m.target}" value="${v}" aria-label="${m.title}"></progress><span class="missionProgress">${v} / ${m.target}</span></article>`;
+    }).join('');
+  }
+  function themeCards(){return NBProgression.themes.map(theme=>{
+    const owned=ledger.state.themes.includes(theme.id),selected=ledger.state.theme===theme.id;
+    return `<article class="themeCard" style="--theme-a:${theme.colors[0]};--theme-b:${theme.colors[1]};--theme-floor:${theme.colors[2]}"><div class="themePreview ${theme.id}"><i></i><b>✦</b></div><div class="themeInfo"><h3>${theme.name}</h3><p>${theme.tag}</p><button data-theme="${theme.id}" ${selected?'disabled':''}>${selected?'使用中':owned?'この景色で遊ぶ':GEM+' '+theme.price+' で解放'}</button></div></article>`;
+  }).join('');}
   function panel(tab) {
-    if (!initialized) return;
-    const shop = tab === 'shop';
-    $('collectionHeading').textContent = shop ? 'ショップ' : 'ミッション';
-    $('collectionIntro').textContent = shop ? '集めたダイヤで、走る景色を変えよう。' : '達成した瞬間にダイヤGET。何度でも挑戦しよう。';
-    $('collectionBody').innerHTML = shop ? shoppingGiftMarkup() + '<div class="shopLinks"><button data-shop-page="songs">♫ 曲の解放</button><button data-shop-page="heroes">キャラクターの解放</button></div>' + '<h3 class="collectionSection">コーステーマ</h3>' + NBProgression.themes.map(theme => {
-      const owned = ledger.state.themes.includes(theme.id), selected = ledger.state.theme === theme.id;
-      const missing = Math.max(0, theme.price - ledger.state.gems);
-      return `<article class="themeCard" style="--theme-a:${theme.colors[0]};--theme-b:${theme.colors[1]};--theme-floor:${theme.colors[2]}"><div class="themePreview ${theme.id}"><i></i><b>${theme.id === 'sunset' ? '☀' : theme.id === 'aurora' ? '✧' : '↗'}</b><span>${selected ? '選択中' : owned ? '解放済み' : 'THEME'}</span></div><div class="themeInfo"><h3>${theme.name}</h3><p>${theme.tag}</p><button data-theme="${theme.id}" ${selected || (!owned && missing) ? 'disabled' : ''}>${selected ? '使用中' : owned ? 'この景色で遊ぶ' : `${GEM} ${theme.price} で解放`}</button>${!owned && missing ? `<small>あと ${missing} ダイヤ</small>` : ''}</div></article>`;
-    }).join('') + '<p class="collectionNote">コーステーマは背景・床の見た目を変更します。<br>曲・譜面・キャラの強さは共通です。</p>' : ledger.nextMissions().map(missionCard).join('') + `<p class="collectionNote">達成済み ${ledger.state.claimed.length} / ${NBProgression.missions.length}<br>コースの中盤で、ときどき忍者が登場。<br>捕まえると5・15・40・150ダイヤ。<br>位が高いほど、遠くへドロン！<br>練習中のプレイはミッションの対象外です。</p>`;
+    if(!initialized)return;
+    const shop=tab==='shop',themes=tab==='themes';
+    $('collectionOv').classList.toggle('lightCollection',!shop&&!themes);
+    $('collectionHeading').textContent=shop?'ショップ':themes?'コーステーマ':'ミッション';
+    $('collectionIntro').textContent=shop?'ダイヤと、快適なプレイを。':themes?'好きな景色で走ろう。':'達成するとダイヤを自動で獲得！';
+    $('collectionBody').innerHTML=shop?`<article class="storeProduct"><span>💎</span><h3>ダイヤ購入</h3><p>曲やキャラクターの解放に</p><button disabled>販売準備中</button></article><article class="storeProduct"><span>▣</span><h3>広告削除</h3><p>内容・価格は販売開始時にご案内</p><button disabled>販売準備中</button></article><button class="themesEntry" id="themeCatalogOpen">コーステーマ <span>›</span></button><details class="testGift"><summary>テスト用ダイヤ</summary>${shoppingGiftMarkup()}</details>`:themes?'<button class="themesEntry" id="backToShop">‹ ショップに戻る</button>'+themeCards():dailyCards()+'<h3 class="collectionSection">通常ミッション</h3>'+ledger.nextMissions().map(missionCard).join('')+`<p class="collectionNote">通常ミッション 達成済み ${ledger.state.claimed.length} / ${NBProgression.missions.length}<br>練習はミッションの対象外です。</p>`;
+    $('themeCatalogOpen')?.addEventListener('click',()=>panel('themes'));
+    $('backToShop')?.addEventListener('click',()=>panel('shop'));
     $('shoppingGiftClaim')?.addEventListener('click',()=>{
-      if(state!=='ready')return;
-      const result=shoppingGift();panel('shop');
+      if(state!=='ready')return;const result=shoppingGift();panel('shop');
       $('collectionStatus').textContent=result.ok?(result.amount?'100,000 ダイヤを追加しました！':'すでに受け取り済みです。'):ledger.error;
     });
-    $('collectionBody').querySelectorAll('[data-shop-page]').forEach(b=>b.addEventListener('click',()=>NBMenu.show(b.dataset.shopPage)));
-    $('collectionBody').querySelectorAll('[data-theme]').forEach(button => button.addEventListener('click', () => {
-      if (state !== 'ready') return;
-      const theme = NBProgression.themes.find(t => t.id === button.dataset.theme);
-      if (!ledger.state.themes.includes(theme.id)) {
-        // The second tap confirms the exact virtual-currency spend; no real purchase exists here.
-        if (button.dataset.confirm !== 'yes') { button.dataset.confirm = 'yes'; button.textContent = `💎${theme.price} を使って解放する`; return; }
-      }
-      const result = ledger.selectTheme(theme.id);
-      if (!result.ok) { $('collectionStatus').textContent = result.reason === 'storage' ? ledger.error : 'ダイヤが足りません'; return; }
-      setPalette(lineK); refreshWallet(); panel('shop');
-      $('collectionStatus').textContent = `${theme.name}を${result.purchased ? '解放しました！' : '選びました'}`;
-      [659, 988, 1318].forEach((f, i) => uiTone(f, .08, i * .07));
-    }));
-    refreshWallet();
+    $('collectionBody').querySelectorAll('[data-theme]').forEach(button=>button.addEventListener('click',()=>{
+      if(state!=='ready')return;
+      const theme=NBProgression.themes.find(t=>t.id===button.dataset.theme);
+      if(!ledger.state.themes.includes(theme.id)&&button.dataset.confirm!=='yes'){button.dataset.confirm='yes';button.textContent=`💎${theme.price} を使って解放する`;return;}
+      const result=ledger.selectTheme(theme.id);
+      if(!result.ok){$('collectionStatus').textContent=result.reason==='storage'?ledger.error:'ダイヤが足りません';return;}
+      setPalette(lineK);refreshWallet();panel('themes');NBSound.play('unlock');
+      $('collectionStatus').textContent=`${theme.name}を${result.purchased?'解放しました！':'選びました'}`;
+    }));refreshWallet();
   }
   function openPanel(tab) {
     if (state !== 'ready') return;
@@ -217,13 +223,13 @@ window.NBWorkshop = (() => {
   }
   function resultMarkup(prefix, clear) {
     return `<div class="resultSheet">
-      <header class="resultHeader"><span class="resultEyebrow">NEON BLADE / RUN REPORT</span><h2 class="resultTitle">${clear ? 'CLEAR!' : 'NICE RUN!'}</h2><p class="resultSong"><span data-result-song></span><span class="resultDifficulty" data-result-difficulty></span></p><p class="endReason" data-result-reason></p></header>
+      <header class="resultHeader"><h2 class="resultTitle">${clear ? 'CLEAR!' : 'NICE RUN!'}</h2><p class="resultSong"><span data-result-song></span><span class="resultDifficulty" data-result-difficulty></span></p><p class="endReason" data-result-reason></p></header>
       <div class="resultHero"><div class="resultPortrait"><canvas id="${prefix}Hero" width="400" height="280" aria-hidden="true"></canvas><strong class="resultHeroName" data-result-hero></strong></div><div class="resultRank"><small>RANK</small><strong data-result-rank></strong></div><div class="recordEmblem" aria-hidden="true">✦<small>KEEP<br>GOING</small></div></div>
       <div class="scorePanel"><div class="scoreLabel"><span>SCORE / 1,000,000</span><span class="newBest" data-result-new>NEW BEST!</span></div><strong class="scoreValue" data-result-score>0</strong><div class="resultDelta" data-result-delta></div><div class="bestValue">自己ベスト <span data-result-best>0</span></div><div class="recordTrack"><i data-result-track></i></div><p class="nextRecord" data-result-next></p></div>
       <div class="resultStats"><div class="resultStat"><small>判定精度</small><b data-result-accuracy></b></div><div class="resultStat"><small>最大コンボ</small><b data-result-combo></b></div></div>
       <div class="rewardPanel"><div class="rewardHeadline"><span>${GEM}今回のダイヤ</span><b data-result-gems>＋0</b></div><p data-result-reward-detail></p><div class="rewardWallet">所持ダイヤ <b data-result-balance>0</b></div><div class="rewardMissionList" data-result-missions></div><p class="saveNote" data-save-note hidden></p></div>
       <div class="resultFoot"><span class="resultBadge" data-result-badge></span><span data-result-foot></span></div>
-      <div class="resultActions"><button class="ovBtn" data-retry>もう一回！ <span>↻</span></button><button class="ovBtn sub" data-select>曲えらび</button></div>
+      <button class="doubleReward" data-double-reward disabled>▶ 広告を見てダイヤ2倍</button><p class="adStatus" data-ad-status role="status"></p><div class="resultActions"><button class="ovBtn" data-retry>もう一回！ <span>↻</span></button><button class="ovBtn sub" data-select>曲えらび</button></div>
       <button class="resultSkip" data-result-skip>タップでまとめて表示</button>
       <details class="resultDetails"><summary>判定の内訳を見る</summary><dl class="judgmentList">${[['PERFECT','#fff064'],['GREAT','#5de8ff'],['GOOD','#bcff66'],['MISS','#ff93b6']].map(([k,col])=>`<div class="judgmentRow" data-judgment="${k}" style="--tone:${col}"><dt>${k}</dt><dd><span>0</span><small>回</small></dd></div>`).join('')}</dl></details>
       <button class="ovBtn sub diagOpenBtn" data-diag hidden>判定診断を見る</button><details class="scoreHelp"><summary>記録のしくみ</summary><p></p></details>
@@ -254,6 +260,21 @@ window.NBWorkshop = (() => {
     if(result.progression){const p=result.progression;ov.querySelector('.rewardPanel').insertAdjacentHTML('beforeend',`<div class="rankProgressResult"><b>${p.rank>p.oldRank?'RANK UP!　':''}PLAYER RANK ${p.rank}</b><span>＋${p.xp} XP${p.reward?'　💎＋'+p.reward:''}</span><progress max="${p.need}" value="${p.progress}"></progress><small>${p.progress} / ${p.need} XP${p.unlocked.length?'　新しい曲を解放！':''}</small></div>`);}
     const earned = rewards.missions.slice(0, 2);
     ov.querySelector('[data-result-missions]').innerHTML = earned.map(m => `<span>✓ ${m.title} <b>＋${m.reward}</b></span>`).join('') + (rewards.missions.length > 2 ? `<small>ほか${rewards.missions.length - 2}件達成</small>` : '');
+    const details=ov.querySelector('.resultDetails');
+    ['.resultStats','.rankProgressResult','.resultFoot','.scoreHelp'].forEach(selector=>{const el=ov.querySelector(selector);if(el)details.append(el);});
+    details.querySelector('summary').textContent='くわしい結果';
+    const ad=ov.querySelector('[data-double-reward]'),status=ov.querySelector('[data-ad-status]');
+    ad.textContent='▶ 広告を見てダイヤ2倍'+(rewards.total?'（＋'+rewards.total+'）':'');
+    ad.disabled=!result.adEligible||!rewards.total||!NBAds.available();
+    status.textContent=!rewards.total?'今回の対象ダイヤはありません':!NBAds.available()?'広告は準備中です':'';
+    ad.onclick=async()=>{
+      if(ad.disabled)return;ad.disabled=true;status.textContent='広告を読み込み中…';
+      const earned=await NBAds.show(result.rewardId);
+      if(!earned){status.textContent='視聴は完了していません。追加ダイヤは付与されません。';ad.disabled=!NBAds.available();return;}
+      const receipt=ledger.claimAdReward(result.rewardId);
+      if(!receipt.ok){status.textContent=receipt.reason==='storage'?ledger.error:'この報酬は受け取り済みです';return;}
+      rewards.total+=receipt.amount;rewards.balance=ledger.state.gems;ad.textContent='2倍のダイヤを獲得済み';status.textContent='';finishReveal(result,ov);refreshWallet();NBSound.play('diamond');
+    };
     refreshWallet();
   }
   function finishReveal(result, ov) {
@@ -289,38 +310,45 @@ window.NBWorkshop = (() => {
       src.onended=()=>{src.disconnect();gain.disconnect();if(previewSource===src)stopSongPreview();};
     }catch(_){if(token===previewToken){stopSongPreview();button.innerHTML=previewIcon('retry');button.setAttribute('aria-label',sg.name+'の試聴を再試行');}}
   }
+  function chooseSong(sg){
+    stopSongPreview();
+    if(sg===SONGS[0]){pickSong(sg,$('homeTutorial'));return;}
+    $('songChoice')?.remove();
+    const panel=document.createElement('div');panel.id='songChoice';panel.className='overlay songChoice';panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');panel.setAttribute('aria-label',sg.name+'のモード選択');
+    const progress=ledger.songProgress(sg.file);
+    panel.innerHTML=`<div class="songChoicePanel"><button class="choiceClose" aria-label="閉じる">×</button><h2>${escape(sg.name)}</h2><p>遊び方を選ぶ</p><button data-play="distance">♫ 1曲チャレンジ</button><button data-play="endless">∞ エンドレス</button><details><summary>曲ミッション ${progress.claimed.length} / ${NBProgression.songMissions.length}</summary>${NBProgression.songMissions.map(m=>`<p>${progress.claimed.includes(m.id)?'✓':'○'} ${m.label} <b>💎${m.reward}</b></p>`).join('')}</details></div>`;
+    document.body.append(panel);const close=()=>panel.remove();panel.querySelector('.choiceClose').onclick=close;
+    panel.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();close();}});
+    panel.querySelectorAll('[data-play]').forEach(b=>b.onclick=()=>{if(state!=='ready'||pickingSong)return;playMode=b.dataset.play;endless=true;updateModeUI();try{localStorage.setItem('neon-blade-mode',playMode);}catch(_){}close();pickSong(sg,document.querySelector(`[data-song-file="${sg.file}"]`));});
+    panel.querySelector('.choiceClose').focus();
+  }
   function renderSongs(){
     const list=$('songList');list.replaceChildren();
-    const makeGroup=(title,locked)=>{
-      const section=document.createElement('section');section.className='songGroup'+(locked?' lockedGroup':'');section.setAttribute('aria-label',title);
-      const heading=document.createElement('h3');heading.className='songGroupHeading';heading.textContent=title;section.appendChild(heading);return section;
-    };
-    const playable=makeGroup('プレイできる曲',false),locked=makeGroup('未解放の曲',true);
-    let lockedCount=0;
     for(const sg of SONGS){
-      const item=NBProgression.songs.find(x=>x.id===sg.file),owned=ownsSong(sg),tutorial=sg===SONGS[0];
-      const row=document.createElement('div');row.className='songRow';
-      const b=document.createElement('button');b.className='songBtn'+(sg.hard?' hard':'')+(!owned?' lockedSong':'');
-      b.innerHTML=`<span>${escape(sg.name)}</span><small>${tutorial?'操作を練習する':owned?escape(sg.level):`💎 ${item.price}${item.rank?' ／ RANK '+item.rank:''}`}</small>`;
+      if(sg===SONGS[0])continue;
+      const item=NBProgression.songs.find(x=>x.id===sg.file),owned=ownsSong(sg),progress=ledger.songProgress(sg.file),total=NBProgression.songMissions.length;
+      const next=NBProgression.songMissions.find(m=>!progress.claimed.includes(m.id));
+      const ratio=NBProgression.songMissions.reduce((sum,m)=>sum+Math.min(1,progress[m.stat]/m.target),0)/total;
+      const row=document.createElement('article');row.className='songRow songCard'+(!owned?' isLocked':'');
+      const b=document.createElement('button');b.className='songBtn'+(!owned?' lockedSong':'');b.dataset.songFile=sg.file;
+      b.innerHTML=`<span class="songTitle">${!owned?'<span class="chainMark" aria-label="未解放">⛓</span>':''}${escape(sg.name)}</span><small class="songUnlock">${owned?'プレイする ›':(item.rank?'ランク'+item.rank+'で解放<br>または ':'')+'💎 '+item.price+' で解放'}</small>`;
       b.addEventListener('click',()=>{
-        if(state!=='ready'||pickingSong)return;
-        stopSongPreview();
-        if(ownsSong(sg)){pickSong(sg,b);return;}
-        if(b.dataset.confirm!=='yes'){b.dataset.confirm='yes';b.querySelector('small').textContent=`💎 ${item.price} を使って解放する`;return;}
-        const result=ledger.purchase('songs',sg.file);if(result.ok){refreshWallet();renderSongs();}else b.querySelector('small').textContent=result.reason==='funds'?'ダイヤが足りません':ledger.error;
+        if(state!=='ready'||pickingSong)return;stopSongPreview();
+        if(ownsSong(sg)){chooseSong(sg);return;}
+        if(b.dataset.confirm!=='yes'){b.dataset.confirm='yes';b.querySelector('.songUnlock').textContent=`💎 ${item.price} を使って解放する`;return;}
+        const result=ledger.purchase('songs',sg.file);if(result.ok){NBSound.play('unlock');refreshWallet();renderSongs();}else b.querySelector('.songUnlock').textContent=result.reason==='funds'?'ダイヤが足りません':ledger.error;
       });row.appendChild(b);
-      if(!tutorial){const preview=document.createElement('button');preview.className='songPreview';preview.innerHTML=previewIcon('play');preview.setAttribute('aria-label',sg.name+'を試聴');preview.setAttribute('aria-pressed','false');preview.addEventListener('click',()=>previewSong(sg,preview));row.appendChild(preview);}
-      if(tutorial)list.appendChild(row);else if(owned)playable.appendChild(row);else{locked.appendChild(row);lockedCount++;}
+      const preview=document.createElement('button');preview.className='songPreview';preview.innerHTML=previewIcon('play');preview.setAttribute('aria-label',sg.name+'を試聴');preview.setAttribute('aria-pressed','false');preview.addEventListener('click',()=>previewSong(sg,preview));row.appendChild(preview);
+      const gauge=document.createElement('div');gauge.className='songMission';gauge.innerHTML=`<span>曲ミッション <b>${progress.claimed.length} / ${total}</b></span><progress max="100" value="${Math.round(ratio*100)}" aria-label="${escape(sg.name)}のミッション進捗"></progress><small>${next?escape(next.label)+'　'+Math.min(next.target,progress[next.stat])+'/'+next.target:'全ミッション達成！'}</small>`;row.append(gauge);list.append(row);
     }
-    const upload=document.createElement('button');upload.className='songBtn';upload.innerHTML='<span>📁 自分の曲をえらぶ</span><small>この端末から</small>';upload.addEventListener('click',()=>{stopSongPreview();if(state==='ready'&&!pickingSong)myFile.click();});playable.appendChild(upload);
-    list.appendChild(playable);if(lockedCount)list.appendChild(locked);
+    const upload=document.createElement('button');upload.className='songBtn';upload.innerHTML='<span>📁 自分の曲をえらぶ</span><small>この端末から</small>';upload.addEventListener('click',()=>{stopSongPreview();if(state==='ready'&&!pickingSong)myFile.click();});list.append(upload);
   }
   function heroLabel(id){const item=NBProgression.heroes.find(h=>h.id===id);return ledger.state.heroes.includes(id)?'このキャラで遊ぶ':`💎 ${item.price} で解放`;}
   function selectHero(id,button){
     if(ledger.state.heroes.includes(id))return true;
     const item=NBProgression.heroes.find(h=>h.id===id);
     if(button.dataset.confirm!==id){button.dataset.confirm=id;button.textContent=`💎 ${item.price} を使って解放する`;return false;}
-    const result=ledger.purchase('heroes',id);refreshWallet();if(!result.ok){button.textContent=result.reason==='funds'?'ダイヤが足りません':ledger.error;return false;}return true;
+    const result=ledger.purchase('heroes',id);refreshWallet();if(!result.ok){button.textContent=result.reason==='funds'?'ダイヤが足りません':ledger.error;return false;}NBSound.play('unlock');return true;
   }
   function ownedHero(id){return ledger.state.heroes.includes(id);}
   function flush() { if (ledger) { ledger.flush(); refreshWallet(); } }

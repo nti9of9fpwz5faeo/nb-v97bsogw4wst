@@ -301,7 +301,7 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=56.1">
+<link rel="stylesheet" href="workshop.css?v=58">
 </head>
 <body>
 <div id="app">
@@ -331,7 +331,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v57</span>
+  <span id="verBadge">バージョン v58</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -360,12 +360,13 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
-<script src="progression.js?v=56"></script>
+<script src="progression.js?v=58"></script>
 <script src="chase.js?v=56"></script>
 <script src="courses.js?v=56"></script>
-<script src="menu.js?v=56"></script>
-<script src="sound.js?v=56"></script>
-<script src="workshop.js?v=57"></script>
+<script src="menu.js?v=58"></script>
+<script src="sound.js?v=58"></script>
+<script src="monetization.js?v=58"></script>
+<script src="workshop.js?v=58"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -380,7 +381,7 @@ const SONGS = [
   { name: 'Metronomic Drive',    file: 'audio/metronomic_drive.mp3', bpm: 147.96, offset: 0.0842, level: 'ふつう', chart: 'charts/metronomic_beats.json' }, // 実際は約148BPM（197は測り間違い）。テンポがゆるやかに揺れるので拍データで追従
 ];
 let difficulty='normal';
-try{if(localStorage.getItem('neon-blade-difficulty')==='hard')difficulty='hard';}catch(e){}
+// Difficulty is fixed; old HARD preferences no longer affect gameplay.
 const DIFFICULTIES={normal:{maxRun:4,gaps:[1,1,2,2,3],dense:[1,1,1,2,3],hardRate:.12},hard:{maxRun:6,gaps:[1,1,1,2,2,3],dense:[1,1,1,1,2,3],hardRate:.28}};
 let song = SONGS[0], BPM, OFFSET, SPB, WINDOW;
 const chartCache={};
@@ -830,11 +831,6 @@ function pickGap(){
 function updateDifficultyUI(){
   document.querySelectorAll('[data-difficulty]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.difficulty===difficulty)));
 }
-document.querySelectorAll('[data-difficulty]').forEach(b=>b.addEventListener('click',()=>{
-  if(state!=='ready'||pickingSong)return;
-  difficulty=b.dataset.difficulty;setSong(song);updateDifficultyUI();
-  try{localStorage.setItem('neon-blade-difficulty',difficulty);}catch(e){}
-}));
 updateDifficultyUI();updateModeUI();
 document.querySelectorAll('[data-rush]').forEach(b=>b.addEventListener('click',()=>{ if(state!=='ready')return; rushRelease=b.dataset.rush; updateModeUI(); try{localStorage.setItem('neon-blade-rush-release',rushRelease);}catch(e){} }));
 document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{
@@ -1515,11 +1511,16 @@ function input(type, e, device){
       diagShow('無効：対象ノーツなし');
       return;
     }
-    diagInputEnd(rec, { status: 'miss', judge: 'MISS', lifeLoss: false, reason: (n < 0 ? '最初の拍より前' : '受付時間外') + '（加点なし・ライフは減らない・ノーツはそのまま）', offsetMs: r2(diff * 1000) });
-    showJudge('MISS', 'タイミングずれ');
-    // 練習でも押している最中に説明文を追加しない。通常の判定表示だけ。
-    if (speedOn()) showElLine(0, 'タイミングずれ'); // 入力MISS：点なし・コンボ0（ライフは減らない）
-    diagShow('MISS：受付時間外（' + msText(diff * 1000) + '）');
+    const target=notes.find(x=>(type==='charge'?x.purple:!x.purple)&&x.idx<=player.idx+reach);
+    if(hitGuard(tNow)){diagInputEnd(rec,{status:'invalid',reason:'被弾直後の保護中'});return;}
+    // Consume the failed target so its deadline cannot charge the same miss twice.
+    if(target)notes.splice(notes.indexOf(target),1);
+    earlyInput=null;acted=n;
+    diagInputEnd(rec,{status:'miss',judge:'MISS',lifeLoss:!isTutorial(),reason:'受付時間外のブレイク',offsetMs:r2(diff*1000)});
+    damage(tNow,'受付時間外のブレイク',target,rec?.inputId,'タイミングずれ');
+    NBSound.play('miss');
+    if(speedOn())showElLine(0,'タイミングずれ');
+    diagShow('MISS：受付時間外（'+msText(diff*1000)+'）');
     return;
   }
   if (acted === n){ diagInputEnd(rec, { status: 'invalid', reason: '同じ拍ですでに操作済み' }); diagShow('無効：同じ拍ですでに操作済み'); return; } // 1拍に1回だけ
@@ -1750,7 +1751,7 @@ function uiTone(frequency=780,duration=.065,delay=0){
   const o=ctx.createOscillator(),gain=ctx.createGain(),at=ctx.currentTime+delay;
   o.type='sine';o.frequency.setValueAtTime(frequency,at);o.frequency.exponentialRampToValueAtTime(frequency*.8,at+duration);
   gain.gain.setValueAtTime(0,at);gain.gain.linearRampToValueAtTime(.045,at+.006);gain.gain.exponentialRampToValueAtTime(.0001,at+duration);
-  o.connect(gain);gain.connect(ctx.destination);uiVoices.add(o);
+  o.connect(gain);gain.connect(buses().se);uiVoices.add(o);
   o.onended=()=>{uiVoices.delete(o);o.disconnect();gain.disconnect();};o.start(at);o.stop(at+duration+.015);
 }
 let resultRevealToken=0,resultRevealTimers=[],scoreFrame=null,resultRevealActive=null;
@@ -2074,7 +2075,11 @@ function draw(t){
     const body=cell*.93*pop,sz=body*1.25;
     let rk=V.at>-9&&(V.moving||nt.spin===nt.at)?Math.min(1,Math.max(0,(t-V.at)/.2)):1;
     let ang=(1-Math.pow(1-rk,3))*Math.PI;
-    if(smooth){rk=0;ang=vis*Math.PI*.5;}   // なめらかモードはずっとゆっくり回転
+    if(state==='resuming'){
+      const elapsed=ctx.currentTime-resumeStarted;
+      rk=Math.min(1,(elapsed%SPB)/Math.min(.2,SPB*.7));ang=(1-Math.pow(1-rk,3))*Math.PI;
+    }
+    if(smooth&&state!=='resuming'){rk=0;ang=vis*Math.PI*.5;}   // なめらかモードはずっとゆっくり回転
     g.save();g.translate(p.x,p.y);
     if(!reduceMotion.matches&&rk<1)g.rotate(ang);
     const pulse=reduceMotion.matches?0:beatPulse(t)*.025;g.scale(1+pulse,1+pulse);
@@ -2262,7 +2267,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v57', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v58', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2382,7 +2387,7 @@ function diagRender(){
   const head = '<tr><th></th><th>数</th><th>中央値</th><th>ばらつき</th><th>P/G/GOOD</th></tr>';
   body.innerHTML = `<p class="diagNote">${run.song.name}／${({normal:'通常',distance:'距離チャレンジ',endless:'エンドレス'})[run.settings.mode] || run.settings.mode}／${String(run.settings.difficulty).toUpperCase()}／音の出力：${run.device.audioOutputLabel}／${run.appVersion}</p>
     <table><tr><th>PERFECT</th><th>GREAT</th><th>GOOD</th><th>MISS</th></tr><tr><td style="text-align:left">${S.counts.PERFECT}</td><td>${S.counts.GREAT}</td><td>${S.counts.GOOD}</td><td>${S.counts.MISS}</td></tr></table>
-    <p class="diagNote">MISSの内訳：入力MISS（受付時間外・ライフは減らない）${S.counts.missTiming}／被弾（ライフ−1）${S.counts.missDamage}</p>
+    <p class="diagNote">MISSの内訳：入力MISS（受付時間外・ライフ−1）${S.counts.missTiming}／被弾（ライフ−1）${S.counts.missDamage}</p>
     <table><tr><td>早押し／遅押し／ぴったり</td><td>${S.early}／${S.late}／${S.exact}</td></tr><tr><td>ズレの中央値</td><td>${ms(S.offset.median)}</td></tr><tr><td>ばらつき（標準偏差）</td><td>${v(S.offset.sd)}ms</td></tr><tr><td>ばらつき（四分位範囲）</td><td>${v(S.offset.iqr)}ms</td></tr><tr><td>入力処理待ち（中央値／最大）</td><td>${v(S.delay.median)}ms／${v(S.delayMax)}ms</td></tr><tr><td>無効入力（統計には含めない）</td><td>${S.invalid}</td></tr></table>
     <h3>速度別</h3><table>${head}${rows(S.bySpeed)}</table>
     <h3>周回別</h3><table>${head}${rows(S.byLap)}</table>
@@ -2450,12 +2455,12 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', e => { if (e.key === 'ArrowRight' || e.key === 'k') stopRushHold(); });
 
-let pausedAt=null,resumeTimer=null,resumeToken=0,resumeFloor=-Infinity;
-function cancelResume(){clearTimeout(resumeTimer);resumeTimer=null;resumeToken++;}
+let pausedAt=null,resumeTimer=null,resumeToken=0,resumeFloor=-Infinity,resumeStarted=0;
+function cancelResume(){clearTimeout(resumeTimer);resumeTimer=null;resumeToken++;document.getElementById('resumeCount')?.remove();}
 function stopSong(){if(songSrc){try{songSrc.stop();}catch(e){}songSrc=null;}}
-function startMusicAt(rawPosition=0){
+function startMusicAt(rawPosition=0,lead=.12){
   stopSong();
-  const offset=Math.max(0,rawPosition),delay=.12+Math.max(0,-rawPosition);
+  const offset=Math.max(0,rawPosition),delay=lead+Math.max(0,-rawPosition);
   const at=ctx.currentTime+delay;
   songSrc=ctx.createBufferSource();songSrc.buffer=songBuf;songSrc.playbackRate.value=rate;
   songGain=ctx.createGain();songGain.gain.value=isTutorial()?coachMusicLevel():1;
@@ -2527,18 +2532,22 @@ async function resumeGame(){
   document.getElementById('resumeBtn').disabled=true;
   try{await ctx.resume();}catch(e){if(token===resumeToken){state='paused';document.getElementById('resumeBtn').disabled=false;document.getElementById('pauseStatus').textContent='もう一度「続ける」を押してください';}return;}
   if(token!==resumeToken||state!=='resuming')return;
-  let count=3;
+  document.getElementById('pauseOv').classList.add('hide');
+  document.getElementById('resumeCount')?.remove();
+  const counter=document.createElement('div');counter.id='resumeCount';counter.setAttribute('role','status');
+  document.getElementById('fieldWrap').append(counter);resumeStarted=ctx.currentTime;
+  let lastCount=-1;
   const tick=()=>{
     if(token!==resumeToken||state!=='resuming')return;
+    const elapsed=ctx.currentTime-resumeStarted,count=Math.max(0,5-Math.floor((elapsed+1e-6)/SPB));
+    if(count!==lastCount){counter.textContent=count;lastCount=count;uiTone(count?660:1046,.07);}
     if(count===0){
-      resumeFloor=pausedAt;startMusicAt(pausedAt+timingMs/1000);state='play';resumePerf=performance.now();diagEv('resume',{from:r4(pausedAt)});pausedAt=null;
-      document.getElementById('pauseOv').classList.add('hide');
+      resumeFloor=pausedAt;startMusicAt(pausedAt+timingMs/1000,0);state='play';resumePerf=performance.now();diagEv('resume',{from:r4(pausedAt)});pausedAt=null;
       document.querySelectorAll('#controls button').forEach(b=>b.disabled=false);
-      if(isTutorial())coachUI();
-      startMoveScheduler();document.getElementById('pauseBtn').focus();return;
+      if(isTutorial())coachUI();startMoveScheduler();document.getElementById('pauseBtn').focus();
+      resumeTimer=setTimeout(()=>counter.remove(),Math.min(SPB*650,350));return;
     }
-    document.getElementById('pauseStatus').textContent=String(count--);
-    uiTone(600,.04);resumeTimer=setTimeout(tick,SPB*1000);
+    resumeTimer=setTimeout(tick,16);
   };tick();
 }
 function returnToSongs(){
@@ -2558,7 +2567,7 @@ document.getElementById('resumeBtn').addEventListener('click',resumeGame);
 document.getElementById('pauseRetry').addEventListener('click',startGame);
 document.getElementById('pauseQuit').addEventListener('click',returnToSongs);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseGame();});
-window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(state==='play')pauseGame();else if(state==='paused')resumeGame();}});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(state==='play'||state==='resuming')pauseGame();else if(state==='paused')resumeGame();}});
 document.querySelectorAll('[data-retry]').forEach(b=>b.addEventListener('click',startGame));
 document.querySelectorAll('[data-select]').forEach(b=>b.addEventListener('click',returnToSongs));
 function showTimingValue(){document.getElementById('timingValue').textContent=`${timingMs>0?'+':''}${timingMs} ms`;document.getElementById('timingRange').value=timingMs;}
