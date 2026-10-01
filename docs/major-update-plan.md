@@ -35,3 +35,5 @@ v52は上の予告枠のみの先行変更。SE、追跡、ランク、曲・キ
 - Mission thresholds raised; queued notifications spaced 8 seconds apart, compact grouping.
 - Five Firefly requests, displayed 10 credits each (50 total expected), one original WAV downloaded per use. Original WAV metadata retained; runtime envelope/filter/gain adjusted. Technical audio measurements completed; subjective listening cannot be performed in this environment. No real-money billing added.
 - Automated progression and workshop integration tests cover migration, duplicate prevention, purchase rollback, milestones, chase movement, paused/tutorial exclusions. Browser test fixture updated to new economy.
+
+- Verification: 14 automated tests passed. Live v53 verified via UI: two modes, 15-second preview starts on a locked song, separate unlock confirmation, Veno 450-gem unlock and SE audition, one-song startup/result/retry, ninja with gold +12 diamond visible. No game-origin console errors observed. Subjective audio listening remains unverified.

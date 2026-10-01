@@ -22,5 +22,5 @@
 /* v53 collections and previews */
 .playerRank{width:min(360px,100%);font:800 12px/1.4 system-ui;color:#adf4e7;margin:8px auto 4px;text-align:center;letter-spacing:.04em}
 .songRow{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:5px;align-items:stretch}.songRow:has(.songBtn:only-child){grid-template-columns:1fr}.songRow .songBtn{width:100%;min-width:0}.songRow .songBtn span{overflow-wrap:anywhere}.songRow .songBtn small{display:block;white-space:normal}.songPreview{background:#182745;border:1px solid #547798;border-radius:12px;color:#b1f9f0;font:800 11px system-ui;padding:6px;min-height:44px}.lockedSong{opacity:.82}.lockedSong small{color:#ffdb88}
-.rankProgressResult{margin-top:12px;display:grid;gap:5px;padding-top:10px;border-top:1px solid #77958e;font-size:12px}.rankProgressResult b{color:#173647}.rankProgressResult progress{width:100%;height:8px;accent-color:#27ad9d}.rankProgressResult small{color:#3e655e}
+.rankProgressResult{margin-top:12px;display:grid;gap:5px;padding-top:10px;border-top:1px solid #77958e;font-size:12px}.rankProgressResult b{color:#befff2}.rankProgressResult progress{width:100%;height:8px;accent-color:#27ad9d}.rankProgressResult small{color:#bddcd9}
 @media(max-width:360px){.songRow{grid-template-columns:minmax(0,1fr) 75px}.songPreview{font-size:10px}}
