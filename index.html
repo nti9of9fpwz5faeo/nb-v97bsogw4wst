@@ -1425,7 +1425,7 @@ function doAction(type, n, t, diff, rec){
     NBWorkshop.judged(word,n,t);
     if(isTutorial())coachOnBreak(target,word,t,true);
     if (word === 'PERFECT') countPerfect(t);
-    const elPts = speedOn() ? elBreak(word, sub) : null;
+    const elPts = (speedOn() || endlessScoreOn()) ? elBreak(word, sub) : null;
     diagResult(rec, { status: 'judged', judge: word, charge: true, points: elPts, combo: speedOn() ? combo : null, beat: n, offsetMs: r2(diff * 1000), noteId: target.id, playerFrom: player.idx, playerTo: player.idx + 1 });
     diagShow('突進 ' + word + '：' + msText(diff * 1000));
     // 目の前に隙間なく続くブロックを、まとめて1マス押し返す（突き破る）。進んだ先でぶつからない
@@ -1472,7 +1472,7 @@ function doAction(type, n, t, diff, rec){
       }
       NBWorkshop.judged(word,n,t);
       if (word === 'PERFECT') countPerfect(t);
-      const elPts = speedOn() ? elBreak(word, sub) : null;
+      const elPts = (speedOn() || endlessScoreOn()) ? elBreak(word, sub) : null;
       diagResult(rec, { status: 'judged', judge: word, points: elPts, stepBonus: speedOn() ? stepBonus : null, combo: speedOn() ? combo : null, mult: speedOn() ? comboMult(combo) : null, sectionPerfect: endlessScoreOn() ? secPerfect : null, warpReady: endlessScoreOn() ? warpReady : null, beat: n, offsetMs: r2(diff * 1000), noteId: target.id, noteIdx: target.idx, noteHpBefore: hpBefore, noteHpAfter: hpBefore > 1 ? target.hp : 0, destroyed: hpBefore <= 1, playerIdx: player.idx, lockBefore, lockAfter: moveLocked });
       diagShow(word + '：' + msText(diff * 1000));
       if (rushOn() && rushRelease === 'auto' && rushReady() && !moveLocked && !rushAnim) doRush(t, rec, true); // 自動：満タンの瞬間に解放
