@@ -11,14 +11,15 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
  await page.goto('http://127.0.0.1:8123');await page.waitForFunction(()=>document.querySelectorAll('.songBtn').length===9);
  console.log('ready',await page.evaluate(()=>({state,hero:selectedHero,version:APP_VERSION})),errors);
  await page.screenshot({path:path.join(qa,'home.png')});
- await page.click('#missionsOpen');await page.screenshot({path:path.join(qa,'missions.png')});await page.click('#collectionClose');
- await page.click('#themesOpen');await page.screenshot({path:path.join(qa,'themes.png')});await page.click('#collectionClose');
+ await page.click('[data-nav="missions"]');await page.screenshot({path:path.join(qa,'missions.png')});await page.click('#collectionClose');
+ await page.click('[data-nav="shop"]');await page.screenshot({path:path.join(qa,'themes.png')});await page.click('#collectionClose');
  await page.evaluate(()=>{playMode='endless';endless=true;setSong(SONGS[3]);songBuf=ctx.createBuffer(1,ctx.sampleRate*120,ctx.sampleRate);startGame();stopMoveScheduler();state='paused';});
  const assert=require('node:assert/strict');
  const actual=await page.evaluate(()=>{
    const random=Math.random;Math.random=()=>.1;state='play';NBWorkshop.resetRun();Math.random=random;
    player.idx=0;player.from=0;player.at=-10;NBWorkshop.tick(songTime());
-   player.idx=10;player.from=10;moveLocked=false;NBWorkshop.tick(songTime());
+   player.idx=15;player.from=15;moveLocked=false;NBWorkshop.tick(songTime());
+   player.idx=23;player.from=23;NBWorkshop.tick(songTime());
    for(let n=0;n<4;n++)NBWorkshop.judged('PERFECT',n,songTime());
    NBWorkshop.flush();const first=JSON.parse(localStorage.getItem(NBProgression.KEY));
    NBWorkshop.tick(songTime());NBWorkshop.judged('PERFECT',3,songTime());NBWorkshop.flush();
@@ -42,7 +43,7 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
  console.log('reload: wallet and mission state persist');
  // Purchase UI needs two taps, then selection cannot spend a second time.
  await page.evaluate(()=>{playMode='endless';endless=true;setSong(SONGS[3]);songBuf=ctx.createBuffer(1,ctx.sampleRate*120,ctx.sampleRate);startGame();stopMoveScheduler();recordSteps=1200;NBWorkshop.steps(1200);returnToSongs();});
- await page.click('#themesOpen');const balance0=await page.evaluate(()=>JSON.parse(localStorage.getItem(NBProgression.KEY)).gems);
+ await page.click('[data-nav="shop"]');const balance0=await page.evaluate(()=>JSON.parse(localStorage.getItem(NBProgression.KEY)).gems);
  await page.click('[data-theme="aurora"]');assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem(NBProgression.KEY)).gems),balance0);
  await page.click('[data-theme="aurora"]');
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem(NBProgression.KEY)).gems),balance0-60);

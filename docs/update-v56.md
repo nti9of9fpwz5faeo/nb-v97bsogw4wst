@@ -15,3 +15,5 @@ Trigger at player progress 14–17; appears 2 cells ahead. First warp after 0.28
 
 ## Verification
 Node regression suites cover ledger migration/purchase rollback, grant idempotency, rank awards, workshop event dedupe, ultimate charging, midcourse visibility, discrete warps, all-rank catches, pause/escape exclusions, tempo scaling, all five path lengths and shuffled ordering.
+
+Live browser checks: v56 loaded; shopping gift 100000 once, then 99940 after theme, 99860 after song, 99410 after Veno. Reload preserved wallet and did not repeat gift. Preview switched to stop icon; unlocked song moved to playable group. Separate special/settings screens and bottom navigation verified.
