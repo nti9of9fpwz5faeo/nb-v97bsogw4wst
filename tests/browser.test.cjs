@@ -16,24 +16,16 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
  await page.evaluate(()=>{playMode='endless';endless=true;setSong(SONGS[3]);songBuf=ctx.createBuffer(1,ctx.sampleRate*120,ctx.sampleRate);startGame();stopMoveScheduler();state='paused';});
  const assert=require('node:assert/strict');
  const actual=await page.evaluate(()=>{
-   state='play';let seed=0;for(const c of song.file)seed=(seed*31+c.charCodeAt(0))>>>0;
-   player.idx=[7,13,20,25][seed%4];player.from=player.idx;moveLocked=false;
-   for(let n=0;n<4;n++){notes=[{id:100+n,idx:player.idx,hp:1}];doAction('break',n,songTime(),0,null);}
+   const random=Math.random;Math.random=()=>.1;state='play';NBWorkshop.resetRun();Math.random=random;
+   player.idx=0;player.from=0;player.at=-10;NBWorkshop.tick(songTime());
+   player.idx=10;player.from=10;moveLocked=false;NBWorkshop.tick(songTime());
+   for(let n=0;n<4;n++)NBWorkshop.judged('PERFECT',n,songTime());
    NBWorkshop.flush();const first=JSON.parse(localStorage.getItem(NBProgression.KEY));
-   NBWorkshop.judged('PERFECT',3,songTime());NBWorkshop.flush();const second=JSON.parse(localStorage.getItem(NBProgression.KEY));
-   state='paused';return {first,second,idx:player.idx};
+   NBWorkshop.tick(songTime());NBWorkshop.judged('PERFECT',3,songTime());NBWorkshop.flush();
+   const second=JSON.parse(localStorage.getItem(NBProgression.KEY));state='paused';return {first,second};
  });
- assert.equal(actual.first.stats.tiles,1);assert.equal(actual.first.stats.hits,4);assert.equal(actual.first.gems,8);assert.deepEqual(actual.first,actual.second);
- console.log('real doAction: four valid hits award 3 tile + 5 mission, duplicate beat ignored');
- // A new course resets the tile once, and misses / off-tile hits cannot earn a tile.
- const course=await page.evaluate(()=>{
-   state='play';nextLap(songTime(),false);stopMoveScheduler();
-   player.idx=0;player.from=0;moveLocked=false;
-   for(let n=0;n<5;n++)NBWorkshop.judged('PERFECT',n,songTime());
-   NBWorkshop.judged('GOOD',5,songTime());NBWorkshop.flush();state='paused';return JSON.parse(localStorage.getItem(NBProgression.KEY));
- });
- assert.equal(course.stats.tiles,1);assert.equal(course.stats.hits,9);
- console.log('off-tile judgments, GOOD, and course reset verified');
+ assert.equal(actual.first.stats.tiles,1);assert.equal(actual.first.stats.hits,4);assert.equal(actual.first.gems,5);assert.deepEqual(actual.first,actual.second);
+ console.log('ninja catch, reward once and beat dedup verified');
  // Render, skip and render again must never pay again; retry must clear the run summary only.
  await page.evaluate(()=>{state='play';recordSteps=151;moveSteps=70;combo=20;maxCombo=20;NBWorkshop.steps(recordSteps);hp=0;endReason='hp';end(false);finishResult(false);finishResultReveal();});
  const before=await page.evaluate(()=>localStorage.getItem(NBProgression.KEY));
@@ -49,7 +41,7 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
  assert.equal(await page.evaluate(()=>localStorage.getItem(NBProgression.KEY)),before);
  console.log('reload: wallet and mission state persist');
  // Purchase UI needs two taps, then selection cannot spend a second time.
- await page.evaluate(()=>{playMode='endless';endless=true;setSong(SONGS[3]);songBuf=ctx.createBuffer(1,ctx.sampleRate*120,ctx.sampleRate);startGame();stopMoveScheduler();recordSteps=400;NBWorkshop.steps(400);returnToSongs();});
+ await page.evaluate(()=>{playMode='endless';endless=true;setSong(SONGS[3]);songBuf=ctx.createBuffer(1,ctx.sampleRate*120,ctx.sampleRate);startGame();stopMoveScheduler();recordSteps=1200;NBWorkshop.steps(1200);returnToSongs();});
  await page.click('#themesOpen');const balance0=await page.evaluate(()=>JSON.parse(localStorage.getItem(NBProgression.KEY)).gems);
  await page.click('[data-theme="aurora"]');assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem(NBProgression.KEY)).gems),balance0);
  await page.click('[data-theme="aurora"]');

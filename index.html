@@ -301,7 +301,7 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=52">
+<link rel="stylesheet" href="workshop.css?v=53">
 </head>
 <body>
 <div id="app">
@@ -331,11 +331,11 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v52</span>
+  <span id="verBadge">バージョン v53</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
-  <div id="modePicker" role="group" aria-label="モード"><button class="modeBtn" data-mode="normal" aria-pressed="true">通常</button><button class="modeBtn" data-mode="distance" aria-pressed="false">距離チャレンジ</button><button class="modeBtn" data-mode="endless" aria-pressed="false">エンドレス</button></div><p id="modeDesc"></p><div id="rushPicker" class="hide" role="group" aria-label="ための解放"><span>ための解放</span><button class="modeBtn" data-rush="manual">自分で</button><button class="modeBtn" data-rush="auto">自動</button></div>
+  <div id="modePicker" role="group" aria-label="モード"><button class="modeBtn" data-mode="distance" aria-pressed="false">1曲チャレンジ</button><button class="modeBtn" data-mode="endless" aria-pressed="false">エンドレス</button></div><p id="modeDesc"></p><div id="rushPicker" class="hide" role="group" aria-label="ための解放"><span>ための解放</span><button class="modeBtn" data-rush="manual">自分で</button></div>
   <div id="songList"></div>
   <input id="myFile" type="file" accept="audio/*" hidden>
   <div id="myPanel" class="hide"><div id="myName"></div><div id="myBpmRow"><span>BPM</span><button id="myDown" aria-label="BPMを下げる">−</button><b id="myBpm">--</b><button id="myUp" aria-label="BPMを上げる">＋</button></div><p id="myNote">曲はこの端末の中だけで使います</p><button id="myPlay">この曲で遊ぶ</button></div>
@@ -360,8 +360,10 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
-<script src="progression.js?v=52"></script>
-<script src="workshop.js?v=52"></script>
+<script src="progression.js?v=53"></script>
+<script src="chase.js?v=53"></script>
+<script src="sound.js?v=53"></script>
+<script src="workshop.js?v=53"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -383,13 +385,13 @@ const chartCache={};
 let activeChart=null;
 // エンドレス：1周するごとに曲もノーツも速くなる（ゴールなし）
 // モード：normal＝通常、distance＝距離チャレンジ、endless＝エンドレス（ワープごとに加速）
-let playMode='normal',endless=false,lap=0,rate=1;
+let playMode='distance',endless=true,lap=0,rate=1;
 try{playMode=localStorage.getItem('neon-blade-mode')||(localStorage.getItem('neon-blade-endless')==='1'?'distance':'normal');}catch(e){}
-if(!['normal','distance','endless'].includes(playMode))playMode='normal';
+if(!['distance','endless'].includes(playMode))playMode='distance';
 endless=playMode!=='normal';
 function applyRate(){ BPM = song.bpm * rate; OFFSET = song.offset / rate; SPB = 60 / BPM; WINDOW = Math.min(0.17, SPB * 0.36); }
 const MODE_DESC={normal:'いつものモードです。',distance:'曲が終わるまでに、どこまで進めるかを競います。',endless:'うまく壊して力をためると、一気に突き進める。ワープするたびに加速！'};
-function updateModeUI(){ document.getElementById('rushPicker').classList.toggle('hide', playMode !== 'endless' || EL_SCORING !== 'rush'); document.querySelectorAll('[data-rush]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.rush===rushRelease))); document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===playMode))); document.getElementById('modeDesc').textContent=MODE_DESC[playMode]; }
+function updateModeUI(){ document.getElementById('rushPicker').classList.add('hide'); document.querySelectorAll('[data-rush]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.rush===rushRelease))); document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===playMode))); document.getElementById('modeDesc').textContent=MODE_DESC[playMode]; }
 function setSong(sg){ song = sg; activeChart=chartCache[sg.chart]||null; GAPS = sg.dense ? DIFFICULTIES[difficulty].dense : DIFFICULTIES[difficulty].gaps; applyRate(); }
 const COLS = 8, ROWS = 11;
 const MAX_HP = 5;
@@ -402,7 +404,7 @@ let runScore = 0, movePrice = 0, runSteps = 0, courseLap = 0;
 function scoreOn(){ return SCORE_MODE && !isTutorial() && !endless; }
 // エンドレスのスコア（試し）：ゴールするたびに「判定精度点」＋「早着ボーナス」を累計。進むだけでは点は入らない
 // ===== 距離チャレンジ（エンドレス）：曲が終わるまでにどこまで進めるか。記録は進んだマス数 =====
-const WARP_PERFECT = 30;  // 1区間（ワープまで）に必要なPERFECTの累計回数（試遊用・未決定）
+const WARP_PERFECT = 0;  // 1区間（ワープまで）に必要なPERFECTの累計回数（試遊用・未決定）
 let secPerfect = 0, warpReady = false, sectionNo = 1, termWaitLogged = false;
 let endReason = null;
 const END_REASON = { hp: 'ライフ切れ', finish: '完走', song_end: 'ワープ前に曲が終わった' };
@@ -414,8 +416,8 @@ const EL_SCORING = 'rush';
 // 必殺技：PERFECT＋4／GREAT＋2／GOOD＋1。満タン＝120（PERFECTなら30回）。満タンのときだけ発動でき、決まったマス数を突き進む
 const RUSH_GAIN = { PERFECT: 4, GREAT: 2, GOOD: 1 }, RUSH_FULL = 120, RUSH_CELLS = 10;
 let rushRelease = 'manual'; // 'manual'＝満タンでブレイク長押し ／ 'auto'＝満タンで自動発動
-try { if (localStorage.getItem('neon-blade-rush-release') === 'auto') rushRelease = 'auto'; } catch(e){}
-function rushOn(){ return (isTutorial() && !!coach?.rushEnabled) || (speedOn() && EL_SCORING === 'rush'); }
+
+function rushOn(){ return (isTutorial() && !!coach?.rushEnabled) || ((speedOn() || endlessScoreOn()) && EL_SCORING === 'rush'); }
 const EL_BREAK_PTS = { PERFECT: 100, GREAT: 80, GOOD: 30, MISS: 0 }; // ブレイクの基本点
 const STEP_BONUS_PTS = { PERFECT: 100, GREAT: 50 };                  // 次の一歩ボーナス（保持は1回分だけ。強い方に更新）
 const EL_MOVE_PTS = 50;                                               // 成功した前進1回の基本点
@@ -444,21 +446,20 @@ function stepMilestoneFx(idx, t, n, mult){
   [880, 1175, 1568].forEach((f, i) => uiTone(f, .1, i * .05));
 }
 function stepsLabel(n){ return n.toLocaleString('en-US') + (n === 1 ? ' STEP' : ' STEPS'); }
-function setStepsHud(){ NBWorkshop.steps(recordSteps); const sn = document.getElementById('scoreNum'); if (rushOn()) sn.innerHTML = recordSteps.toLocaleString('en-US') + '<small class="unitEn"> STEPS</small>'; else sn.textContent = elScore.toLocaleString(); updateWarpHud(); }
+function setStepsHud(){ if(endlessScoreOn()){setDistHud();return;} NBWorkshop.steps(recordSteps); const sn = document.getElementById('scoreNum'); if (rushOn()) sn.innerHTML = recordSteps.toLocaleString('en-US') + '<small class="unitEn"> STEPS</small>'; else sn.textContent = elScore.toLocaleString(); updateWarpHud(); }
 function elAdd(pts, steps){ elScore += pts; recordSteps += steps; setStepsHud(); }
 function distance(){ return courseLap * GOAL_INDEX + player.idx; }
-function setDistHud(){ document.getElementById('scoreNum').textContent = distance() + 'マス'; }
+function setDistHud(){ NBWorkshop.steps(distance());document.getElementById('scoreNum').textContent = distance() + ' STEPS'; }
 function atTerminal(){ return player.idx >= LINES[LINES.length - 1]; }
 function updateWarpHud(){
   const el = document.getElementById('warpHud');
   if (speedOn()){ el.className = ''; el.textContent = (rushOn() ? '' : recordSteps.toLocaleString('en-US') + ' STEPS　') + 'SPEED ×' + rate.toFixed(1); return; }
   if (!endlessScoreOn()){ el.className = 'hide'; return; }
-  if (warpReady){ el.className = 'ready'; el.textContent = 'PERFECT ' + WARP_PERFECT + ' / ' + WARP_PERFECT + '　ワープOK'; }
-  else if (atTerminal()){ el.className = 'wait'; el.textContent = 'ワープまで あと' + (WARP_PERFECT - secPerfect) + '回'; }
-  else { el.className = ''; el.textContent = 'PERFECT ' + secPerfect + ' / ' + WARP_PERFECT; }
+  el.className='';el.textContent='1曲チャレンジ　／　ワープ条件なし';
 }
 // 区間内の有効なPERFECTを1回数える。必要数に届いたらワープ可能（それ以上は数えない・取り消さない）
-function countPerfect(t){
+function countPerfect(t){ return; // v53: distance warps are unconditional
+
   if (!endlessScoreOn() || warpReady) return;
   secPerfect++;
   if (secPerfect >= WARP_PERFECT){
@@ -574,7 +575,8 @@ function updateHeroMenu(){
   renderHeroCanvas(document.getElementById('heroMini'),selectedHero);
 }
 function previewCharacter(id){
-  clearTimeout(heroPoseTimer);previewHero=id;
+  NBWorkshop.stopSongPreview(); clearTimeout(heroPoseTimer);previewHero=id;
+  const confirm=document.getElementById('heroConfirm');confirm.textContent=NBWorkshop.heroLabel(id);delete confirm.dataset.confirm;
   const h=heroInfo(id),ov=document.getElementById('heroOv');
   ov.style.setProperty('--hero-accent',h.accent);ov.style.setProperty('--hero-dark',h.dark);
   document.getElementById('heroName').textContent=h.name;document.getElementById('heroTag').textContent=h.tag;
@@ -582,6 +584,7 @@ function previewCharacter(id){
   renderHeroCanvas(document.getElementById('heroPreview'),id);
 }
 function closeHeroPicker(confirm){
+  if(confirm&&!NBWorkshop.selectHero(previewHero,document.getElementById('heroConfirm')))return;
   stopPreviewSE();
   clearTimeout(heroPoseTimer);
   if(confirm){selectedHero=previewHero;try{localStorage.setItem(HERO_STORAGE,selectedHero);}catch(e){}updateHeroMenu();}
@@ -589,6 +592,7 @@ function closeHeroPicker(confirm){
   document.getElementById('heroOpen').focus({preventScroll:true});
 }
 function initHeroPicker(){
+  if(!NBWorkshop.ownedHero(selectedHero))selectedHero='ninja';
   if(selectedHero!=='ninja'&&!heroImages[selectedHero])selectedHero='ninja';
   const grid=document.getElementById('heroGrid');
   for(const h of CHARACTERS){
@@ -1211,7 +1215,7 @@ function freeMove(t, rec){
   charState = 'move'; charUntil = t + 0.18;
   if (scoreOn()){ runSteps++; addScore(movePrice, t, true); }
   if (endlessScoreOn()){ setDistHud(); updateWarpHud(); }
-  if (rushOn()&&!isTutorial()){ const sm = stepComboMult(combo), before = recordSteps; moveSteps++; recordSteps += sm; setStepsHud(); const ms = milestoneBetween(before, recordSteps); if (ms) stepMilestoneFx(player.idx, t, recordSteps, sm); else { texts = texts.filter(x => !x.step); texts.push({ s: stepsLabel(recordSteps), idx: player.idx, t, col: stepColor(recordSteps), step: true, mult: sm }); } /* 進むたびに今の歩数をキャラの位置に（重ならないよう最新の1つだけ） */ diagEv('el_move', { inputId: rec?.inputId ?? null, rushUnits, moveSteps }); }
+  if (rushOn()&&!isTutorial()){ const sm = endlessScoreOn()?1:stepComboMult(combo), before = recordSteps; moveSteps++; recordSteps += sm; setStepsHud(); const ms = milestoneBetween(before, recordSteps); if (ms) stepMilestoneFx(player.idx, t, recordSteps, sm); else { texts = texts.filter(x => !x.step); texts.push({ s: stepsLabel(recordSteps), idx: player.idx, t, col: stepColor(recordSteps), step: true, mult: sm }); } /* 進むたびに今の歩数をキャラの位置に（重ならないよう最新の1つだけ） */ diagEv('el_move', { inputId: rec?.inputId ?? null, rushUnits, moveSteps }); }
   else if (speedOn()){
     const m = comboMult(combo), used = EL_SCORING === 'stepBonus' ? stepBonus : null, bonus = used ? STEP_BONUS_PTS[used] : 0, pts = EL_MOVE_PTS * m + bonus;
     stepBonus = EL_SCORING === 'stepBonus' ? null : stepBonus; // 成功した前進1回で消費
@@ -1332,7 +1336,7 @@ function drawRushAnim(t){
   if (!A.moved && t >= A.moveAt){
     A.moved = true; A.blown.push(...takeBlown(A.to));
     player.from = A.to; player.idx = A.to; player.at = t;
-    A.stepsBefore = recordSteps; A.mult = stepComboMult(combo); moveSteps += A.to - A.from; recordSteps += (A.to - A.from) * A.mult; setStepsHud(); // 必殺技にもコンボ倍率（50コンボなら10×3＝30歩）
+    A.stepsBefore = recordSteps; A.mult = endlessScoreOn()?1:stepComboMult(combo); moveSteps += A.to - A.from; recordSteps += (A.to - A.from) * A.mult; setStepsHud(); // 必殺技にもコンボ倍率（50コンボなら10×3＝30歩）
     charState = 'move'; charUntil = A.moveAt + A.dur + 0.15;
     if (poisonHero()) POISON_SFX.dash(); else { uiTone(330, .18, 0); uiTone(660, .18, .02); }
   }
@@ -1596,6 +1600,7 @@ function playMoveSE(n,at){
   src.start(at??Math.max(ctx.currentTime,songStart+beatTime(n)));
 }
 function playSE(word,heroId=selectedHero){
+  if(heroId==='veno'){const voice=NBSound.play('veno',word);if(voice)return voice;}
   const custom=characterBreakBuffers[heroId],buffer=custom||breakBuf;
   if (!buffer) return null;
   const now = ctx.currentTime;
@@ -1654,8 +1659,8 @@ function captureResult(clear){
   }
   if(endlessScoreOn()){
     // 距離チャレンジ：到達距離（マス数）が記録。倍率は掛けない。自己ベストは曲・難易度ごとに保存
-    Object.assign(result,{endless:true,score:distance(),unit:'マス',rank:'—',badge:'',warps:sectionNo-1,endReason,reasonText:END_REASON[endReason]||''});
-    const ekey=`neon-blade-distance-best-v2:${song.file}:${runDifficulty}:w${WARP_PERFECT}`+(activeChart?.chartVersion?':'+activeChart.chartVersion:''); // 譜面が変わったら記録も別 // 距離チャレンジ（ワープ条件つき）。旧ルール・条件ちがいの記録とは別
+    Object.assign(result,{endless:true,mode:'distance',scoring:'distance',score:distance(),unit:' STEPS',rank:'—',badge:'',warps:sectionNo-1,endReason,reasonText:END_REASON[endReason]||''});
+    const ekey=`neon-blade-distance-best-v3:${song.file}:${runDifficulty}:w${WARP_PERFECT}`+(activeChart?.chartVersion?':'+activeChart.chartVersion:''); // 譜面が変わったら記録も別 // 距離チャレンジ（ワープ条件つき）。旧ルール・条件ちがいの記録とは別
     let prev=0;try{const v=Number(localStorage.getItem(ekey));if(Number.isInteger(v)&&v>=0)prev=v;}catch(e){}
     result.newBest=result.score>prev;result.best=result.newBest?result.score:prev;result.previousBest=prev;
     if(result.newBest){try{localStorage.setItem(ekey,String(result.score));}catch(e){}}
@@ -1772,7 +1777,7 @@ function startResultReveal(result){
   ov.querySelector('[data-result-score]').textContent='0';ov.querySelector('[data-result-new]').classList.remove('show');
   ov.querySelector('[data-result-gems]').textContent='＋0';
   ov.querySelector('[data-result-balance]').textContent=Math.max(0,(result.rewards?.balance||0)-(result.rewards?.total||0)).toLocaleString('en-US');
-  if(reduceMotion.matches){finishResultReveal();return;}
+  if(reduceMotion.matches){finishResultReveal();NBSound.play('result');return;}
   after(150,()=>{reveal(stats);uiTone(659,.06);});
   after(400,()=>{
     reveal(score);const start=performance.now(),duration=720;let lastTick=-1;
@@ -1785,12 +1790,12 @@ function startResultReveal(result){
       else{
         scoreFrame=null;ov.querySelector('[data-result-new]').classList.toggle('show',result.newBest);
         ov.querySelector('.scorePanel').classList.add('scoreLanded');
-        (result.newBest?[784,988,1318]:[659,880]).forEach((f,i)=>uiTone(f,.12,i*.055));
+        NBSound.play('result');
       }
     };
     scoreFrame=requestAnimationFrame(animate);
   });
-  after(1300,()=>{reveal(rewards);rewards.classList.remove('rewardArrive');void rewards.offsetWidth;rewards.classList.add('rewardArrive');NBWorkshop.finishReveal(result,ov);if(result.rewards?.total)[1175,1568].forEach((f,i)=>uiTone(f,.09,i*.06));ov.querySelector('[data-result-skip]').disabled=true;resultRevealActive=null;});
+  after(1300,()=>{reveal(rewards);rewards.classList.remove('rewardArrive');void rewards.offsetWidth;rewards.classList.add('rewardArrive');NBWorkshop.finishReveal(result,ov);if(result.rewards?.total)NBSound.play('diamond');ov.querySelector('[data-result-skip]').disabled=true;resultRevealActive=null;});
 }
 document.querySelectorAll('[data-result-skip]').forEach(b=>b.addEventListener('click',()=>finishResultReveal(true)));
 
@@ -2211,11 +2216,7 @@ function checkLines(t){
     diagEv('warp', { fromRate: rate, toRate: Math.min(SPEED_MAX, rate + SPEED_STEP), combo, ...diagCtx() });
     nextLap(t, false); updateWarpHud(); return true; // 曲は頭から、次の速度で
   }
-  if (lineK === LINES.length - 1 && endlessScoreOn()){ // 終端：PERFECTが足りていればワープ、足りなければその場で待つ（ブレイクは続けられる）
-    if (warpReady){ warp(t); return false; }
-    if (!termWaitLogged){ termWaitLogged = true; texts.push({ s: 'あと' + (WARP_PERFECT - secPerfect) + '回PERFECT', idx: player.idx, t, col: '#ffe941' }); diagEv('terminal_wait', { section: sectionNo, perfects: secPerfect, ...diagCtx() }); updateWarpHud(); }
-    return false;
-  }
+  if (lineK === LINES.length - 1 && endlessScoreOn()){ warp(t); return true; }
   else if (lineK === LINES.length - 1 && scoreOn()){ nextCourse(t); }
   else if (lineK === LINES.length - 1){ fx.push({ type: 'goal', idx: player.idx, t, d: .5 }); end(true); }
   else {
@@ -2240,6 +2241,7 @@ function loop(){
       if(hit<=bt){const pc=pendingCheck.shift();checkHit(hit,null,null,pc.n);}
       else{lastBeatLagMs=r2((t-bt)*1000);if(diagRun&&lastBeatLagMs>50)diagEv('beat_late',{beat:nextBeat,lagMs:lastBeatLagMs,frameDtMs});onBeat(nextBeat,bt);nextBeat++;}
     }
+    NBWorkshop.tick(t);
     const lapped = checkLines(t);
     if (isTutorial())coachUpdate(t);
     if (state==='play' && !lapped && t > songBuf.duration / rate){
@@ -2256,7 +2258,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v52', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v53', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2475,7 +2477,7 @@ function nextLap(t, songEnded){
   else { diagAttempt++; diagEv('song_restart', { reason: 'ゴール前に曲が終わった。この挑戦の集計は破棄', lap, attempt: diagAttempt }); }
   // 周回突破と速度アップを伝える（点のボーナスはなし）
   showLapBanner(`WARP!　SPEED ×${rate.toFixed(1)}`);
-  [784, 988, 1175].forEach((f, i) => uiTone(f, .12, i * .05));
+  // The workshop plays the generated warp sound once.
   player = { idx: 0, from: 0, at: 0 }; notes = []; effects = []; texts = []; fx = [];
   nextBeat = 0; acted = -1; pendingCheck = []; earlyInput = null; nextGap = 4; runLen = 1;
   rushAnim = null; rushGuardUntil = -9; hurtGuardUntil = -9; rushFade = null; shards = []; slashMarks = []; mists = []; rushPoseUntil = -9; // 前の曲の時刻で残った無敵・演出を消す
@@ -2488,6 +2490,7 @@ function nextLap(t, songEnded){
   texts.push({ s: 'LAP ' + (lap + 1), idx: 0, t: songTime(), col: '#ffe941', big: true });
 }
 function startGame(){
+  NBWorkshop.stopSongPreview();NBSound.stop();
   document.querySelectorAll('.overlay').forEach(o=>o.classList.add('hide'));
   reset();progFill.style.width='0%';
   lap=0;rate=song.rate||1;applyRate();updateWarpHud(); // 速度を初期値に戻してから表示を更新
@@ -2535,7 +2538,7 @@ async function resumeGame(){
   };tick();
 }
 function returnToSongs(){
-  NBWorkshop.flush(); NBWorkshop.clearToasts();
+  NBWorkshop.flush(); NBWorkshop.clearToasts(); NBWorkshop.renderSongs();
   if(state==='play'||state==='paused'||state==='resuming'){diagEv('quit',{});diagSave();}
   cancelResume();cancelResultReveal();stopMoveScheduler();stopSong();stopRushHold();
   clearTimeout(resultTimer);resultTimer=null;victoryAt=-1;
@@ -2573,6 +2576,7 @@ showTimingValue();
 
 let pickingSong = false;
 async function pickSong(sg, btn){
+  if(!NBWorkshop.ownsSong(sg))return;NBWorkshop.stopSongPreview();
   if (pickingSong) return;
   pickingSong = true;
   const buttons = [...document.querySelectorAll('.songBtn')];
@@ -2659,18 +2663,10 @@ NBWorkshop.init();
   if (seAB) try { breakBuf = await ctx.decodeAudioData(seAB); } catch(e) {}
   loadAudio('audio/block_move.mp3?v=2').then(ab => ctx.decodeAudioData(ab)).then(b => moveBuf = b).catch(() => {});
   loadAudio('audio/goal.mp3').then(ab => ctx.decodeAudioData(ab)).then(b => goalBuf = b).catch(() => {});
-  initHeroPicker();reset(); layout();
+  await NBSound.load(); initHeroPicker();reset(); layout();
   state = 'ready';
   document.getElementById('loadTxt').textContent = '曲をえらんでスタート';
-  const list = document.getElementById('songList');
-  for (const sg of SONGS){
-    const b = document.createElement('button'); b.className = 'songBtn' + (sg.hard ? ' hard' : '');
-    b.innerHTML = `<span>${sg.name}</span><small>${sg.level}</small>`;
-    b.addEventListener('click', () => pickSong(sg, b)); list.appendChild(b);
-  }
-  const mb=document.createElement('button');mb.className='songBtn';
-  mb.innerHTML='<span>📁 自分の曲をえらぶ</span><small>この端末から</small>';
-  mb.addEventListener('click',()=>{if(state==='ready'&&!pickingSong)myFile.click();});list.appendChild(mb);
+  NBWorkshop.renderSongs();
   loop();
 })();
 </script>

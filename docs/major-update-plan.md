@@ -23,3 +23,15 @@
 - プレイ回数は無制限。将来の収益はダイヤ販売と広告削除、広告。
 
 v52は上の予告枠のみの先行変更。SE、追跡、ランク、曲・キャラ購入は未実装。
+
+
+## v53 implementation (2026-10-01)
+
+- Ninja chance: 35% at run/warp start only. Normal / star / rainbow: 70% / 25% / 5%, awards 5 / 12 / 30 gems. Independently selected slow / swift / fast: 50% / 35% / 15%, 0.12 / 0.20 / 0.28 cells per beat, gaps 5 / 6 / 7 cells, 2-beat grace. Crossing detection catches purple and ultimate advances; pauses use the stopped song clock.
+- Exactly two selectable modes: one-song distance (raw steps, unconditional warp) and endless (existing combo-weighted steps and speedup). Tutorial remains separate. Manual ultimate only.
+- Free songs: Shatter Forward, Zombie Protocol, Metronomic Drive. Neon Rush: rank 3 or 80 gems; Frostbite: rank 6 or 100; Stutter:120; Bass Arcade:140. Locked previews last 15s and do not spend gems; unlock is a separate two-tap action.
+- Characters: Neon free, Volt350, Prism400, Veno450, Echo500. Migration keeps wallet, best records, previous mission claims, theme and previously selected character. Existing rank-purchased songs are never charged twice.
+- Player rank earns 0.5 XP per valid GREAT/PERFECT plus actual moved cells, settled once per run; 10 gems per rank. This progression rank is separate from accuracy ratings. Special stages remain unavailable placeholders, no song/price/purchase.
+- Mission thresholds raised; queued notifications spaced 8 seconds apart, compact grouping.
+- Five Firefly requests, displayed 10 credits each (50 total expected), one original WAV downloaded per use. Original WAV metadata retained; runtime envelope/filter/gain adjusted. Technical audio measurements completed; subjective listening cannot be performed in this environment. No real-money billing added.
+- Automated progression and workshop integration tests cover migration, duplicate prevention, purchase rollback, milestones, chase movement, paused/tutorial exclusions. Browser test fixture updated to new economy.

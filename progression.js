@@ -3,14 +3,15 @@
   'use strict';
   const KEY = 'neon-blade-progress-v1';
   const groups = [
-    ['hits', 'リズムをつかめ', 'GREAT以上', [20, 100, 300, 800], [8, 12, 20, 35]],
-    ['steps', 'その先へ', 'エンドレスの最高STEPS', [50, 100, 200, 400], [8, 12, 20, 35]],
-    ['combo', 'つなぐ力', '最大コンボ', [10, 20, 50, 100], [5, 10, 20, 30]],
-    ['rush', '刃を解き放て', '必殺技の発動', [1, 5, 15, 40], [8, 12, 20, 35]],
-    ['tiles', 'ダイヤハンター', 'ダイヤマス達成', [1, 5, 15, 40], [5, 12, 20, 35]]
+    ['hits', 'リズムをつかめ', 'GREAT以上', [150, 500, 1500, 4000], [8, 12, 20, 35]],
+    ['steps', 'その先へ', '最高STEPS', [100, 250, 600, 1200], [8, 12, 20, 35]],
+    ['combo', 'つなぐ力', '最大コンボ', [30, 60, 100, 150], [5, 10, 20, 30]],
+    ['rush', '刃を解き放て', '必殺技の発動', [10, 30, 80, 200], [8, 12, 20, 35]],
+    ['tiles', 'ダイヤハンター', '忍者を捕まえる', [3, 15, 40, 100], [5, 12, 20, 35]]
   ];
+  const legacyTargets = {hits:[20,100,300,800],steps:[50,100,200,400],combo:[10,20,50,100],rush:[1,5,15,40],tiles:[1,5,15,40]};
   const missions = groups.flatMap(([stat, title, label, targets, rewards]) => targets.map((target, tier) => ({
-    id: stat + '-' + target, stat, title, label, target, reward: rewards[tier], tier: tier + 1
+    id: stat + '-' + legacyTargets[stat][tier], stat, title, label, target, reward: rewards[tier], tier: tier + 1
   })));
   const themes = [
     {id: 'classic', name: 'ネオンシティ', tag: 'いつもの光の道', price: 0, colors: ['#075ffa', '#00bff2', '#11d6fb']},
@@ -21,10 +22,19 @@
   const specialStages = [
     {id: 'special-stage-01', name: '特別ステージ', description: '曲に合わせた特別な景色と演出。新しい挑戦を準備中。', status: 'coming-soon', songId: null, price: null}
   ];
-  const fresh = () => ({version: 1, gems: 0, earned: 0, stats: {hits: 0, steps: 0, combo: 0, rush: 0, tiles: 0}, claimed: [], themes: ['classic'], theme: 'classic'});
+  const songs = [
+    {id:'audio/shatter_forward.mp3',price:0}, {id:'audio/song.mp3',price:0},
+    {id:'audio/metronomic_drive.mp3',price:0}, {id:'audio/neon_rush.mp3',price:80,rank:3},
+    {id:'audio/frostbite.mp3',price:100,rank:6}, {id:'audio/stutter.mp3',price:120},
+    {id:'audio/bass_arcade.mp3',price:140}, {id:'audio/tutorial.mp3',price:0}
+  ];
+  const heroes = [{id:'ninja',price:0},{id:'volt',price:350},{id:'prism',price:400},{id:'veno',price:450},{id:'echo',price:500}];
+  const rankFloor = rank => 120 * (rank - 1) + 20 * (rank - 1) * (rank - 2);
+  function rankInfo(xp) { let rank=1; while(rank<999 && xp>=rankFloor(rank+1))rank++; return {rank,xp,progress:xp-rankFloor(rank),need:rankFloor(rank+1)-rankFloor(rank)}; }
+  const fresh = () => ({version: 2, xp:0, songs:songs.filter(s=>!s.price).map(s=>s.id), heroes:['ninja'], gems: 0, earned: 0, stats: {hits: 0, steps: 0, combo: 0, rush: 0, tiles: 0}, claimed: [], themes: ['classic'], theme: 'classic'});
   const integer = v => Number.isSafeInteger(v) && v >= 0;
   function validate(raw) {
-    if (!raw || raw.version !== 1 || !integer(raw.gems) || !integer(raw.earned) || !raw.stats || !Array.isArray(raw.claimed) || !Array.isArray(raw.themes)) throw Error('invalid save');
+    if (!raw || ![1,2].includes(raw.version) || !integer(raw.gems) || !integer(raw.earned) || !raw.stats || !Array.isArray(raw.claimed) || !Array.isArray(raw.themes)) throw Error('invalid save');
     const out = fresh();
     out.gems = raw.gems; out.earned = raw.earned;
     for (const key of Object.keys(out.stats)) {
@@ -34,11 +44,20 @@
     out.claimed = [...new Set(raw.claimed.filter(id => missions.some(m => m.id === id)))];
     out.themes = [...new Set(['classic', ...raw.themes.filter(id => themes.some(t => t.id === id))])];
     out.theme = out.themes.includes(raw.theme) ? raw.theme : 'classic';
+    if(raw.version===2){
+      if(!integer(raw.xp)||!Array.isArray(raw.songs)||!Array.isArray(raw.heroes))throw Error('invalid collection');
+      out.xp=raw.xp;
+      out.songs=[...new Set([...out.songs,...raw.songs.filter(id=>songs.some(s=>s.id===id))])];
+      out.heroes=[...new Set(['ninja',...raw.heroes.filter(id=>heroes.some(h=>h.id===id))])];
+    }
     return out;
   }
   function create(storage) {
     let state = fresh(), timer = null, dirty = false, readOnly = false, error = '';
-    try { const raw = storage.getItem(KEY); if (raw !== null) state = validate(JSON.parse(raw)); }
+    try { const raw = storage.getItem(KEY); if (raw !== null) {
+      const parsed=JSON.parse(raw);state = validate(parsed);
+      if(parsed.version===1){const previous=storage.getItem('neon-blade-character');if(heroes.some(h=>h.id===previous))state.heroes=[...new Set([...state.heroes,previous])];}
+    } }
     catch (_) { error = '保存データを読み込めませんでした。今回は保存せずに遊べます。'; readOnly = true; }
     function flush() {
       clearTimeout(timer); timer = null;
@@ -71,12 +90,29 @@
       if (!flush()) { state = before; dirty = true; return {ok: false, reason: 'storage'}; }
       return {ok: true, purchased: !owned, price};
     }
+    function purchase(kind,id){
+      const catalog=kind==='songs'?songs:kind==='heroes'?heroes:[];
+      const item=catalog.find(x=>x.id===id);if(!item)return {ok:false,reason:'unknown'};
+      if(state[kind].includes(id))return {ok:true,price:0};
+      if(state.gems<item.price)return {ok:false,reason:'funds'};
+      const before=JSON.parse(JSON.stringify(state));state.gems-=item.price;state[kind].push(id);dirty=true;
+      if(!flush()){state=before;dirty=true;return {ok:false,reason:'storage'};}
+      return {ok:true,price:item.price};
+    }
+    function awardXP(amount){
+      if(!integer(amount))return {xp:0,reward:0,unlocked:[]};
+      const old=rankInfo(state.xp).rank;state.xp+=Math.min(amount,2000);const info=rankInfo(state.xp);
+      const reward=(info.rank-old)*10,unlocked=[];
+      for(const song of songs)if(song.rank&&song.rank<=info.rank&&!state.songs.includes(song.id)){state.songs.push(song.id);unlocked.push(song.id);}
+      state.gems+=reward;state.earned+=reward;schedule();flush();
+      return {...info,xp:Math.min(amount,2000),oldRank:old,reward,unlocked};
+    }
     return {
-      get state() { return state; }, get error() { return error; }, update, flush, selectTheme,
+      get state() { return state; }, get error() { return error; }, update, flush, selectTheme, purchase, awardXP,
       nextMissions: () => groups.map(([stat]) => missions.find(m => m.stat === stat && !state.claimed.includes(m.id))).filter(Boolean)
     };
   }
-  const api = {KEY, missions, themes, specialStages, create, validate};
+  const api = {KEY, missions, themes, specialStages, songs, heroes, rankInfo, create, validate};
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.NBProgression = api;
 })(typeof window === 'undefined' ? globalThis : window);

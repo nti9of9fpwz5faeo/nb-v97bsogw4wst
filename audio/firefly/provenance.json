@@ -1,0 +1,46 @@
+{
+  "veno": {
+    "duration": 1.0,
+    "peak": 0.9531,
+    "rms": 0.1669,
+    "onset": 0.01,
+    "source": "Firefly_audio_A_single_soft_punchy_wooden_click_with_a_tiny_silk_variation1.wav"
+  },
+  "diamond": {
+    "duration": 1.0,
+    "peak": 0.7266,
+    "rms": 0.1315,
+    "onset": 0.03,
+    "source": "Firefly_audio_A_short_uplifting_reward_chime_for_a_futuristic_rh_variation1.wav"
+  },
+  "warp": {
+    "duration": 1.0,
+    "peak": 0.5508,
+    "rms": 0.1209,
+    "onset": 0.14,
+    "source": "Firefly_audio_A_single_compact_futuristic_teleport_whoosh,_warm__variation1.wav"
+  },
+  "mission": {
+    "duration": 1.0,
+    "peak": 0.9102,
+    "rms": 0.1386,
+    "onset": 0.01,
+    "source": "Firefly_audio_A_tiny_gentle_positive_notification_for_mission_co_variation1.wav"
+  },
+  "result": {
+    "duration": 2.0,
+    "peak": 0.8046875,
+    "rms": 0.10330341651653267,
+    "source": "Firefly_audio_A_premium_arcade_result_screen_success_stinger._Wa_variation1.wav"
+  },
+  "generation": {
+    "provider": "Adobe Firefly Generate Sound Effects",
+    "date": "2026-10-01",
+    "requests": 5,
+    "displayedCreditsPerRequest": 10,
+    "variant": "1 per request",
+    "sourceFilesUnmodified": true,
+    "listeningReview": false,
+    "selectionBasis": "Measured onset, peak and RMS; runtime lowpass, envelopes and voice limits. Subjective listening pending."
+  }
+}

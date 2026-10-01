@@ -2,23 +2,23 @@
 window.NBWorkshop = (() => {
   'use strict';
   const GEM = '<span class="gemIcon" aria-hidden="true"></span>';
-  const TILE_HITS = 4, TILE_REWARD = 3;
+  let previewSource=null, previewToken=0, previewButton=null;
   let ledger, run, tile, initialized = false, toastTimer, toastGap, toastQueue = [], returnFocus;
   const $ = id => document.getElementById(id);
   const fmt = n => n.toLocaleString('en-US');
   const escape = text => String(text).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const active = () => initialized && run && !run.finished && !isTutorial() && state === 'play';
   function toast(title, detail) {
-    toastQueue.push({title, detail});
+    if(toastQueue.length>=1){toastQueue[0]={title:'MISSION CLEAR',detail:'複数のミッションを達成！ 詳細はリザルトへ'};}else toastQueue.push({title, detail});
     if (!toastTimer && !toastGap) showToast();
   }
   function showToast() {
     const item = toastQueue.shift(); if (!item) return;
     $('missionToast').innerHTML = GEM + `<span><strong>${escape(item.title)}</strong><small>${escape(item.detail)}</small></span>`;
-    $('missionToast').classList.add('visible');
+    $('missionToast').classList.add('visible'); NBSound.play('mission');
     toastTimer = setTimeout(() => {
       $('missionToast').classList.remove('visible'); toastTimer = null;
-      toastGap = setTimeout(() => { toastGap = null; showToast(); }, 200);
+      toastGap = setTimeout(() => { toastGap = null; showToast(); }, 8000);
     }, 2500);
   }
   function clearToasts() {
@@ -27,6 +27,7 @@ window.NBWorkshop = (() => {
   }
   function refreshWallet() {
     if (!ledger) return;
+    const rank=NBProgression.rankInfo(ledger.state.xp); if($('playerRank'))$('playerRank').textContent=`PLAYER RANK ${rank.rank}　${rank.progress} / ${rank.need} XP`;
     document.querySelectorAll('[data-wallet]').forEach(el => el.textContent = fmt(ledger.state.gems));
     document.querySelectorAll('[data-save-note]').forEach(el => { el.textContent = ledger.error; el.hidden = !ledger.error; });
   }
@@ -45,19 +46,16 @@ window.NBWorkshop = (() => {
   function resetRun() {
     if (!initialized) return;
     ledger.flush(); clearToasts();
-    run = {gems: 0, tileGems: 0, missions: [], rushes: 0, serial: 0, seen: new Set(), finished: false};
+    run = {gems: 0, tileGems: 0, missions: [], rushes: 0, serial: 0, hits:0, seen: new Set(), finished: false};
     makeTile(0); refreshWallet();
   }
   function suspendRun() { if (ledger) ledger.flush(); run = null; }
   function makeTile(serial) {
-    // One optional tile per traversal, away from start/end and the existing checkpoints.
-    let seed = 0; for (const c of song.file) seed = (seed * 31 + c.charCodeAt(0)) >>> 0;
-    const idx = [7, 13, 20, 25][(seed + serial) % 4];
-    tile = {idx, hits: 0, done: false, lastBeat: -1, announced: false};
+    tile = NBChase.spawn();
   }
   function nextCourse() {
     if (!active()) return;
-    run.serial++; run.seen.clear(); makeTile(run.serial);
+    tick(songTime()); run.serial++; run.seen.clear(); makeTile(run.serial); NBSound.play('warp');
   }
   function judged(word, beat, t) {
     if (!active() || (word !== 'PERFECT' && word !== 'GREAT')) return;
@@ -65,27 +63,32 @@ window.NBWorkshop = (() => {
     const key = `${run.serial}:${beat}`;
     if (run.seen.has(key)) return;
     run.seen.add(key);
-    let gems = 0, tiles = 0;
-    if (speedOn() && tile && !tile.done && player.idx === tile.idx && tile.lastBeat !== beat) {
-      tile.lastBeat = beat; tile.hits++;
-      if (tile.hits >= TILE_HITS) {
-        tile.done = true; tiles = 1; gems = TILE_REWARD;
-        toast('DIAMOND GET!', `ダイヤマス達成　＋${TILE_REWARD}ダイヤ`);
-        fx.push({type: 'milestone', idx: tile.idx, t, d: .75, col: '#8affed'});
-        [1046, 1318, 1568].forEach((f, i) => uiTone(f, .075, i * .04));
-      }
-    }
-    apply({hits: 1, tiles}, {combo}, gems);
+    run.hits++; apply({hits: 1}, {combo});
   }
   function steps(value) {
-    if (active() && speedOn() && value > ledger.state.stats.steps) apply({}, {steps: value});
+    if (active() && value > ledger.state.stats.steps) apply({}, {steps: value});
   }
+  function tick(t){
+    if(!active()||!tile)return;
+    const outcome=NBChase.advance(tile,t,SPB,playerVis(t),GOAL_INDEX);
+    if(outcome==='caught'){
+      apply({tiles:1},{},tile.rarity.reward);NBSound.play('diamond');
+      const idx=Math.min(player.idx,GOAL_INDEX);
+      fx.push({type:'milestone',idx,t,d:.65,col:tile.rarity.color});
+      texts.push({s:`◆ +${tile.rarity.reward}`,idx,t,col:tile.rarity.color,big:true});
+    }
+  }
+
   function rush() {
     if (!active()) return;
     run.rushes++; apply({rush: 1}, {});
   }
   function finish(result) {
     if (!initialized) return;
+    if(run&&!run.finished&&!isTutorial()){
+      const xp= Math.floor(Math.min(2000,(run.hits*.5)+(result.mode==='distance'?result.score:result.moveSteps||0)));
+      result.progression=ledger.awardXP(xp);run.gems+=result.progression.reward;
+    }
     clearToasts(); ledger.flush(); refreshWallet();
     result.rewards = {total: run?.gems || 0, tiles: run?.tileGems || 0, missions: [...(run?.missions || [])], balance: ledger.state.gems};
     result.rushes = run?.rushes || 0;
@@ -98,29 +101,25 @@ window.NBWorkshop = (() => {
     return p;
   }
   function drawTile(t) {
-    if (!initialized || !run || !speedOn() || !tile || tile.idx > revealEnd || player.idx > tile.idx || tile.done) {
-      if ($('gemCue')) $('gemCue').hidden = true;
-      return;
-    }
-    const p = cellXY(tile.idx), size = cell * .34;
-    if (p.y < -cell || p.y > boardH + cell) return;
-    g.save(); g.globalAlpha = tileAlpha(tile.idx, t);
-    g.fillStyle = '#b3fff3'; g.strokeStyle = '#073443'; g.lineWidth = Math.max(2, cell * .05);
-    const k = reduceMotion.matches ? 1 : 1 + Math.sin(t * 4) * .05;
-    g.translate(p.x, p.y); g.scale(k, k);
-    g.beginPath(); g.moveTo(-size, -size * .24); g.lineTo(-size * .5, -size * .8); g.lineTo(size * .5, -size * .8); g.lineTo(size, -size * .24); g.lineTo(0, size * .9); g.closePath(); g.fill(); g.stroke();
-    g.strokeStyle = '#00bdb7'; g.lineWidth = 1.5;
-    g.beginPath(); g.moveTo(-size, -size * .24); g.lineTo(size, -size * .24); g.moveTo(-size * .45, -size * .24); g.lineTo(0, size * .9); g.lineTo(size * .45, -size * .24); g.stroke();
-    for (let i = 0; i < TILE_HITS; i++) { g.beginPath(); g.arc((i - 1.5) * cell * .16, cell * .38, cell * .045, 0, Math.PI * 2); g.fillStyle = i < tile.hits ? '#eaff73' : '#074451'; g.fill(); }
+    if($('gemCue'))$('gemCue').hidden=true;
+    if(!initialized||!run||isTutorial()||!tile||tile.done||tile.idx>revealEnd)return;
+    const p=cellXY(tile.idx),c=tile.type.color,r=tile.rarity;
+    if(p.y < -cell || p.y>boardH+cell)return;
+    g.save();g.translate(p.x,p.y);g.scale(cell/48,cell/48);
+    const bounce=reduceMotion.matches?0:Math.sin(t/SPB*Math.PI*2)*2;
+    g.translate(0,bounce-5);
+    // Compact masked runner, with a trailing scarf and a clearly visible reward.
+    g.fillStyle=c;g.beginPath();g.moveTo(-5,-5);g.lineTo(-27,-10);g.lineTo(-22,-1);g.closePath();g.fill();
+    g.strokeStyle='#15233f';g.lineWidth=7;g.lineCap='round';
+    const stride=reduceMotion.matches?3:Math.sin(t/SPB*Math.PI*2)*6;
+    g.beginPath();g.moveTo(-2,9);g.lineTo(-7-stride,20);g.moveTo(3,9);g.lineTo(8+stride,20);g.stroke();
+    g.fillStyle='#1e2849';g.beginPath();g.ellipse(0,3,9,12,0,0,Math.PI*2);g.fill();
+    g.beginPath();g.arc(0,-12,11,0,Math.PI*2);g.fill();g.fillStyle=c;g.fillRect(-9,-15,18,6);
+    g.fillStyle='#fff';g.fillRect(1,-14,5,3);
+    let fill=r.color;if(r.id==='rainbow'){fill=g.createLinearGradient(7,-26,30,-8);['#ff8cbd','#ffe68a','#8dffda','#8faaff'].forEach((v,i)=>fill.addColorStop(i/3,v));}
+    g.fillStyle=fill;g.strokeStyle='#fff';g.lineWidth=1.4;g.beginPath();g.moveTo(8,-17);g.lineTo(12,-24);g.lineTo(23,-24);g.lineTo(28,-17);g.lineTo(18,-5);g.closePath();g.fill();g.stroke();
+    g.font='bold 10px system-ui';g.textAlign='center';g.lineWidth=3;g.strokeStyle='#071326';g.strokeText('+'+r.reward,18,-29);g.fillStyle='#fff';g.fillText('+'+r.reward,18,-29);
     g.restore();
-    const cue = $('gemCue');
-    cue.hidden = !(state === 'play' && player.idx === tile.idx);
-    if (!cue.hidden) {
-      cue.textContent = `◆ GREAT以上 ${tile.hits} / ${TILE_HITS}`;
-      const cr = cv.getBoundingClientRect(), wr = $('fieldWrap').getBoundingClientRect();
-      cue.style.left = Math.max(4, Math.min(wr.width - cue.offsetWidth - 4, cr.left - wr.left + p.x - cue.offsetWidth / 2)) + 'px';
-      cue.style.top = Math.max(4, Math.min(wr.height - cue.offsetHeight - 4, cr.top - wr.top + p.y + cell * 1.05)) + 'px';
-    }
   }
   function drawAtmosphere(t) {
     if (!initialized || isTutorial() || ledger.state.theme === 'classic') return;
@@ -157,7 +156,7 @@ window.NBWorkshop = (() => {
       const owned = ledger.state.themes.includes(theme.id), selected = ledger.state.theme === theme.id;
       const missing = Math.max(0, theme.price - ledger.state.gems);
       return `<article class="themeCard" style="--theme-a:${theme.colors[0]};--theme-b:${theme.colors[1]};--theme-floor:${theme.colors[2]}"><div class="themePreview ${theme.id}"><i></i><b>${theme.id === 'sunset' ? '☀' : theme.id === 'aurora' ? '✧' : '↗'}</b><span>${selected ? '選択中' : owned ? '解放済み' : 'THEME'}</span></div><div class="themeInfo"><h3>${theme.name}</h3><p>${theme.tag}</p><button data-theme="${theme.id}" ${selected || (!owned && missing) ? 'disabled' : ''}>${selected ? '使用中' : owned ? 'この景色で遊ぶ' : `${GEM} ${theme.price} で解放`}</button>${!owned && missing ? `<small>あと ${missing} ダイヤ</small>` : ''}</div></article>`;
-    }).join('') + '<p class="collectionNote">コーステーマは背景・床の見た目を変更します。<br>曲・譜面・キャラの強さは共通です。</p>' : ledger.nextMissions().map(missionCard).join('') + `<p class="collectionNote">達成済み ${ledger.state.claimed.length} / ${NBProgression.missions.length}<br>ダイヤマスはエンドレスに出現。<br>そのマスでGREAT以上を4回取ると＋3ダイヤ。<br>練習中のプレイはミッションの対象外です。</p>`;
+    }).join('') + '<p class="collectionNote">コーステーマは背景・床の見た目を変更します。<br>曲・譜面・キャラの強さは共通です。</p>' : ledger.nextMissions().map(missionCard).join('') + `<p class="collectionNote">達成済み ${ledger.state.claimed.length} / ${NBProgression.missions.length}<br>スタート・ワープ直後に、ときどき忍者が登場。<br>追いつくと5・12・30ダイヤ。色と速さの違いも見つけよう。<br>練習中のプレイはミッションの対象外です。</p>`;
     $('collectionBody').querySelectorAll('[data-theme]').forEach(button => button.addEventListener('click', () => {
       if (state !== 'ready') return;
       const theme = NBProgression.themes.find(t => t.id === button.dataset.theme);
@@ -175,7 +174,7 @@ window.NBWorkshop = (() => {
   }
   function openPanel(tab) {
     if (state !== 'ready') return;
-    returnFocus = document.activeElement; $('collectionStatus').textContent = ''; panel(tab);
+    stopSongPreview(); returnFocus = document.activeElement; $('collectionStatus').textContent = ''; panel(tab);
     $('collectionOv').classList.remove('hide'); $('collectionOv').scrollTop = 0; $('collectionClose').focus();
   }
   function closePanel() { $('collectionOv').classList.add('hide'); returnFocus?.focus(); }
@@ -183,6 +182,7 @@ window.NBWorkshop = (() => {
     let storage;
     try { storage = localStorage; } catch (_) { storage = {getItem() { throw Error('storage unavailable'); }}; }
     ledger = NBProgression.create(storage); initialized = true;
+    $('verBadge').insertAdjacentHTML('afterend','<p id="playerRank" class="playerRank"></p>');
     $('songList').insertAdjacentHTML('afterend', `<section class="specialStageShelf" aria-label="特別ステージ">${specialStageMarkup()}</section>`);
     $('verBadge').insertAdjacentHTML('afterend', `<div class="collectionBar"><button id="missionsOpen">ミッション <span class="missionDot"></span></button><button id="themesOpen">${GEM}<b data-wallet>0</b><span>解放 ↗</span></button></div><p class="saveNote" data-save-note hidden></p>`);
     $('fieldWrap').insertAdjacentHTML('beforeend', '<div id="gemCue" hidden></div>');
@@ -192,7 +192,7 @@ window.NBWorkshop = (() => {
     $('collectionClose').addEventListener('click', closePanel);
     $('collectionOv').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closePanel(); } });
     window.addEventListener('pagehide', () => ledger.flush());
-    document.addEventListener('visibilitychange', () => { if (document.hidden) ledger.flush(); refreshWallet(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) {ledger.flush();stopSongPreview();} refreshWallet(); });
     refreshWallet();
   }
   function resultMarkup(prefix, clear) {
@@ -210,7 +210,7 @@ window.NBWorkshop = (() => {
     </div>`;
   }
   function decorateResult(result, ov) {
-    const steps = result.mode === 'endless' && result.scoring === 'rush';
+    const steps = result.mode === 'distance' || result.mode === 'endless' && result.scoring === 'rush';
     const comparable = steps || result.endless || scoreOn();
     const prev = result.previousBest || 0, delta = result.score - prev;
     ov.classList.toggle('stepsResult', steps); ov.classList.toggle('personalBest', result.newBest);
@@ -223,11 +223,15 @@ window.NBWorkshop = (() => {
     if (steps) ov.querySelector('.scoreHelp p').textContent = '記録はコンボ倍率込みのSTEPS。20コンボで1マス＝2 STEPS、50コンボで3 STEPS。必殺技で進んだマスにも倍率がかかります。PERFECT・GREATでコンボ継続、GOOD・MISSでリセット。ブレイクで力をため、満タンで必殺技。ワープごとに速度＋0.1（最大2.2倍）。ライフ切れ、またはワープ前に曲が終わると終了です。';
     else if (scoreOn()) ov.querySelector('.scoreHelp p').textContent = '進むたびに直前のブレイク判定に応じて加点。ブレイクそのものでも加点されます。曲が終わるまでにスコアを伸ばそう。';
     else if (!result.endless) ov.querySelector('.scoreHelp p').textContent = '判定精度 × 到達率 × 1,000,000点。自己ベストはクリアした記録を曲・難易度ごとに保存します。';
+    if(result.mode==='distance')ov.querySelector('.scoreHelp p').textContent='曲を最後まで聴く間に進んだマス数がSTEPSになります。ワープは条件なし、曲はそのまま続きます。満タンの必殺技はブレイク長押しで発動。ライフがなくなれば終了です。';
+    if(steps&&result.progression){ov.querySelector('.resultRank small').textContent='PLAYER RANK';ov.querySelector('[data-result-rank]').textContent=result.progression.rank;}
     ov.querySelectorAll('details').forEach(el => el.open = false);
     const rewards = result.rewards || {total: 0, tiles: 0, missions: [], balance: ledger?.state.gems || 0};
     ov.querySelector('[data-result-gems]').textContent = '＋' + rewards.total;
     ov.querySelector('[data-result-balance]').textContent = fmt(rewards.balance);
-    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? `ダイヤマス ＋${rewards.tiles}　／　ミッション ＋${rewards.total - rewards.tiles}` : isTutorial() ? '練習のあとは、本編でダイヤに挑戦！' : 'ミッション達成やダイヤマスでGET！';
+    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? `忍者 ＋${rewards.tiles}　／　ミッション・ランク ＋${rewards.total - rewards.tiles}` : isTutorial() ? '練習のあとは、本編でダイヤに挑戦！' : 'ミッション達成や忍者を捕まえてGET！';
+    ov.querySelector('.rankProgressResult')?.remove();
+    if(result.progression){const p=result.progression;ov.querySelector('.rewardPanel').insertAdjacentHTML('beforeend',`<div class="rankProgressResult"><b>${p.rank>p.oldRank?'RANK UP!　':''}PLAYER RANK ${p.rank}</b><span>＋${p.xp} XP${p.reward?'　💎＋'+p.reward:''}</span><progress max="${p.need}" value="${p.progress}"></progress><small>${p.progress} / ${p.need} XP${p.unlocked.length?'　新しい曲を解放！':''}</small></div>`);}
     const earned = rewards.missions.slice(0, 2);
     ov.querySelector('[data-result-missions]').innerHTML = earned.map(m => `<span>✓ ${m.title} <b>＋${m.reward}</b></span>`).join('') + (rewards.missions.length > 2 ? `<small>ほか${rewards.missions.length - 2}件達成</small>` : '');
     refreshWallet();
@@ -244,6 +248,49 @@ window.NBWorkshop = (() => {
   function paintScore(el, value, result) {
     el.innerHTML = `<span>${fmt(value)}</span>${result.unit ? `<small>${escape(result.unit.trim())}</small>` : ''}`;
   }
+  function ownsSong(sg){return ledger.state.songs.includes(sg.file)||!NBProgression.songs.some(x=>x.id===sg.file);}
+  function stopSongPreview(){previewToken++;if(previewSource){try{previewSource.stop();}catch(_){}previewSource=null;}if(previewButton){previewButton.textContent='▶ 15秒試聴';previewButton=null;}}
+  async function previewSong(sg,button){
+    if(state!=='ready'||pickingSong)return;
+    const same=previewButton===button;stopSongPreview();if(same)return;
+    const token=previewToken;previewButton=button;button.textContent='読み込み中…';
+    try{
+      await ctx.resume();const buffer=await ctx.decodeAudioData(await loadAudio(sg.file));
+      if(token!==previewToken||state!=='ready')return;
+      const src=ctx.createBufferSource(),gain=ctx.createGain();src.buffer=buffer;src.connect(gain);gain.connect(buses().song);
+      const now=ctx.currentTime,duration=Math.min(15,buffer.duration),offset=Math.min(30,Math.max(0,buffer.duration*.35));
+      gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.8,now+.15);gain.gain.setValueAtTime(.8,now+duration-.4);gain.gain.linearRampToValueAtTime(0,now+duration);
+      previewSource=src;button.textContent='■ 試聴を止める';src.start(now,Math.min(offset,buffer.duration-duration),duration);
+      src.onended=()=>{src.disconnect();gain.disconnect();if(previewSource===src)stopSongPreview();};
+    }catch(_){if(token===previewToken){stopSongPreview();button.textContent='試聴を再試行';}}
+  }
+  function renderSongs(){
+    const list=$('songList');list.replaceChildren();
+    for(const sg of SONGS){
+      const item=NBProgression.songs.find(x=>x.id===sg.file),owned=ownsSong(sg),tutorial=sg===SONGS[0];
+      const row=document.createElement('div');row.className='songRow';
+      const b=document.createElement('button');b.className='songBtn'+(sg.hard?' hard':'')+(!owned?' lockedSong':'');
+      b.innerHTML=`<span>${escape(sg.name)}</span><small>${tutorial?'操作を練習する':owned?escape(sg.level):`💎 ${item.price}${item.rank?' ／ RANK '+item.rank:''}`}</small>`;
+      b.addEventListener('click',()=>{
+        if(state!=='ready'||pickingSong)return;
+        stopSongPreview();
+        if(ownsSong(sg)){pickSong(sg,b);return;}
+        if(b.dataset.confirm!=='yes'){b.dataset.confirm='yes';b.querySelector('small').textContent=`💎 ${item.price} を使って解放する`;return;}
+        const result=ledger.purchase('songs',sg.file);if(result.ok){refreshWallet();renderSongs();}else b.querySelector('small').textContent=result.reason==='funds'?'ダイヤが足りません':ledger.error;
+      });row.appendChild(b);
+      if(!tutorial){const preview=document.createElement('button');preview.className='songPreview';preview.textContent='▶ 15秒試聴';preview.setAttribute('aria-label',sg.name+'を15秒試聴');preview.addEventListener('click',()=>previewSong(sg,preview));row.appendChild(preview);}
+      list.appendChild(row);
+    }
+    const upload=document.createElement('button');upload.className='songBtn';upload.innerHTML='<span>📁 自分の曲をえらぶ</span><small>この端末から</small>';upload.addEventListener('click',()=>{stopSongPreview();if(state==='ready'&&!pickingSong)myFile.click();});list.appendChild(upload);
+  }
+  function heroLabel(id){const item=NBProgression.heroes.find(h=>h.id===id);return ledger.state.heroes.includes(id)?'このキャラで遊ぶ':`💎 ${item.price} で解放`;}
+  function selectHero(id,button){
+    if(ledger.state.heroes.includes(id))return true;
+    const item=NBProgression.heroes.find(h=>h.id===id);
+    if(button.dataset.confirm!==id){button.dataset.confirm=id;button.textContent=`💎 ${item.price} を使って解放する`;return false;}
+    const result=ledger.purchase('heroes',id);refreshWallet();if(!result.ok){button.textContent=result.reason==='funds'?'ダイヤが足りません':ledger.error;return false;}return true;
+  }
+  function ownedHero(id){return ledger.state.heroes.includes(id);}
   function flush() { if (ledger) { ledger.flush(); refreshWallet(); } }
-  return {init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, palette, drawTile, drawAtmosphere, resultMarkup, decorateResult, finishReveal, paintScore, flush, clearToasts};
+  return {tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, palette, drawTile, drawAtmosphere, resultMarkup, decorateResult, finishReveal, paintScore, flush, clearToasts};
 })();
