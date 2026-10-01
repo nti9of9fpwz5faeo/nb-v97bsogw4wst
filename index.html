@@ -301,7 +301,7 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=58">
+<link rel="stylesheet" href="workshop.css?v=58.1">
 </head>
 <body>
 <div id="app">
@@ -341,7 +341,7 @@
   <div id="myPanel" class="hide"><div id="myName"></div><div id="myBpmRow"><span>BPM</span><button id="myDown" aria-label="BPMを下げる">−</button><b id="myBpm">--</b><button id="myUp" aria-label="BPMを上げる">＋</button></div><p id="myNote">曲はこの端末の中だけで使います</p><button id="myPlay">この曲で遊ぶ</button></div>
 
   <details id="timingSettings"><summary>タイミング調整</summary><label for="timingRange">動きのタイミング <b id="timingValue">0 ms</b></label><input id="timingRange" type="range" min="-250" max="250" step="5" value="0"><p>動きが音より早い → ＋へ<br>動きが音より遅い → −へ</p><button id="timingReset">0に戻す</button></details>
-  <details id="soundSettings"><summary>音と拍のガイド</summary><label class="diagRow" for="guideToggle"><span>拍のガイド音</span><input id="guideToggle" type="checkbox"></label><label class="diagRow" for="volSong"><span>曲</span><input id="volSong" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volGuide"><span>ガイド</span><input id="volGuide" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volSe"><span>ブレイク音</span><input id="volSe" type="range" min="0" max="100" step="5"></label><div class="diagRow"><span>Neon Rushの拍補正</span><span class="corrBtns"><button data-corr="0">0ms</button><button data-corr="-30">−30ms</button></span></div><p>ガイド音をオンにすると、ブロックの移動音の代わりに拍ごとに短い音が鳴ります。拍補正は次のプレイから反映されます。</p><p><a href="check.html" style="color:#c6ff44;font-weight:800">曲のテンポのズレをチェックする</a></p></details>
+  <details id="soundSettings"><summary>音と拍のガイド</summary><label class="diagRow" for="guideToggle"><span>拍のガイド音</span><input id="guideToggle" type="checkbox"></label><label class="diagRow" for="volSong"><span>曲</span><input id="volSong" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volGuide"><span>ガイド</span><input id="volGuide" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volSe"><span>効果音</span><input id="volSe" type="range" min="0" max="100" step="5"></label><div class="diagRow"><span>Neon Rushの拍補正</span><span class="corrBtns"><button data-corr="0">0ms</button><button data-corr="-30">−30ms</button></span></div><p>ガイド音をオンにすると、ブロックの移動音の代わりに拍ごとに短い音が鳴ります。拍補正は次のプレイから反映されます。</p><p><a href="check.html" style="color:#c6ff44;font-weight:800">曲のテンポのズレをチェックする</a></p></details>
   <details id="diagSettings"><summary>判定診断モード</summary><label class="diagRow" for="diagToggle"><span>診断モード</span><input id="diagToggle" type="checkbox"></label><label class="diagRow" for="diagOutput"><span>音の出力</span><select id="diagOutput"><option value="unknown">不明</option><option value="speaker">スピーカー</option><option value="wired">有線イヤホン</option><option value="bluetooth">Bluetooth</option></select></label><p>オンにすると、ブレイクのズレを画面の下に小さく表示し、記録を残します。</p><button id="diagOpen">前回の記録を見る</button></details>
   <p>まずは迫るノーツをブレイク。<br>すき間を見つけて、進もう。</p>
 </div>
@@ -1131,7 +1131,7 @@ function tryRevertLateHit(n, evPerf, handlerPerf, rec){
 function damage(t, reason, nt, inputId, sub){
   if(isTutorial()){coachOnMiss(t,reason,nt,inputId);return;}
   diagEv('damage', { lifeLoss: true, reason: reason || null, causeInputId: inputId ?? null, noteId: nt?.id ?? null, noteIdx: nt?.idx ?? null, noteHp: nt?.hp ?? null, playerIdx: player.idx, hpBefore: hp, ...diagCtx() });
-  hp--; drawHud(); damageAt = t; hurtGuardUntil = t + HURT_GUARD_SEC;
+  hp--; NBSound.play('miss'); drawHud(); damageAt = t; hurtGuardUntil = t + HURT_GUARD_SEC;
   const veil = document.getElementById('impactVeil');
   veil.classList.remove('hit'); void veil.offsetWidth; veil.classList.add('hit');
   charState = 'damage'; charUntil = t + 0.4;
@@ -1518,7 +1518,6 @@ function input(type, e, device){
     earlyInput=null;acted=n;
     diagInputEnd(rec,{status:'miss',judge:'MISS',lifeLoss:!isTutorial(),reason:'受付時間外のブレイク',offsetMs:r2(diff*1000)});
     damage(tNow,'受付時間外のブレイク',target,rec?.inputId,'タイミングずれ');
-    NBSound.play('miss');
     if(speedOn())showElLine(0,'タイミングずれ');
     diagShow('MISS：受付時間外（'+msText(diff*1000)+'）');
     return;
