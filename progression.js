@@ -7,7 +7,7 @@
     ['steps', 'その先へ', '最高STEPS', [100, 250, 600, 1200], [8, 12, 20, 35]],
     ['combo', 'つなぐ力', '最大コンボ', [30, 60, 100, 150], [5, 10, 20, 30]],
     ['rush', '刃を解き放て', '必殺技の発動', [10, 30, 80, 200], [8, 12, 20, 35]],
-    ['tiles', 'ダイヤハンター', 'ダイヤ争奪戦に勝つ', [3, 15, 40, 100], [5, 12, 20, 35]]
+    ['tiles', 'ダイヤハンター', '忍者を捕まえる', [3, 15, 40, 100], [5, 12, 20, 35]]
   ];
   const legacyTargets = {hits:[20,100,300,800],steps:[50,100,200,400],combo:[10,20,50,100],rush:[1,5,15,40],tiles:[1,5,15,40]};
   const missions = groups.flatMap(([stat, title, label, targets, rewards]) => targets.map((target, tier) => ({
@@ -168,7 +168,7 @@
       const reward=(info.rank-old)*10,unlocked=[];
       for(const song of songs)if(song.rank&&song.rank<=info.rank&&!state.songs.includes(song.id)){state.songs.push(song.id);unlocked.push(song.id);}
       state.gems+=reward;state.earned+=reward;schedule();flush();
-      return {...info,xp:Math.min(amount,2000),oldRank:old,reward,unlocked};
+      return {...info,totalXP:state.xp,xp:Math.min(amount,2000),oldRank:old,reward,unlocked};
     }
     return {
       get state() { return state; }, get error() { return error; }, update, missionEntries, claimMissions, flush, selectTheme, purchase, awardXP, grantShoppingTest, daily, songProgress, prepareAdReward, claimAdReward,

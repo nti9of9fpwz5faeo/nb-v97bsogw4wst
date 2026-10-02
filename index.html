@@ -301,7 +301,7 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=61">
+<link rel="stylesheet" href="workshop.css?v=62">
 </head>
 <body>
 <div id="app">
@@ -360,14 +360,14 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
-<script src="progression.js?v=61"></script>
-<script src="chase.js?v=61"></script>
+<script src="progression.js?v=62"></script>
+<script src="chase.js?v=62"></script>
 <script src="courses.js?v=56"></script>
-<script src="menu.js?v=59"></script>
+<script src="menu.js?v=62"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
-<script src="workshop.js?v=61"></script>
-<script src="race.js?v=61"></script>
+<script src="workshop.js?v=62"></script>
+<script src="race.js?v=62"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -418,7 +418,7 @@ function endlessScoreOn(){ return playMode === 'distance' && !isTutorial(); } //
 // 得点方式：'rush'＝ためて一気に突き進む（試作中。記録は歩いた距離） ／ 'stepBonus'＝うまく壊すと次の一歩が強くなる（v25） ／ 'combo'＝コンボ倍率（v23）
 const EL_SCORING = 'rush';
 // 必殺技：PERFECT＋4／GREAT＋2／GOOD＋1。満タン＝120（PERFECTなら30回）。満タンのときだけ発動でき、決まったマス数を突き進む
-const RUSH_GAIN = { PERFECT: 4, GREAT: 2, GOOD: 1 }, RUSH_FULL = 120, RUSH_CELLS = 10;
+const RUSH_GAIN = { PERFECT: 4, GREAT: 2, GOOD: 1 }, RUSH_FULL = 120, RUSH_CELLS = 5;
 let rushRelease = 'manual'; // 'manual'＝満タンでブレイク長押し ／ 'auto'＝満タンで自動発動
 
 function rushOn(){ return (isTutorial() && !!coach?.rushEnabled) || ((speedOn() || endlessScoreOn()) && EL_SCORING === 'rush'); }
@@ -1062,6 +1062,7 @@ document.getElementById('coachAgain').addEventListener('click',startGame);
 document.getElementById('coachSongs').addEventListener('click',returnToSongs);
 
 function onBeat(n, t){
+  NBWorkshop.tick(t);
   // 赤いブロックが残っている間は全部その場で足踏み。ただし1拍だけ。
   const red = notes.find(nt => nt.hit);
   if (red && n > (red.hitBeat ?? n) + 1){     // 1拍待っても壊せてない → ダメージ
@@ -1090,6 +1091,7 @@ function onBeat(n, t){
       if(!chartNotes())nextGap = pickGap(); // 紫も連続ブロックに混ざる（突進で後ろを押し返すので空けない）
     }
   }
+  NBWorkshop.tick(t);
   lastBeatAt = t;lastBeatStrength=activeChart?.accents?.[n]??1;
   // 拍の直前に押されていたら今実行
   if (earlyInput){
@@ -1101,6 +1103,7 @@ function onBeat(n, t){
 }
 
 function checkHit(t, reason, inputId, beat){
+  NBWorkshop.tick(t);
   for (const nt of [...notes]){
     if (nt.idx <= player.idx && !nt.hit){
       if (hitGuard(t)){ blastNote(nt, t); diagEv('hit_guard', { noteId: nt.id, rush: rushGuard(t) }); continue; } // 解放中・着地直後は当たらずに吹き飛ばす
@@ -1206,8 +1209,8 @@ function hideJudge(){
   document.getElementById('jWord').textContent = ''; document.getElementById('jSub').textContent = '';
 }
 
-function freeMove(t, rec){
-  NBWorkshop.tick(t);
+function freeMove(t, rec, charge=false){
+  NBWorkshop.tick(t,charge);
   const stuck = notes.find(x => x.hit && x.idx <= player.idx);
   if (stuck){ texts.push({ s: 'もう1回ブレイク！', idx: player.idx, t, col: '#ff5a5a' }); diagResult(rec, { status: 'invalid', reason: '赤ノーツが残っていて進めない', noteId: stuck.id }); return; }
   if (moveLocked){ texts.push({ s: 'まず1個ブレイク', idx: player.idx, t, col: '#ffffff' }); diagResult(rec, { status: 'invalid', reason: '移動ロック中（最初の1個を壊すまで）' }); return; }
@@ -1231,7 +1234,7 @@ function freeMove(t, rec){
     } else texts.push({ s: '+' + pts, idx: player.idx, t, col: '#ffffff', dim: true });
     diagEv('el_move', { inputId: rec?.inputId ?? null, combo, mult: m, points: pts, stepBonusUsed: used, bonusPoints: bonus, stepsAdded: m, moveSteps, recordSteps, score: elScore });
   }
-  NBWorkshop.tick(t);
+  NBWorkshop.tick(t,charge,charge?1:0);
   tutProgress('move');
   checkHit(t, '進んだ先にノーツがあった', rec?.inputId); // ブロックに突っ込んだらその場で当たり
 }
@@ -1341,7 +1344,7 @@ function drawRushAnim(t){
   if (!A.moved && t >= A.moveAt){
     A.moved = true; A.blown.push(...takeBlown(A.to));
     player.from = A.to; player.idx = A.to; player.at = t;
-    A.stepsBefore = recordSteps; A.mult = endlessScoreOn()?1:stepComboMult(combo); moveSteps += A.to - A.from; recordSteps += (A.to - A.from) * A.mult; setStepsHud(); // 必殺技にもコンボ倍率（50コンボなら10×3＝30歩）
+    A.stepsBefore = recordSteps; A.mult = endlessScoreOn()?1:stepComboMult(combo); moveSteps += A.to - A.from; recordSteps += (A.to - A.from) * A.mult; setStepsHud(); // 必殺技にもコンボ倍率（50コンボなら5×3＝15歩）
     charState = 'move'; charUntil = A.moveAt + A.dur + 0.15;
     if (poisonHero()) POISON_SFX.dash(); else { uiTone(330, .18, 0); uiTone(660, .18, .02); }
   }
@@ -1396,7 +1399,7 @@ function drawRushOk(t){
   rr(g, x - w / 2, y - h / 2, w, h, h / 2); g.fillStyle = '#c6ff44'; g.fill(); g.lineWidth = 2.5; g.strokeStyle = '#081221'; g.stroke();
   g.fillStyle = '#081221'; g.fillText('OK', x, y + 1); g.restore();
 }
-// 必殺技の発動：目の前のブロックがその場で回り出し、溜めのあとに10マス突き抜ける
+// 必殺技の発動：目の前のブロックがその場で回り出し、溜めのあとに5マス突き抜ける
 function doRush(t, rec, auto){
   const cells = Math.min(RUSH_CELLS, GOAL_INDEX - player.idx);
   if (cells <= 0 || moveLocked || !rushReady()) return false;
@@ -1418,6 +1421,7 @@ function chargeTarget(){
   return notes.find(x => x.purple && (x.idx <= player.idx || (x.idx === player.idx + 1 && notesWillMove()))) || null;
 }
 function doAction(type, n, t, diff, rec){
+  NBWorkshop.tick(t);
   acted = n;
   const word = judgeOf(diff), sub = Math.abs(diff) <= 0.045 ? '' : (diff < 0 ? 'FAST' : 'LATE');
   if (type === 'charge'){
@@ -1438,7 +1442,7 @@ function doAction(type, n, t, diff, rec){
     for (const nt of chain){ nt.from = nt.idx; nt.idx += 1; nt.at = t; }
     if (chain.length) fx.push({ type: 'stomp', idx: player.idx + 1, t, d: .2, strong: false });
     diagEv('knockback', { inputId: rec?.inputId ?? null, count: chain.length, noteIds: chain.map(x => x.id) });
-    freeMove(t, null); // 壊したマスの先へ1マス進む（前進の点・歩数もここで入る）
+    freeMove(t, null, true); // 壊したマスの先へ1マス進む（前進の点・歩数もここで入る）
     charState = 'slash'; charUntil = t + 0.22;
     return;
   }
@@ -1483,6 +1487,7 @@ function doAction(type, n, t, diff, rec){
       if (rushOn() && rushRelease === 'auto' && rushReady() && !moveLocked && !rushAnim) doRush(t, rec, true); // 自動：満タンの瞬間に解放
     }
   }
+  NBWorkshop.tick(t);
 }
 
 let earlyInput = null;
@@ -1701,7 +1706,7 @@ function renderResult(result){
   const label=ov.querySelector('.scoreLabel span'),help=ov.querySelector('.scoreHelp p');
   label.dataset.orig??=label.textContent;help.dataset.orig??=help.innerHTML;
   label.textContent=result.mode==='endless'?(result.scoring==='rush'?'進んだ距離':'ENDLESS SCORE'):result.endless?'到達距離':label.dataset.orig;
-  help.innerHTML=result.mode==='endless'?(result.scoring==='rush'?`記録は進んだ距離（歩数）です。ブロックを壊すとキャラに力がたまります（PERFECTなら30回で満タン。GREAT・GOODでも少したまります）。${result.rushRelease==='auto'?'満タンになると自動で':'満タンになったら（キャラの横に「OK」）ブレイクボタンを長押しで'}必殺技が発動し、10マス一気に突き進みます。途中のブロックは全部吹き飛ばします。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`:result.scoring==='stepBonus'?`ブレイク（PERFECT 100／GREAT 80／GOOD 30）と前進（50）で点が入ります。PERFECT・GREATで壊すと、次の一歩が強くなります（PERFECTなら＋100、GREATなら＋50。持てるのは1回分）。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`:`進むとブレイクで点が入ります。PERFECT・GREATでコンボがつながり、10コンボで×2、25コンボで×3。倍率は点と歩数の両方にかかります（キャラが進むのは1マスずつ）。GOOD・受付時間外の入力・被弾でコンボは0に戻ります。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`):result.endless?`曲が終わるまでに進んだマス数が記録です（判定で増えたり減ったりしません）。コースの終わりでワープするには、そのコースでPERFECTを${WARP_PERFECT}回取る必要があります。足りないときは終わりで待ち、ブレイクを続けて達成すると自動でワープします。ライフがなくなると、その時点の距離が記録になります。`:help.dataset.orig;
+  help.innerHTML=result.mode==='endless'?(result.scoring==='rush'?`記録は進んだ距離（歩数）です。ブロックを壊すとキャラに力がたまります（PERFECTなら30回で満タン。GREAT・GOODでも少したまります）。${result.rushRelease==='auto'?'満タンになると自動で':'満タンになったら（キャラの横に「OK」）ブレイクボタンを長押しで'}必殺技が発動し、5マス一気に突き進みます。途中のブロックは全部吹き飛ばします。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`:result.scoring==='stepBonus'?`ブレイク（PERFECT 100／GREAT 80／GOOD 30）と前進（50）で点が入ります。PERFECT・GREATで壊すと、次の一歩が強くなります（PERFECTなら＋100、GREATなら＋50。持てるのは1回分）。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`:`進むとブレイクで点が入ります。PERFECT・GREATでコンボがつながり、10コンボで×2、25コンボで×3。倍率は点と歩数の両方にかかります（キャラが進むのは1マスずつ）。GOOD・受付時間外の入力・被弾でコンボは0に戻ります。コースの終わりに着くとワープして、曲が頭から0.1倍速くなります（最大2.2倍）。ワープ前に曲が終わるか、ライフがなくなると終了です。`):result.endless?`曲が終わるまでに進んだマス数が記録です（判定で増えたり減ったりしません）。コースの終わりでワープするには、そのコースでPERFECTを${WARP_PERFECT}回取る必要があります。足りないときは終わりで待ち、ブレイクを続けて達成すると自動でワープします。ライフがなくなると、その時点の距離が記録になります。`:help.dataset.orig;
   text('reason',result.endless?result.reasonText:'');
   if(result.mode==='endless'){text('badge',`WARP ${result.warps}　SPEED ×${result.speed.toFixed(1)}`);text('foot',result.scoring==='rush'?`解放：${result.rushRelease==='auto'?'自動':'自分で'}`:result.scoring==='stepBonus'?`${result.moveSteps}歩`:`記録 ${result.recordSteps}歩（実移動 ${result.moveSteps}マス）`);}
   else if(result.endless)text('badge',`ワープ ${result.warps}回`);
@@ -1712,6 +1717,7 @@ function renderResult(result){
   ov.querySelector('[data-result-skip]').disabled=false;
   ov.querySelector('.scorePanel').classList.remove('scoreLanded');
   ov.querySelectorAll('.resultSpark').forEach(el=>el.remove());
+  try{ov.style.setProperty('--result-scene',`url("${cv.toDataURL()}")`);}catch(_){}
   NBWorkshop.decorateResult(result,ov);
 }
 initResultScreens();
@@ -1779,32 +1785,24 @@ function startResultReveal(result){
   cancelResultReveal();
   const ov=document.getElementById(result.clear?'clearOv':'overOv'),token=resultRevealToken;
   resultRevealActive={ov,result};
-  const stats=ov.querySelector('.resultStats'),score=ov.querySelector('.scorePanel'),rewards=ov.querySelector('.rewardPanel');
-  const after=(ms,fn)=>resultRevealTimers.push(setTimeout(()=>{if(token===resultRevealToken)fn();},ms));
-  const reveal=el=>{el.classList.remove('resultPending');el.classList.add('resultReveal');};
-  [stats,score,rewards].forEach(el=>{el.classList.remove('resultReveal');el.classList.add('resultPending');});
   ov.querySelector('[data-result-score]').textContent='0';ov.querySelector('[data-result-new]').classList.remove('show');
-  ov.querySelector('[data-result-gems]').textContent='＋0';
-  ov.querySelector('[data-result-balance]').textContent=Math.max(0,(result.rewards?.balance||0)-(result.rewards?.total||0)).toLocaleString('en-US');
+  NBWorkshop.animateResult(result,ov,0,0);
   if(reduceMotion.matches){finishResultReveal();NBSound.play('result');return;}
-  after(150,()=>{reveal(stats);uiTone(659,.06);});
-  after(400,()=>{
-    reveal(score);const start=performance.now(),duration=720;let lastTick=-1;
-    const animate=now=>{
-      if(token!==resultRevealToken)return;
-      const p=Math.min(1,(now-start)/duration),eased=1-Math.pow(1-p,3);
-      NBWorkshop.paintScore(ov.querySelector('[data-result-score]'),Math.round(result.score*eased),result);
-      const tick=Math.floor(p*6);if(tick!==lastTick&&p<1){lastTick=tick;uiTone(440+tick*65,.025);}
-      if(p<1)scoreFrame=requestAnimationFrame(animate);
-      else{
-        scoreFrame=null;ov.querySelector('[data-result-new]').classList.toggle('show',result.newBest);
-        ov.querySelector('.scorePanel').classList.add('scoreLanded');
-        NBSound.play(result.newBest?'record':'result');
-      }
-    };
-    scoreFrame=requestAnimationFrame(animate);
-  });
-  after(1300,()=>{reveal(rewards);rewards.classList.remove('rewardArrive');void rewards.offsetWidth;rewards.classList.add('rewardArrive');NBWorkshop.finishReveal(result,ov);if(result.rewards?.total)NBSound.play('diamond');ov.querySelector('[data-result-skip]').disabled=true;resultRevealActive=null;});
+  ov.classList.remove('resultEnter');void ov.offsetWidth;ov.classList.add('resultEnter');
+  const start=performance.now();let lastTick=-1,landed=false,rewarded=false;
+  const animate=now=>{
+    if(token!==resultRevealToken)return;
+    const age=now-start,p=Math.max(0,Math.min(1,(age-180)/1050)),eased=1-Math.pow(1-p,2);
+    const rp=Math.max(0,Math.min(1,(age-1230)/650));
+    NBWorkshop.paintScore(ov.querySelector('[data-result-score]'),Math.round(result.score*eased),result);
+    NBWorkshop.animateResult(result,ov,eased,rp);
+    const tick=Math.floor(p*9);if(tick!==lastTick&&p>0&&p<1){lastTick=tick;uiTone(440+tick*60,.025);}
+    if(p===1&&!landed){landed=true;ov.querySelector('.scorePanel').classList.add('scoreLanded');ov.querySelector('[data-result-new]').classList.toggle('show',result.newBest);NBSound.play(result.newBest?'record':'result');}
+    if(rp>0&&!rewarded){rewarded=true;ov.querySelector('.resultLoot').classList.add('lootArrive');if(result.rewards?.total)NBSound.play('diamond');}
+    if(rp<1)scoreFrame=requestAnimationFrame(animate);else finishResultReveal();
+  };
+  ov.querySelector('.resultLoot').classList.remove('lootArrive');
+  scoreFrame=requestAnimationFrame(animate);
 }
 document.querySelectorAll('[data-result-skip]').forEach(b=>b.addEventListener('click',()=>finishResultReveal(true)));
 
@@ -2275,7 +2273,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v61', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v62', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;

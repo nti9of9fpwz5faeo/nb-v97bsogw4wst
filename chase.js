@@ -1,51 +1,57 @@
-/* Diamond race: one roll per course entry, deterministic beat-based opponents. */
+/* Safe movement opportunities, independent of BPM and rendering frame rate. */
 (function(root){
   'use strict';
   const types=[
-    {id:'novice',name:'初級',reward:5,color:'#73eaff',stepBeats:2.2},
-    {id:'adept',name:'中級',reward:15,color:'#ffd44f',stepBeats:1.7},
-    {id:'master',name:'上級',reward:40,color:'#e878ff',stepBeats:1.25},
-    {id:'divine',name:'神級',reward:150,color:'#fff4b1',stepBeats:1}
+    {id:'novice',name:'初級',reward:5,color:'#73eaff',gap:7,budget:30,flee:8},
+    {id:'adept',name:'中級',reward:15,color:'#ffd44f',gap:8,budget:28,flee:10},
+    {id:'master',name:'上級',reward:40,color:'#e878ff',gap:10,budget:26,flee:12},
+    {id:'divine',name:'神級',reward:150,color:'#fff4b1',gap:12,budget:24,flee:10}
   ];
-  const tuning={spawnChance:.22,divineChance:.01,teleportEvery:5,teleportCells:3,warningBeats:1.5};
-  function spawn(random=Math.random,forced=null,end=35){
+  const tuning={spawnChance:.22,divineChance:.01};
+  function spawn(random=Math.random,forced=null,start=0){
     if(forced==='off'||!forced&&random()>=tuning.spawnChance)return null;
     const roll=forced?0:random();
-    const type=types.find(r=>r.id===forced)||types[roll<.60?0:roll<.88?1:roll<1-tuning.divineChance?2:3];
-    return {type,idx:end,from:end,target:end/2,visible:true,done:false,outcome:null,
-      phase:'intro',nextBeat:Infinity,moveBeat:0,moves:0,warning:null,events:[],lastBeat:null,lastPlayer:0};
+    const type=types.find(r=>r.id===forced)||types[roll<.60?0:roll<.88?1:roll<.99?2:3];
+    return {type,origin:start,idx:start+type.gap,from:start+type.gap,used:0,remaining:type.budget,
+      phase:forced?'chase':'armed',done:false,outcome:null,moveAt:-9,events:[],meter:null,expiresAt:null};
   }
-  function start(n,beat){
-    if(!n||n.done||n.phase==='race')return;
-    n.phase='race';n.nextBeat=beat+n.type.stepBeats;n.lastBeat=beat;
+  function sample(player,notes,locked=false,source=player+2){
+    const sorted=notes.slice().sort((a,b)=>a.idx-b.idx),blocking=sorted.find(n=>n.idx<=player);
+    if(locked||blocking)return {key:blocking?.id??'locked',capacity:0,purple:!locked&&blocking?.purple?blocking.id:null};
+    const next=sorted.find(n=>n.idx>player);
+    return {key:next?.id??'source',capacity:Math.max(0,(next?.idx??source)-player-2),purple:null};
   }
-  function settle(n,outcome,beat){n.done=true;n.outcome=outcome;n.finishedBeat=beat;n.warning=null;return outcome;}
-  function advance(n,beat,player,playing=true,arrivalBeat=null){
-    if(!playing||!n||n.done||n.phase!=='race'||!Number.isFinite(beat))return null;
-    if(beat<n.lastBeat)return null;
-    const playerArrival=player>=n.target?(arrivalBeat??beat):Infinity;
-    // Compare actual arrival times, so a late frame cannot give the wrong winner.
-    while(n.nextBeat<=beat+1e-8){
-      const at=n.nextBeat;
-      if(playerArrival<=at+1e-8){n.lastBeat=beat;return settle(n,'won',playerArrival);}
-      if(n.warning){
-        n.from=n.idx;n.idx=n.warning.to;n.moveBeat=at;
-        n.events.push({idx:n.from,beat:at},{idx:n.idx,beat:at});n.warning=null;
-        n.nextBeat=at+n.type.stepBeats;
-      }else if(n.type.id==='divine'&&n.moves>0&&n.moves%tuning.teleportEvery===0&&n.idx>n.target+2){
-        // A visible wind-up, and the final approach is always on foot.
-        n.warning={at,to:Math.max(n.target+1,n.idx-tuning.teleportCells)};
-        n.moves++;n.nextBeat=at+tuning.warningBeats;
-      }else{
-        n.from=n.idx;n.idx=Math.max(n.target,n.idx-1);n.moveBeat=at;n.moves++;
-        n.nextBeat=at+n.type.stepBeats;
-      }
-      if(n.idx<=n.target){n.lastBeat=beat;return settle(n,'lost',at);}
-    }
-    n.lastBeat=beat;n.lastPlayer=player;
-    if(Number.isFinite(playerArrival))return settle(n,'won',playerArrival);
+  function observe(n,snapshot,rebase=false){
+    const old=n.meter;n.meter=snapshot;
+    if(!old||rebase)return 0;
+    // Only disappearing capacity counts: traversing it, or letting the next note close it.
+    // A new boundary establishes a fresh window, never an instant charge for the whole gap.
+    const ordinary=old.key===snapshot.key?Math.max(0,old.capacity-snapshot.capacity):0;
+    const purple=old.purple!=null&&old.purple!==snapshot.purple?1:0;
+    return ordinary+purple;
+  }
+  function settle(n,outcome,t){n.done=true;n.outcome=outcome;n.finishedAt=t;return outcome;}
+  function advance(n,t,player,opportunities=0){
+    if(!n||n.done||n.phase!=='chase')return null;
+    if(n.retime){if(n.expiresAt!==null)n.expiresAt=t+n.graceRemaining;n.retime=false;}
+    // A move or an ultimate crossing wins before the opponent's next step.
+    if(player>=n.idx)return settle(n,'won',t);
+    n.used=Math.min(n.type.budget,n.used+Math.max(0,opportunities));n.remaining=n.type.budget-n.used;
+    let steps=Math.floor(n.used/n.type.budget*n.type.flee);
+    // God alternates walking and two-cell smoke jumps. All movement uses the same opportunity clock.
+    if(n.type.id==='divine'&&steps%5===3)steps--;
+    const to=n.origin+n.type.gap+steps;
+    if(to>n.idx){const jump=to-n.idx>1&&n.type.id==='divine';n.from=n.idx;n.idx=to;n.moveAt=t;
+      if(jump)n.events.push({idx:n.from,t},{idx:n.idx,t});}
+    if(!n.remaining&&n.expiresAt===null)n.expiresAt=t+.32;
+    if(n.expiresAt!==null&&t>=n.expiresAt)return settle(n,'lost',t);
     return null;
   }
-  const api={types,rarities:types,tuning,spawn,start,advance};
+  function warp(n,length=35,t=0){
+    if(!n||n.done)return;n.idx-=length;n.from=n.idx;n.origin-=length;n.meter=null;n.events=[];n.moveAt=-9;
+    // Song time may restart in endless mode. Preserve the final input window too.
+    n.graceRemaining=n.expiresAt===null?0:Math.max(0,n.expiresAt-t);n.retime=true;
+  }
+  const api={types,rarities:types,tuning,spawn,sample,observe,advance,warp};
   if(typeof module!=='undefined')module.exports=api;else root.NBChase=api;
 })(typeof window==='undefined'?globalThis:window);

@@ -56,11 +56,12 @@ window.NBWorkshop = (() => {
   function suspendRun() { if (ledger) ledger.flush(); run = null; tile = null; }
   function nextCourse() {
     if (!active()) return;
-    tick(songTime()); run.serial++; run.seen.clear(); tile=null; NBSound.play('warp');
+    tick(songTime()); run.serial++; run.seen.clear(); if(tile&&!tile.done)NBChase.warp(tile,GOAL_INDEX,songTime());else tile=null; NBSound.play('warp');
   }
   function beginRace(forced=null){
     if(!active()||player.idx!==0)return null;
-    tile=NBChase.spawn(Math.random,forced,GOAL_INDEX);return tile;
+    if(tile&&!tile.done)return tile;
+    tile=NBChase.spawn(Math.random,forced,forced?0:14);return tile;
   }
   function race(){return tile;}
   function judged(word, beat, t) {
@@ -75,20 +76,21 @@ window.NBWorkshop = (() => {
     if(active()&&value>run.stepValue){const delta=value-run.stepValue;run.stepValue=value;apply({steps:delta},{steps:value});}
   }
   function renderHunter() {} // No persistent panel competing with the notes.
-  function tick(t){
+  function tick(t,rebase=false,bonus=0){
     if(!active()||!tile||tile.done)return;
-    const beat=raceBeat(t);
-    if(tile.phase==='ready'&&!moveLocked)NBChase.start(tile,beat);
+    if(tile.phase==='armed'){
+      if(player.idx<14)return;
+      tile.phase='chase';tile.meter=null;showHunterArrival(tile);
+    }
     const pos=rushAnim?playerVis(t):player.idx;
-    const arrival=rushAnim&&pos>=tile.target
-      ?raceBeat(rushAnim.moveAt+Math.max(0,tile.target-rushAnim.from)*RUSH_CELL_SEC):null;
-    const outcome=NBChase.advance(tile,beat,pos,true,arrival);
+    const snapshot=NBChase.sample(player.idx,notes,moveLocked,gIdx);
+    const opportunities=NBChase.observe(tile,snapshot,rebase||!!rushAnim);
+    const outcome=NBChase.advance(tile,t,pos,rushAnim?0:opportunities+bonus);
     if(!outcome)return;
     const won=outcome==='won',reward=tile.type.reward;
     if(won){apply({tiles:1},{},reward);NBSound.play('diamond');}
-    else NBSound.play('miss');
     showRaceResult(won,reward,tile.type.color);
-    if(won)fx.push({type:'milestone',idx:tile.target,t,d:.65,col:tile.type.color});
+    if(won)fx.push({type:'milestone',idx:player.idx,t,d:.65,col:tile.type.color});
   }
 
   function rush() {
@@ -118,28 +120,19 @@ window.NBWorkshop = (() => {
   }
   function drawTile(t,preview=false) {
     if(!initialized||!run||isTutorial()||!tile||tile.done)return;
-    const n=tile,r=n.type,beat=raceBeat(t);
-    const visible=idx=>preview||idx<=revealEnd;
-    // The prize stays on the course; opponents have no floating reward labels.
-    if(visible(n.target)){
-      const p=cellXY(n.target),gem=IMG['gems/'+r.id],bob=reduceMotion.matches?0:Math.sin(t*3)*cell*.035;
-      g.save();g.translate(p.x,p.y);g.fillStyle=r.color+'55';g.beginPath();g.ellipse(0,cell*.2,cell*.38,cell*.12,0,0,Math.PI*2);g.fill();
-      g.shadowColor=r.color;g.shadowBlur=12;
-      if(gem?.naturalWidth)g.drawImage(gem,-cell*.38,-cell*.65+bob,cell*.76,cell*.76);
-      else{g.fillStyle=r.color;g.beginPath();g.moveTo(0,-cell*.6);g.lineTo(cell*.3,-cell*.2);g.lineTo(0,cell*.1);g.lineTo(-cell*.3,-cell*.2);g.closePath();g.fill();}
-      g.restore();
-    }
-    n.events=n.events.filter(e=>beat-e.beat<.8);
-    for(const e of n.events){if(!visible(e.idx))continue;const p=cellXY(e.idx),k=Math.max(0,(beat-e.beat)/.8);
+    if(tile.phase==='armed')return;
+    const n=tile,r=n.type;
+    const visible=idx=>idx>=0&&idx<=GOAL_INDEX&&(preview||idx<=revealEnd);
+    n.events=n.events.filter(e=>t-e.t<.65);
+    for(const e of n.events){if(!visible(e.idx))continue;const p=cellXY(e.idx),k=Math.max(0,(t-e.t)/.65);
       g.save();g.globalAlpha=(1-k)*.8;g.fillStyle='#edf8ff';for(let i=0;i<5;i++){const a=i*Math.PI*.4;g.beginPath();g.arc(p.x+Math.cos(a)*cell*k*.5,p.y+Math.sin(a)*cell*k*.3,cell*(.1+k*.1),0,Math.PI*2);g.fill();}g.restore();}
     if(!visible(n.idx))return;
-    const moving=!preview&&n.phase==='race'&&!n.warning;
-    const progress=moving?Math.max(0,Math.min(1,(beat-n.moveBeat)/.24)):1;
+    const moving=!reduceMotion.matches,progress=Math.max(0,Math.min(1,(t-n.moveAt)/.16));
     const idx=n.events.length?n.idx:n.from+(n.idx-n.from)*(1-Math.pow(1-progress,3));
-    const p=cellXY(idx);if(p.y < -cell || p.y>boardH+cell)return;
+    const p=cellXY(Math.max(0,idx));if(p.y < -cell || p.y>boardH+cell)return;
     const art=IMG['ninjas/'+r.id];g.save();g.translate(p.x,p.y);
     g.fillStyle='#071c3f55';g.beginPath();g.ellipse(0,cell*.3,cell*.25,cell*.065,0,0,Math.PI*2);g.fill();
-    if(n.warning){g.strokeStyle=r.color;g.lineWidth=3;g.beginPath();g.arc(0,0,cell*.45,0,Math.PI*2);g.stroke();g.font='900 '+Math.round(cell*.4)+'px system-ui';g.textAlign='center';g.fillStyle=r.color;g.fillText('!',0,-cell);}
+    g.font='800 '+Math.round(cell*.23)+'px system-ui';g.textAlign='center';g.fillStyle=r.color;g.fillText('◆ '+r.reward,0,-cell*1.04);
     const hop=moving&&!reduceMotion.matches?Math.sin(progress*Math.PI)*cell*.09:0;
     g.translate(0,-hop);g.scale(facesRight(Math.max(0,Math.floor(idx)-1))?1:-1,1);
     if(art?.naturalWidth){const h=cell*1.22,w=h*art.naturalWidth/art.naturalHeight;g.drawImage(art,-w/2,-h+cell*.34,w,h);}
@@ -170,17 +163,17 @@ window.NBWorkshop = (() => {
   }
   function missionContent(){
     const all=ledger.missionEntries(),pending=all.filter(m=>m.done&&!m.claimed);
-    let rows=all.filter(m=>m.kind===missionTab);
-    let filter='';
+    let rows=all.filter(m=>m.kind===missionTab),filter='',ready='';
+    const unpaid=rows.filter(m=>m.done&&!m.claimed),amount=unpaid.reduce((n,m)=>n+m.reward,0);
     if(missionTab==='song'){
       const catalog=SONGS.filter(s=>s!==SONGS[0]);
-      if(!catalog.some(s=>s.file===missionSong))missionSong=catalog[0]?.file;
-      filter=`<label class="missionSongLabel">曲を選ぶ<select id="missionSongSelect">${catalog.map(s=>`<option value="${escape(s.file)}" ${s.file===missionSong?'selected':''}>${escape(s.name)}</option>`).join('')}</select></label>`;
-      rows=rows.filter(m=>m.songId===missionSong);
+      if(!catalog.some(s=>s.file===missionSong))missionSong=unpaid[0]?.songId||catalog[0]?.file;
+      ready=unpaid.length?`<section class="songRewards"><h3>受け取れる報酬 <small>全曲まとめて ${unpaid.length}件</small></h3>${unpaid.map(m=>`<div class="songRewardRow"><span><small>${escape(catalog.find(s=>s.file===m.songId)?.name||m.songId)}</small><b>${escape(m.title)}</b></span><button data-claim="${escape(m.key)}">${GEM}＋${m.reward}<small>受け取る</small></button></div>`).join('')}</section>`:'<p class="songRewardEmpty">未受取の曲別報酬はありません</p>';
+      filter=`<label class="missionSongLabel">曲ごとの目標<select id="missionSongSelect">${catalog.map(s=>`<option value="${escape(s.file)}" ${s.file===missionSong?'selected':''}>${escape(s.name)}</option>`).join('')}</select></label>`;
+      rows=rows.filter(m=>m.songId===missionSong&&!(m.done&&!m.claimed));
     }
     rows.sort((a,b)=>(a.claimed?2:a.done?0:1)-(b.claimed?2:b.done?0:1));
-    const unpaid=rows.filter(m=>m.done&&!m.claimed),amount=unpaid.reduce((n,m)=>n+m.reward,0);
-    return `<div class="missionTabs" role="tablist" aria-label="ミッションの種類">${[['daily','デイリー'],['normal','通常'],['song','曲別']].map(([id,label])=>{const n=pending.filter(m=>m.kind===id).length;return `<button role="tab" aria-selected="${id===missionTab}" data-mission-tab="${id}">${label}${n?`<i>${n}</i>`:''}</button>`;}).join('')}</div>${filter}<div class="claimToolbar"><span>${missionTab==='daily'?'毎日 0:00 更新（日本時間）':missionTab==='song'?'この曲で達成したミッション':'プレイを重ねて達成しよう'}</span><button id="claimAll" ${unpaid.length?'':'disabled'}>一括受け取り${amount?'　💎 '+amount:''}</button></div>${rows.map(missionCard).join('')}<p class="collectionNote">練習は対象外です。達成済みのデイリー報酬は翌日も受け取れます。</p>`;
+    return `<div class="missionTabs" role="tablist" aria-label="ミッションの種類">${[['daily','デイリー'],['normal','通常'],['song','曲別']].map(([id,label])=>{const n=pending.filter(m=>m.kind===id).length;return `<button role="tab" aria-selected="${id===missionTab}" data-mission-tab="${id}">${label}${n?`<i>${n}</i>`:''}</button>`;}).join('')}</div><div class="claimToolbar"><span>${missionTab==='daily'?'毎日 0:00 更新（日本時間）':missionTab==='song'?'全曲の達成報酬':'プレイを重ねて達成しよう'}</span><button id="claimAll" ${unpaid.length?'':'disabled'}>まとめて受け取る${amount?'　💎 '+amount:''}</button></div>${ready}${filter}${rows.map(missionCard).join('')}<p class="collectionNote">練習は対象外です。達成済みのデイリー報酬は翌日も受け取れます。</p>`;
   }
   function claimFeedback(receipt){
     if(!receipt.ok)return ledger.error||'受け取り可能な報酬がありません';
@@ -192,7 +185,7 @@ window.NBWorkshop = (() => {
     document.querySelectorAll('[data-mission-tab]').forEach(b=>b.onclick=()=>{missionTab=b.dataset.missionTab;panel('missions');document.querySelector('[data-mission-tab="'+missionTab+'"]').focus();});
     $('missionSongSelect')?.addEventListener('change',e=>{missionSong=e.target.value;panel('missions');});
     document.querySelectorAll('[data-claim]').forEach(b=>b.onclick=()=>{const r=ledger.claimMissions([b.dataset.claim]);panel('missions');$('collectionStatus').textContent=claimFeedback(r);});
-    if($('claimAll'))$('claimAll').onclick=()=>{const keys=ledger.missionEntries().filter(m=>m.kind===missionTab&&(missionTab!=='song'||m.songId===missionSong)).map(m=>m.key);const r=ledger.claimMissions(keys);panel('missions');$('collectionStatus').textContent=claimFeedback(r);$('claimAll').focus();};
+    if($('claimAll'))$('claimAll').onclick=()=>{const keys=ledger.missionEntries().filter(m=>m.kind===missionTab).map(m=>m.key);const r=ledger.claimMissions(keys);panel('missions');$('collectionStatus').textContent=claimFeedback(r);$('claimAll').focus();};
   }
   function openSongMissions(id){missionTab='song';missionSong=id;NBMenu.show('missions');}
   function openRank(){
@@ -263,14 +256,14 @@ window.NBWorkshop = (() => {
   }
   function resultMarkup(prefix, clear) {
     return `<div class="resultSheet">
-      <header class="resultHeader"><p class="resultEyebrow">NEON BLADE / RESULT</p><h2 class="resultTitle">${clear?'CLEAR!':'RUN COMPLETE'}</h2><p class="resultSong"><span data-result-song></span><span class="resultDifficulty" data-result-difficulty></span></p><p class="endReason" data-result-reason></p></header>
+      <header class="resultHeader"><p class="resultEyebrow">NEON BLADE</p><h2 class="resultTitle">${clear?'CLEAR!':'RUN COMPLETE'}</h2><p class="resultSong"><span data-result-song></span><span class="resultDifficulty" data-result-difficulty></span></p><p class="endReason" data-result-reason></p></header>
       <div class="resultMoment"><div class="resultHero"><div class="resultPortrait"><canvas id="${prefix}Hero" width="400" height="280" aria-hidden="true"></canvas><strong class="resultHeroName" data-result-hero></strong></div><div class="resultRank"><small>RANK</small><strong data-result-rank></strong></div></div>
-      <div class="scorePanel"><div class="scoreLabel"><span>STEPS</span><span class="newBest" data-result-new>NEW BEST</span></div><strong class="scoreValue" data-result-score>0</strong><div class="resultDelta" data-result-delta></div><div class="bestValue">自己ベスト <span data-result-best>0</span></div><div class="recordTrack"><i data-result-track></i></div><p class="nextRecord" data-result-next></p></div></div>
+      <div class="scorePanel"><div class="scoreLabel"><span>STEPS</span><span class="newBest" data-result-new>NEW RECORD</span></div><strong class="scoreValue" data-result-score>0</strong><div class="resultDelta" data-result-delta></div><div class="bestValue">自己ベスト <span data-result-best>0</span></div><div class="recordTrack"><i data-result-track></i></div><p class="nextRecord" data-result-next></p></div></div>
       <div class="runHighlights" data-result-highlights></div>
-      <div class="rewardPanel"><div class="rewardHeadline"><span>${GEM}獲得ダイヤ</span><b data-result-gems>＋0</b></div><p data-result-reward-detail></p><div class="rewardWallet">所持ダイヤ <b data-result-balance>0</b></div><div class="rewardMissionList" data-result-missions></div><p class="saveNote" data-save-note hidden></p></div>
+      <div class="resultLoot"><div class="rewardPanel"><div class="rewardHeadline"><span>${GEM}獲得ダイヤ</span><b data-result-gems>＋0</b></div><p data-result-reward-detail></p><div class="rewardWallet">所持ダイヤ <b data-result-balance>0</b></div><div class="rewardMissionList" data-result-missions></div><p class="saveNote" data-save-note hidden></p></div>
+      <div class="resultGrowth" data-result-growth></div></div>
       <button class="resultClaim" data-result-claim hidden></button><p class="resultClaimStatus" data-claim-status role="status"></p>
-      <div class="resultGrowth" data-result-growth></div>
-      <div class="resultActions"><button class="ovBtn" data-retry>もう一回 <span>↻</span></button><button class="ovBtn sub" data-select>曲一覧</button></div>
+      <div class="resultActions"><button class="ovBtn" data-retry>再挑戦 <span>↻</span></button><button class="ovBtn sub" data-select>曲を変える</button></div>
       <button class="doubleReward" data-double-reward disabled>▶ 広告でダイヤ2倍</button><p class="adStatus" data-ad-status role="status"></p>
       <button class="resultSkip" data-result-skip>演出をスキップ</button>
       <details class="resultDetails"><summary>プレイの詳細</summary><div class="resultStats"><div class="resultStat"><small>判定精度</small><b data-result-accuracy></b></div><div class="resultStat"><small>最大コンボ</small><b data-result-combo></b></div></div><dl class="judgmentList">${[['PERFECT','#8f6800'],['GREAT','#007e9c'],['GOOD','#426b06'],['MISS','#b32651']].map(([k,col])=>`<div class="judgmentRow" data-judgment="${k}" style="--tone:${col}"><dt>${k}</dt><dd><span>0</span><small>回</small></dd></div>`).join('')}</dl><div class="resultFoot"><span class="resultBadge" data-result-badge></span><span data-result-foot></span></div><button class="ovBtn sub diagOpenBtn" data-diag hidden>判定診断を見る</button><details class="scoreHelp"><summary>記録のしくみ</summary><p></p></details></details>
@@ -282,11 +275,11 @@ window.NBWorkshop = (() => {
     const prev = result.previousBest || 0, delta = result.score - prev;
     delete ov.dataset.celebrated;
     ov.classList.toggle('stepsResult', steps); ov.classList.toggle('personalBest', result.newBest);
-    ov.querySelector('.resultTitle').textContent = result.newBest ? (prev?'自己ベスト更新！':'最初の記録！') : result.clear ? '完走！' : 'おつかれさま！';
+    ov.querySelector('.resultTitle').textContent = result.newBest ? (prev?'自己ベスト更新！':'最初の記録！') : result.clear ? '完走！' : prev&&result.score>=prev*.9?'あと少しで新記録！':'次はもっと先へ！';
     ov.querySelector('.scoreLabel span').textContent = steps ? 'TOTAL STEPS' : result.endless ? '到達距離' : scoreOn() ? 'TOTAL SCORE' : 'SCORE / 1,000,000';
     ov.querySelector('[data-result-delta]').textContent = result.newBest ? prev ? `前の記録より ＋${fmt(delta)}${result.unit || ''}` : 'はじめての自己ベスト！' : prev ? delta === 0 ? '自己ベストと同じ記録！' : `自己ベスト更新まで あと${fmt(Math.max(1, prev - result.score + 1))}${result.unit || ''}` : 'ここから、記録を伸ばそう';
     const next = result.newBest||!prev ? (steps?Math.max(Math.floor(result.best/50)*50+50,50):result.best+1) : prev+1;
-    ov.querySelector('[data-result-track]').style.width = `${Math.min(100, result.score / Math.max(1, result.newBest ? next : prev) * 100)}%`;
+    const track=ov.querySelector('[data-result-track]');track.dataset.target=String(Math.min(100,result.score/Math.max(1,next)*100));track.style.width='0%';
     ov.querySelector('[data-result-next]').textContent = steps ? `次の目標　${fmt(next)} STEPS` : comparable && prev ? `BEST　${fmt(result.best)}${result.unit || ''}` : '次の一回で、もっと先へ。';
     if (steps) ov.querySelector('.scoreHelp p').textContent = '記録はコンボ倍率込みのSTEPS。20コンボで1マス＝2 STEPS、50コンボで3 STEPS。必殺技で進んだマスにも倍率がかかります。PERFECT・GREATでコンボ継続、GOOD・MISSでリセット。ブレイクで力をため、満タンで必殺技。ワープごとに速度＋0.1（最大2.2倍）。ライフ切れ、またはワープ前に曲が終わると終了です。';
     else if (scoreOn()) ov.querySelector('.scoreHelp p').textContent = '進むたびに直前のブレイク判定に応じて加点。ブレイクそのものでも加点されます。曲が終わるまでにスコアを伸ばそう。';
@@ -297,9 +290,9 @@ window.NBWorkshop = (() => {
     const rewards = result.rewards || {total: 0, tiles: 0, missions: [], balance: ledger?.state.gems || 0};
     ov.querySelector('[data-result-gems]').textContent = '＋' + rewards.total;
     ov.querySelector('[data-result-balance]').textContent = fmt(rewards.balance);
-    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? `争奪戦 ＋${rewards.tiles}　／　ランクアップ ＋${rewards.total - rewards.tiles}` : isTutorial() ? '練習のあとは、本編でダイヤに挑戦！' : 'ミッション達成やダイヤ争奪戦でGET！';
+    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? [rewards.tiles?'忍者捕獲 ＋'+rewards.tiles:'',rewards.total>rewards.tiles?'ランクアップ ＋'+(rewards.total-rewards.tiles):''].filter(Boolean).join(' ／ ') : isTutorial() ? '本編でダイヤに挑戦！' : '忍者を捕まえてダイヤをGET';
     const growth=ov.querySelector('[data-result-growth]');growth.innerHTML='';
-    if(result.progression){const p=result.progression;growth.innerHTML=`<div class="growthLabel"><b>${p.rank>p.oldRank?'RANK UP　'+p.oldRank+' → '+p.rank:'RANK '+p.rank}</b><span>＋${p.xp} XP</span></div><progress max="${p.need}" value="${p.progress}" aria-label="次のランクへの進捗"></progress><small>${p.unlocked.length?'新しい曲を解放！':'次のランクまで '+(p.need-p.progress)+' XP'}</small>`;}
+    if(result.progression){const p=result.progression;growth.innerHTML=`<div class="growthLabel"><b>${p.rank>p.oldRank?'RANK UP　'+p.oldRank+' → '+p.rank:'RANK '+p.rank}</b><span data-xp-earned>＋0 XP</span></div><progress max="${p.need}" value="0" aria-label="次のランクへの進捗"></progress><small>${p.unlocked.length?'新しい曲を解放！':'次のランクまで '+(p.need-p.progress)+' XP'}</small>`;}
     const highlights=[];
     if(result.maxCombo>=10)highlights.push(`<span>つながった！ <b>${fmt(result.maxCombo)} COMBO</b></span>`);
     if((result.counts?.PERFECT||0)>0)highlights.push(`<span>PERFECT <b>${fmt(result.counts.PERFECT)}回</b></span>`);
@@ -312,7 +305,7 @@ window.NBWorkshop = (() => {
     claim.onclick=()=>{finishResultReveal();const receipt=ledger.claimMissions([...keys]);claimStatus.textContent=claimFeedback(receipt);rewards.balance=ledger.state.gems;paintClaim();};
     const ad=ov.querySelector('[data-double-reward]'),status=ov.querySelector('[data-ad-status]');
     ad.textContent=NBAds.available()?'▶ 広告で獲得ダイヤ2倍'+(rewards.total?'（＋'+rewards.total+'）':''):'▶ 広告でダイヤ2倍 · 準備中';
-    ad.disabled=!result.adEligible||!rewards.total||!NBAds.available();
+    ad.disabled=!result.adEligible||!rewards.total||!NBAds.available();ad.hidden=!NBAds.available()||!rewards.total;
     status.textContent=NBAds.available()&&!rewards.total?'今回の対象ダイヤはありません':'';
     ad.onclick=async()=>{
       if(ad.disabled)return;ad.disabled=true;status.textContent='広告を読み込み中…';
@@ -322,9 +315,23 @@ window.NBWorkshop = (() => {
       if(!receipt.ok){status.textContent=receipt.reason==='storage'?ledger.error:'この報酬は受け取り済みです';return;}
       rewards.total+=receipt.amount;rewards.balance=ledger.state.gems;ad.textContent='2倍のダイヤを獲得済み';status.textContent='';finishReveal(result,ov);refreshWallet();NBSound.play('diamond');
     };
+    animateResult(result,ov,0,0);
     refreshWallet();
   }
+  function animateResult(result,ov,scoreProgress,rewardProgress){
+    const track=ov.querySelector('[data-result-track]');track.style.width=(Number(track.dataset.target)*scoreProgress)+'%';
+    const p=result.progression;
+    if(p){const info=NBProgression.rankInfo((p.totalXP??p.xp)-p.xp+Math.round(p.xp*rewardProgress));const growth=ov.querySelector('[data-result-growth]');
+      growth.querySelector('progress').max=info.need;growth.querySelector('progress').value=info.progress;
+      growth.querySelector('[data-xp-earned]').textContent='＋'+Math.round(p.xp*rewardProgress)+' XP';
+      growth.querySelector('b').textContent=info.rank>p.oldRank?'RANK UP! '+info.rank:'RANK '+info.rank;
+      growth.querySelector('small').textContent=rewardProgress===1&&p.unlocked.length?'新しい曲を解放！':'次のランクまで '+(info.need-info.progress)+' XP';
+    }
+    ov.querySelector('[data-result-gems]').textContent='＋'+Math.round((result.rewards?.total||0)*rewardProgress);
+  }
   function finishReveal(result, ov) {
+    animateResult(result,ov,1,1);
+    ov.querySelector('.resultLoot').classList.add('lootArrive');
     ov.querySelector('[data-result-gems]').textContent = '＋' + (result.rewards?.total || 0);
     ov.querySelector('[data-result-balance]').textContent = fmt(result.rewards?.balance || 0);
     ov.querySelector('.scorePanel').classList.add('scoreLanded');
@@ -360,14 +367,7 @@ window.NBWorkshop = (() => {
   }
   function chooseSong(sg){
     stopSongPreview();
-    if(sg===SONGS[0]){pickSong(sg,$('homeTutorial'));return;}
-    $('songChoice')?.remove();
-    const panel=document.createElement('div');panel.id='songChoice';panel.className='overlay songChoice';panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');panel.setAttribute('aria-label',sg.name+'のモード選択');
-    panel.innerHTML=`<div class="songChoicePanel"><button class="choiceClose" aria-label="閉じる">×</button><h2>${escape(sg.name)}</h2><p>遊び方を選ぶ</p><button data-play="distance">♫ 1曲チャレンジ</button><button data-play="endless">∞ エンドレス</button></div>`;
-    document.body.append(panel);const close=()=>panel.remove();panel.querySelector('.choiceClose').onclick=close;
-    panel.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();close();}});
-    panel.querySelectorAll('[data-play]').forEach(b=>b.onclick=()=>{if(state!=='ready'||pickingSong)return;playMode=b.dataset.play;endless=true;updateModeUI();try{localStorage.setItem('neon-blade-mode',playMode);}catch(_){}close();pickSong(sg,document.querySelector(`[data-song-file="${sg.file}"]`));});
-    panel.querySelector('.choiceClose').focus();
+    pickSong(sg,sg===SONGS[0]?$('homeTutorial'):document.querySelector(`[data-song-file="${sg.file}"]`));
   }
   function renderSongs(){
     const list=$('songList');list.replaceChildren();
@@ -399,5 +399,5 @@ window.NBWorkshop = (() => {
   }
   function ownedHero(id){return ledger.state.heroes.includes(id);}
   function flush() { if (ledger) { ledger.flush(); refreshWallet(); } }
-  return {beginRace,race,refreshWallet,openRank,shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, palette, drawTile, drawAtmosphere, resultMarkup, decorateResult, finishReveal, paintScore, flush, clearToasts};
+  return {beginRace,race,refreshWallet,openRank,shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, palette, drawTile, drawAtmosphere, resultMarkup, decorateResult, animateResult, finishReveal, paintScore, flush, clearToasts};
 })();

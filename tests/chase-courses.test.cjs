@@ -1,37 +1,56 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const C=require('../chase.js'),M=require('../courses.js');
-const race=(id='novice')=>{const n=C.spawn(()=>0,id,35);C.start(n,0);return n;};
-test('natural event chance, rare ranks and all explicit opponents',()=>{
+const chase=(id='novice')=>C.spawn(()=>0,id,0);
+test('random event chance and all four forced opponents',()=>{
  assert.equal(C.spawn(()=>.8),null);assert.equal(C.spawn(()=>0,'off'),null);
- for(const r of C.types){const n=C.spawn(()=>.99,r.id);assert.equal(n.type.id,r.id);assert.equal(n.idx,35);assert.equal(n.target,17.5);assert.equal(n.phase,'intro');}
+ for(const r of C.types){const n=chase(r.id);assert.equal(n.type.id,r.id);assert.ok(n.idx>5);assert.equal(n.remaining,r.budget);}
  const values=[0,.999];assert.equal(C.spawn(()=>values.shift()).type.id,'divine');
 });
-test('intro and ready cannot move; paused race does not advance',()=>{
- const n=C.spawn(()=>0,'novice');C.advance(n,100,0);assert.equal(n.idx,35);
- C.start(n,0);C.advance(n,100,0,false);assert.equal(n.idx,35);
+test('two empty cells offer one safe move, three offer two; blocked and locked offer none',()=>{
+ assert.equal(C.sample(0,[{id:1,idx:3}]).capacity,1);assert.equal(C.sample(0,[{id:1,idx:4}]).capacity,2);
+ assert.equal(C.sample(0,[{id:1,idx:0},{id:2,idx:4}]).capacity,0);
+ assert.equal(C.sample(0,[{id:1,idx:4}],true).capacity,0);
 });
-test('non-divine opponents only walk in one-cell steps',()=>{
- for(const type of C.types.slice(0,3)){const n=race(type.id);for(let i=1;i<=10;i++){C.advance(n,i*type.stepBeats,0);assert.equal(n.idx,35-i);assert.equal(n.warning,null);assert.equal(n.events.length,0);}}
+test('waiting wastes exactly the closing opportunities, repeated frames do not',()=>{
+ const n=chase(),s=q=>C.sample(0,[{id:1,idx:q}]);
+ assert.equal(C.observe(n,s(5)),0);for(let i=0;i<120;i++)assert.equal(C.observe(n,s(5)),0);
+ for(const q of [4,3,2]){const used=C.observe(n,s(q));assert.equal(used,1);C.advance(n,0,0,used);}
+ assert.equal(n.remaining,27);assert.equal(C.observe(n,s(1)),0);assert.equal(C.observe(n,s(0)),0);
 });
-test('ultimate from start cannot reach midpoint; crossing it wins once',()=>{
- for(const type of C.types){const n=race(type.id);assert.equal(C.advance(n,1,10),null);assert.equal(C.advance(n,2,18),'won');assert.equal(C.advance(n,3,30),null);}
+test('moving uses the same capacity once; next window and purple knockback rebase correctly',()=>{
+ const n=chase();C.observe(n,C.sample(0,[{id:1,idx:4}]));
+ assert.equal(C.observe(n,C.sample(1,[{id:1,idx:4}])),1);
+ assert.equal(C.observe(n,C.sample(2,[{id:1,idx:4}])),1);
+ assert.equal(C.observe(n,C.sample(2,[{id:2,idx:7}])),0);
+ assert.equal(C.observe(n,C.sample(2,[{id:2,idx:8}])),0);
+ assert.equal(C.observe(n,C.sample(3,[{id:2,idx:8}])),1);
 });
-test('hunter wins on exact scheduled arrival; late frames respect earlier winner and ties favor player',()=>{
- const a=race();assert.equal(C.advance(a,100,0),'lost');const arrival=a.finishedBeat;
- const b=race();assert.equal(C.advance(b,100,18,true,arrival-.1),'won');
- const c=race();assert.equal(C.advance(c,100,18,true,arrival+.1),'lost');
- const d=race();assert.equal(C.advance(d,100,18,true,arrival),'won');
+test('purple offers one extra move, whether taken or missed; adjacent blocks never add fake moves',()=>{
+ const n=chase();C.observe(n,C.sample(0,[{id:1,idx:0,purple:true},{id:2,idx:1}]));
+ assert.equal(C.observe(n,C.sample(0,[{id:2,idx:1}])),1);
+ assert.equal(C.observe(n,C.sample(0,[{id:2,idx:0}])),0);
+ assert.equal(C.observe(n,C.sample(0,[{id:2,idx:0,hit:true}])),0);
+ assert.equal(C.observe(n,C.sample(0,[{id:3,idx:1}])),0);
 });
-test('divine visibly warns, teleports, walks again and never teleports onto prize',()=>{
- const n=race('divine');C.advance(n,5,0);assert.equal(n.idx,30);
- C.advance(n,6,0);assert.equal(n.idx,30);assert.ok(n.warning);assert.equal(n.warning.to,27);
- C.advance(n,7.4,0);assert.equal(n.idx,30);C.advance(n,7.5,0);assert.equal(n.idx,27);assert.equal(n.events.length,2);
- C.advance(n,8.5,0);assert.equal(n.idx,26);assert.equal(n.warning,null);
- while(!n.done){const before=n.idx;C.advance(n,n.nextBeat,0);if(n.idx-before < -1)assert.ok(n.idx>n.target);}
- assert.equal(n.outcome,'lost');assert.equal(n.idx,n.target);
+test('all ranks are catchable using opportunities, novice allows hesitation, elapsed beats do nothing',()=>{
+ for(const r of C.types){const n=chase(r.id);assert.equal(C.advance(n,1000,0,0),null);assert.equal(n.idx,r.gap);
+ let won=false;for(let i=1;i<=r.budget;i++){if(C.advance(n,1000+i,i,1)==='won'){won=true;break;}}assert.ok(won,r.id);}
+ const n=chase();C.advance(n,0,0,3);for(let i=1;i<=27&&!n.done;i++)C.advance(n,i,i,1);assert.equal(n.outcome,'won');
 });
-test('new courses receive new events and clean clocks',()=>{
- const a=race('master');C.advance(a,100,0);const b=race('novice');assert.equal(b.done,false);assert.equal(b.idx,35);assert.equal(b.lastBeat,0);
+test('ultimate crossing is valid for every rank, initial five cells cannot catch; settlement once',()=>{
+ for(const r of C.types){const n=chase(r.id);assert.equal(C.advance(n,0,5,0),null);assert.equal(n.remaining,r.budget);assert.equal(C.advance(n,1,n.idx,0),'won');assert.equal(C.advance(n,2,n.idx+1,0),null);}
+});
+test('deadline allows the last input, then escapes; god walks and smoke jumps',()=>{
+ const n=chase();C.advance(n,1,0,30);assert.equal(n.done,false);assert.equal(C.advance(n,1.1,n.idx,0),'won');
+ const lost=chase();C.advance(lost,1,0,30);assert.equal(C.advance(lost,1.4,0,0),'lost');
+ const god=chase('divine');let walk=false,jump=false;
+ for(let i=1;i<=24;i++){const old=god.idx;C.advance(god,i,0,1);walk ||=god.idx-old===1;jump ||=god.idx-old===2;}
+ assert.ok(walk&&jump);assert.ok(god.events.length);
+});
+test('warp preserves relative gap and exact remaining opportunities across clock restart',()=>{
+ const n=C.spawn(()=>0,'master',25);C.advance(n,100,32,8);const gap=n.idx-35,remaining=n.remaining;
+ C.warp(n,35,100);assert.equal(n.idx,gap);assert.equal(n.remaining,remaining);assert.equal(n.meter,null);
+ C.advance(n,0,0,0);assert.equal(n.remaining,remaining);assert.equal(n.done,false);
 });
 test('five valid layouts have same 35-step goal and four beyond-goal source cells',()=>{
  const signatures=[];
