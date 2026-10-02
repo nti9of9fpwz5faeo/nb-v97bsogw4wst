@@ -13,9 +13,9 @@ window.NBMenu=(()=>{
     document.querySelectorAll('.menuPage').forEach(el=>el.hidden=el.id!=='page-'+page);
     $('menuBack').hidden=page==='home';
     $('menuTitle').textContent={home:'NEON BLADE',songs:'曲一覧',settings:'設定',special:'特別ステージ'}[page]||'NEON BLADE';
-    $('heroOpen').hidden=page!=='home';
+    $('heroOpen').hidden=page!=='home';$('playerRank').hidden=page!=='home';
     $('startOv').scrollTop=0;
-    document.querySelectorAll('[data-nav]').forEach(b=>b.setAttribute('aria-current',b.dataset.nav===(page==='special'?'home':page)?'page':'false'));
+    document.querySelectorAll('[data-nav]').forEach(b=>b.setAttribute('aria-current',b.dataset.nav===(['special','missions','heroes'].includes(page)?'home':page)?'page':'false'));
     if(page==='heroes'){$('startOv').classList.add('hide');previewCharacter(selectedHero);$('heroOv').classList.remove('hide');}
     if(page==='shop'||page==='missions'){$('startOv').classList.add('hide');NBWorkshop.openPanel(page);}
     if(page==='songs')NBWorkshop.renderSongs();
@@ -31,11 +31,14 @@ window.NBMenu=(()=>{
     ['songList','myFile','myPanel','loadTxt'].forEach(id=>$('page-songs').append($(id)));
     ['timingSettings','soundSettings','diagSettings'].forEach(id=>$('page-settings').append($(id)));
     $('difficultyPicker')?.remove();$('modeDesc').hidden=true;$('modePicker').remove();$('rushPicker').hidden=true;
-    $('homeModes').innerHTML='<button class="modeCard distance" id="homeSongs"><span>♫</span><div><strong>曲を選んで遊ぶ</strong><small>1曲チャレンジ / エンドレス</small></div><b>›</b></button>';
-    $('homeSongs').onclick=()=>show('songs');
+    $('homeModes').innerHTML='<button class="homeMissionEntry" id="homeMissions"><span class="missionEntryIcon">✓</span><span><strong>ミッション</strong><small data-mission-home>今日の目標をチェック</small></span><b data-mission-count hidden></b><span>›</span></button>';
+    $('homeMissions').onclick=()=>show('missions');
+    document.querySelector('.menuHeader').append($('playerRank'));
+    $('playerRank').onclick=()=>NBWorkshop.openRank();
+    NBWorkshop.refreshWallet();
     $('specialCatalog').innerHTML=NBWorkshop.specialStageMarkup();
     const bar=root.querySelector('.collectionBar');if(bar)bar.hidden=true;
-    document.body.insertAdjacentHTML('beforeend',`<nav id="bottomNav" aria-label="メインナビゲーション">${[['home','ホーム'],['songs','曲'],['shop','ショップ'],['missions','ミッション'],['settings','設定']].map(([id,label])=>`<button data-nav="${id}" aria-current="false">${icon(id)}<span>${label}</span></button>`).join('')}</nav>`);
+    document.body.insertAdjacentHTML('beforeend',`<nav id="bottomNav" aria-label="メインナビゲーション">${[['home','ホーム'],['songs','曲'],['shop','ショップ'],['settings','設定']].map(([id,label])=>`<button data-nav="${id}" aria-current="false">${icon(id)}<span>${label}</span></button>`).join('')}</nav>`);
     document.querySelectorAll('[data-nav]').forEach(b=>b.addEventListener('click',()=>show(b.dataset.nav)));
     $('menuBack').addEventListener('click',()=>show('home'));
     $('specialMode').addEventListener('click',()=>show('special'));

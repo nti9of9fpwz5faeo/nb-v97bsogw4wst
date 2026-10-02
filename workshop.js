@@ -3,13 +3,13 @@ window.NBWorkshop = (() => {
   'use strict';
   const GEM = '<img class="gemIcon" src="img/gems/novice.webp" alt="">';
   let previewSource=null, previewToken=0, previewButton=null;
-  let ledger, run, tile, initialized = false, toastTimer, toastGap, toastQueue = [], returnFocus;
+  let ledger, run, tile, initialized = false, toastTimer, toastGap, toastQueue = [], returnFocus, missionTab='daily', missionSong=null;
   const $ = id => document.getElementById(id);
   const fmt = n => n.toLocaleString('en-US');
   const escape = text => String(text).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const active = () => initialized && run && !run.finished && !isTutorial() && state === 'play';
   function toast(title, detail) {
-    if(toastQueue.length>=1){toastQueue[0]={title:'MISSION CLEAR',detail:'複数のミッションを達成！ 詳細はリザルトへ'};}else toastQueue.push({title, detail});
+    if(toastQueue.length>=1){toastQueue[0]={title:'MISSION CLEAR',detail:'複数のミッションを達成！ ホームで報酬を受け取れます'};}else toastQueue.push({title, detail});
     if (!toastTimer && !toastGap) showToast();
   }
   function showToast() {
@@ -27,7 +27,11 @@ window.NBWorkshop = (() => {
   }
   function refreshWallet() {
     if (!ledger) return;
-    const rank=NBProgression.rankInfo(ledger.state.xp); if($('playerRank'))$('playerRank').innerHTML=`<span class="rankBadge"><small>RANK</small><b>${rank.rank}</b></span><span class="rankInfo"><strong>次のランクまで ${rank.need-rank.progress} XP</strong><progress value="${rank.progress}" max="${rank.need}"></progress><small>${rank.progress} / ${rank.need} XP</small></span>`;
+    const rank=NBProgression.rankInfo(ledger.state.xp);
+    if($('playerRank'))$('playerRank').innerHTML=`<span>RANK <b>${rank.rank}</b></span><progress value="${rank.progress}" max="${rank.need}" aria-label="次のランクまで ${rank.need-rank.progress} XP"></progress>`;
+    const pending=ledger.missionEntries().filter(m=>m.done&&!m.claimed).length;
+    document.querySelectorAll('[data-mission-count]').forEach(el=>{el.textContent=pending;el.hidden=!pending;});
+    document.querySelectorAll('[data-mission-home]').forEach(el=>{el.textContent=pending?'報酬を受け取れます':'デイリー・通常・曲別の目標';});
     document.querySelectorAll('[data-wallet]').forEach(el => el.textContent = fmt(ledger.state.gems));
     document.querySelectorAll('[data-save-note]').forEach(el => { el.textContent = ledger.error; el.hidden = !ledger.error; });
   }
@@ -38,10 +42,10 @@ window.NBWorkshop = (() => {
       run.missions.push(...change.awarded);
     }
     if (change.awarded.length) {
-      const first = change.awarded[0], reward = change.awarded.reduce((n, m) => n + m.reward, 0);
-      toast('MISSION CLEAR', `${first.title}${change.awarded.length > 1 ? ` ほか${change.awarded.length - 1}件` : ''}　＋${reward}ダイヤ`);
+      const first = change.awarded[0];
+      toast('MISSION CLEAR', `${first.title}${change.awarded.length > 1 ? ` ほか${change.awarded.length - 1}件` : ''}　報酬を受け取れます`);
     }
-    if (change.reward || ledger.error) refreshWallet();
+    if (change.reward || change.awarded.length || ledger.error) refreshWallet();
   }
   function resetRun() {
     if (!initialized) return;
@@ -153,9 +157,44 @@ window.NBWorkshop = (() => {
     g.restore();
   }
   function missionCard(m) {
-    const value = Math.min(m.target, ledger.state.stats[m.stat]), pct = value / m.target * 100;
-    const unit = m.stat === 'steps' ? ' STEPS' : m.stat === 'combo' ? 'コンボ' : '回';
-    return `<article class="missionCard"><div><small>MISSION ${String(m.tier).padStart(2, '0')}</small><h3>${m.title}</h3><p>${m.label} ${fmt(m.target)}${unit}</p></div><b class="missionPrize">${GEM}＋${m.reward}</b><div class="missionTrack"><i style="width:${pct}%"></i></div><span class="missionProgress">${fmt(value)} / ${fmt(m.target)}</span></article>`;
+    const status=m.claimed?'受取済み':m.done?'達成！':'挑戦中';
+    const condition=m.kind==='song'?m.label:`${m.label} ${fmt(m.target)}${m.stat==='steps'?' STEPS':m.stat==='combo'?'コンボ':'回'}`;
+    return `<article class="missionCard ${m.done&&!m.claimed?'claimable':''} ${m.claimed?'claimed':''}"><div><small>${status}${m.archived?' ・ '+m.day+' 達成分':''}</small><h3>${escape(m.title)}</h3><p>${escape(condition)}</p></div><b class="missionPrize">${GEM}＋${m.reward}</b><progress max="${m.target}" value="${m.done?m.target:m.value}" aria-label="${escape(m.title)}の進捗"></progress><span class="missionProgress">${fmt(m.done?m.target:m.value)} / ${fmt(m.target)}</span><button class="claimButton" data-claim="${escape(m.key)}" ${!m.done||m.claimed?'disabled':''}>${m.claimed?'✓ 受取済み':m.done?'受け取る':'挑戦中'}</button></article>`;
+  }
+  function missionContent(){
+    const all=ledger.missionEntries(),pending=all.filter(m=>m.done&&!m.claimed);
+    let rows=all.filter(m=>m.kind===missionTab);
+    let filter='';
+    if(missionTab==='song'){
+      const catalog=SONGS.filter(s=>s!==SONGS[0]);
+      if(!catalog.some(s=>s.file===missionSong))missionSong=catalog[0]?.file;
+      filter=`<label class="missionSongLabel">曲を選ぶ<select id="missionSongSelect">${catalog.map(s=>`<option value="${escape(s.file)}" ${s.file===missionSong?'selected':''}>${escape(s.name)}</option>`).join('')}</select></label>`;
+      rows=rows.filter(m=>m.songId===missionSong);
+    }
+    rows.sort((a,b)=>(a.claimed?2:a.done?0:1)-(b.claimed?2:b.done?0:1));
+    const unpaid=rows.filter(m=>m.done&&!m.claimed),amount=unpaid.reduce((n,m)=>n+m.reward,0);
+    return `<div class="missionTabs" role="tablist" aria-label="ミッションの種類">${[['daily','デイリー'],['normal','通常'],['song','曲別']].map(([id,label])=>{const n=pending.filter(m=>m.kind===id).length;return `<button role="tab" aria-selected="${id===missionTab}" data-mission-tab="${id}">${label}${n?`<i>${n}</i>`:''}</button>`;}).join('')}</div>${filter}<div class="claimToolbar"><span>${missionTab==='daily'?'毎日 0:00 更新（日本時間）':missionTab==='song'?'この曲で達成したミッション':'プレイを重ねて達成しよう'}</span><button id="claimAll" ${unpaid.length?'':'disabled'}>一括受け取り${amount?'　💎 '+amount:''}</button></div>${rows.map(missionCard).join('')}<p class="collectionNote">練習は対象外です。達成済みのデイリー報酬は翌日も受け取れます。</p>`;
+  }
+  function claimFeedback(receipt){
+    if(!receipt.ok)return ledger.error||'受け取り可能な報酬がありません';
+    NBSound.play('claim');refreshWallet();
+    document.querySelectorAll('[data-wallet]').forEach(el=>{el.classList.remove('walletPop');void el.offsetWidth;el.classList.add('walletPop');});
+    return `💎 ${receipt.amount} ダイヤを受け取りました！`;
+  }
+  function bindMissions(){
+    document.querySelectorAll('[data-mission-tab]').forEach(b=>b.onclick=()=>{missionTab=b.dataset.missionTab;panel('missions');});
+    $('missionSongSelect')?.addEventListener('change',e=>{missionSong=e.target.value;panel('missions');});
+    document.querySelectorAll('[data-claim]').forEach(b=>b.onclick=()=>{const r=ledger.claimMissions([b.dataset.claim]);panel('missions');$('collectionStatus').textContent=claimFeedback(r);});
+    if($('claimAll'))$('claimAll').onclick=()=>{const keys=ledger.missionEntries().filter(m=>m.kind===missionTab&&(missionTab!=='song'||m.songId===missionSong)).map(m=>m.key);const r=ledger.claimMissions(keys);panel('missions');$('collectionStatus').textContent=claimFeedback(r);$('claimAll').focus();};
+  }
+  function openSongMissions(id){missionTab='song';missionSong=id;NBMenu.show('missions');}
+  function openRank(){
+    $('rankDialog')?.remove();const r=NBProgression.rankInfo(ledger.state.xp);
+    const next=NBProgression.songs.filter(s=>s.rank>r.rank&&!ledger.state.songs.includes(s.id)).sort((a,b)=>a.rank-b.rank)[0];
+    const name=next?SONGS.find(s=>s.file===next.id)?.name:'';
+    const el=document.createElement('div');el.id='rankDialog';el.className='overlay songChoice';el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');el.setAttribute('aria-label','プレイヤーランク');
+    el.innerHTML=`<div class="songChoicePanel"><button class="choiceClose" aria-label="閉じる">×</button><h2>RANK ${r.rank}</h2><p>次のランクまで ${r.need-r.progress} XP</p><progress max="${r.need}" value="${r.progress}" aria-label="ランク進捗"></progress><p>${next?'RANK '+next.rank+'：'+escape(name)+'を解放':'ランクアップで 💎10 を獲得'}</p></div>`;
+    document.body.append(el);const close=()=>{el.remove();$('playerRank').focus();};el.querySelector('button').onclick=close;el.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();close();}});el.querySelector('button').focus();
   }
   function specialStageMarkup() {
     return NBProgression.specialStages.map(stage => `<article class="specialStageCard" aria-label="${escape(stage.name)}・近日追加"><div class="specialStageArt" aria-hidden="true">✦</div><div><small>SPECIAL STAGE</small><h3>${escape(stage.name)}</h3><p>${escape(stage.description)}</p><span class="comingSoon">近日追加</span></div></article>`).join('');
@@ -163,13 +202,6 @@ window.NBWorkshop = (() => {
   function shoppingGiftMarkup(){
     const claimed=ledger.state.testGrants.includes('v56-shopping');
     return `<article class="themeCard"><div class="themeInfo"><h3>開発テスト用ダイヤ</h3><p>買い物を試すための、一度だけの受け取りです。</p><button id="shoppingGiftClaim" ${claimed?'disabled':''}>${claimed?'受け取り済み':GEM+' 100,000 ダイヤを受け取る'}</button></div></article>`;
-  }
-  function dailyCards(){
-    const d=ledger.daily();
-    return '<h3 class="collectionSection">デイリーミッション</h3><p class="dailyReset">毎日 0:00 更新（日本時間）</p>'+NBProgression.dailyMissions.map(m=>{
-      const v=Math.min(m.target,d.stats[m.stat]),done=d.claimed.includes(m.id);
-      return `<article class="missionCard"><div><small>${done?'達成済み':'TODAY'}</small><h3>${m.title}</h3><p>${m.label} ${m.target}${m.stat==='steps'?' STEPS':'回'}</p></div><b class="missionPrize">${GEM}＋${m.reward}</b><progress max="${m.target}" value="${v}" aria-label="${m.title}"></progress><span class="missionProgress">${v} / ${m.target}</span></article>`;
-    }).join('');
   }
   function themeCards(){return NBProgression.themes.map(theme=>{
     const owned=ledger.state.themes.includes(theme.id),selected=ledger.state.theme===theme.id;
@@ -180,8 +212,9 @@ window.NBWorkshop = (() => {
     const shop=tab==='shop',themes=tab==='themes';
     $('collectionOv').classList.toggle('lightCollection',!shop&&!themes);
     $('collectionHeading').textContent=shop?'ショップ':themes?'コーステーマ':'ミッション';
-    $('collectionIntro').textContent=shop?'ダイヤと、快適なプレイを。':themes?'好きな景色で走ろう。':'達成するとダイヤを自動で獲得！';
-    $('collectionBody').innerHTML=shop?`<article class="storeProduct"><span>💎</span><h3>ダイヤ購入</h3><p>曲やキャラクターの解放に</p><button disabled>販売準備中</button></article><article class="storeProduct"><span>▣</span><h3>広告削除</h3><p>内容・価格は販売開始時にご案内</p><button disabled>販売準備中</button></article><button class="themesEntry" id="themeCatalogOpen">コーステーマ <span>›</span></button><details class="testGift"><summary>テスト用ダイヤ</summary>${shoppingGiftMarkup()}</details>`:themes?'<button class="themesEntry" id="backToShop">‹ ショップに戻る</button>'+themeCards():dailyCards()+'<h3 class="collectionSection">通常ミッション</h3>'+ledger.nextMissions().map(missionCard).join('')+`<p class="collectionNote">通常ミッション 達成済み ${ledger.state.claimed.length} / ${NBProgression.missions.length}<br>練習はミッションの対象外です。</p>`;
+    $('collectionIntro').textContent=shop?'ダイヤと、快適なプレイを。':themes?'好きな景色で走ろう。':'目標を達成したら、報酬を受け取ろう。';
+    $('collectionBody').innerHTML=shop?`<article class="storeProduct"><span>💎</span><h3>ダイヤ購入</h3><p>曲やキャラクターの解放に</p><button disabled>販売準備中</button></article><article class="storeProduct"><span>▣</span><h3>広告削除</h3><p>内容・価格は販売開始時にご案内</p><button disabled>販売準備中</button></article><button class="themesEntry" id="themeCatalogOpen">コーステーマ <span>›</span></button><details class="testGift"><summary>テスト用ダイヤ</summary>${shoppingGiftMarkup()}</details>`:themes?'<button class="themesEntry" id="backToShop">‹ ショップに戻る</button>'+themeCards():missionContent();
+    if(!shop&&!themes)bindMissions();
     $('themeCatalogOpen')?.addEventListener('click',()=>panel('themes'));
     $('backToShop')?.addEventListener('click',()=>panel('shop'));
     $('shoppingGiftClaim')?.addEventListener('click',()=>{
@@ -203,12 +236,12 @@ window.NBWorkshop = (() => {
     stopSongPreview(); returnFocus = document.activeElement; $('collectionStatus').textContent = ''; panel(tab);
     $('collectionOv').classList.remove('hide'); $('collectionOv').scrollTop = 0; $('collectionClose').focus();
   }
-  function closePanel() { $('collectionOv').classList.add('hide'); NBMenu.show('home'); }
+  function closePanel() { const page=returnFocus?.closest?.('#page-songs')?'songs':'home';$('collectionOv').classList.add('hide'); NBMenu.show(page);if(returnFocus?.isConnected)returnFocus.focus(); }
   function init() {
     let storage;
     try { storage = localStorage; } catch (_) { storage = {getItem() { throw Error('storage unavailable'); }}; }
     ledger = NBProgression.create(storage); initialized = true;
-    $('verBadge').insertAdjacentHTML('afterend','<p id="playerRank" class="playerRank"></p>');
+    $('verBadge').insertAdjacentHTML('afterend','<button id="playerRank" class="playerRank" aria-label="ランクと解放予定を見る"></button>');
 
     $('verBadge').insertAdjacentHTML('afterend', `<div class="collectionBar"><button id="missionsOpen">ミッション <span class="missionDot"></span></button><button id="themesOpen">${GEM}<b data-wallet>0</b><span>解放 ↗</span></button></div><p class="saveNote" data-save-note hidden></p>`);
     $('fieldWrap').insertAdjacentHTML('beforeend', '<div id="gemCue" hidden></div>');
@@ -223,29 +256,31 @@ window.NBWorkshop = (() => {
   }
   function resultMarkup(prefix, clear) {
     return `<div class="resultSheet">
-      <header class="resultHeader"><h2 class="resultTitle">${clear ? 'CLEAR!' : 'NICE RUN!'}</h2><p class="resultSong"><span data-result-song></span><span class="resultDifficulty" data-result-difficulty></span></p><p class="endReason" data-result-reason></p></header>
-      <div class="resultHero"><div class="resultPortrait"><canvas id="${prefix}Hero" width="400" height="280" aria-hidden="true"></canvas><strong class="resultHeroName" data-result-hero></strong></div><div class="resultRank"><small>RANK</small><strong data-result-rank></strong></div><div class="recordEmblem" aria-hidden="true">✦<small>KEEP<br>GOING</small></div></div>
-      <div class="scorePanel"><div class="scoreLabel"><span>SCORE / 1,000,000</span><span class="newBest" data-result-new>NEW BEST!</span></div><strong class="scoreValue" data-result-score>0</strong><div class="resultDelta" data-result-delta></div><div class="bestValue">自己ベスト <span data-result-best>0</span></div><div class="recordTrack"><i data-result-track></i></div><p class="nextRecord" data-result-next></p></div>
-      <div class="resultStats"><div class="resultStat"><small>判定精度</small><b data-result-accuracy></b></div><div class="resultStat"><small>最大コンボ</small><b data-result-combo></b></div></div>
-      <div class="rewardPanel"><div class="rewardHeadline"><span>${GEM}今回のダイヤ</span><b data-result-gems>＋0</b></div><p data-result-reward-detail></p><div class="rewardWallet">所持ダイヤ <b data-result-balance>0</b></div><div class="rewardMissionList" data-result-missions></div><p class="saveNote" data-save-note hidden></p></div>
-      <div class="resultFoot"><span class="resultBadge" data-result-badge></span><span data-result-foot></span></div>
-      <button class="doubleReward" data-double-reward disabled>▶ 広告を見てダイヤ2倍</button><p class="adStatus" data-ad-status role="status"></p><div class="resultActions"><button class="ovBtn" data-retry>もう一回！ <span>↻</span></button><button class="ovBtn sub" data-select>曲えらび</button></div>
-      <button class="resultSkip" data-result-skip>タップでまとめて表示</button>
-      <details class="resultDetails"><summary>判定の内訳を見る</summary><dl class="judgmentList">${[['PERFECT','#fff064'],['GREAT','#5de8ff'],['GOOD','#bcff66'],['MISS','#ff93b6']].map(([k,col])=>`<div class="judgmentRow" data-judgment="${k}" style="--tone:${col}"><dt>${k}</dt><dd><span>0</span><small>回</small></dd></div>`).join('')}</dl></details>
-      <button class="ovBtn sub diagOpenBtn" data-diag hidden>判定診断を見る</button><details class="scoreHelp"><summary>記録のしくみ</summary><p></p></details>
+      <header class="resultHeader"><p class="resultEyebrow">NEON BLADE / RESULT</p><h2 class="resultTitle">${clear?'CLEAR!':'RUN COMPLETE'}</h2><p class="resultSong"><span data-result-song></span><span class="resultDifficulty" data-result-difficulty></span></p><p class="endReason" data-result-reason></p></header>
+      <div class="resultMoment"><div class="resultHero"><div class="resultPortrait"><canvas id="${prefix}Hero" width="400" height="280" aria-hidden="true"></canvas><strong class="resultHeroName" data-result-hero></strong></div><div class="resultRank"><small>RANK</small><strong data-result-rank></strong></div></div>
+      <div class="scorePanel"><div class="scoreLabel"><span>STEPS</span><span class="newBest" data-result-new>NEW BEST</span></div><strong class="scoreValue" data-result-score>0</strong><div class="resultDelta" data-result-delta></div><div class="bestValue">自己ベスト <span data-result-best>0</span></div><div class="recordTrack"><i data-result-track></i></div><p class="nextRecord" data-result-next></p></div></div>
+      <div class="runHighlights" data-result-highlights></div>
+      <div class="rewardPanel"><div class="rewardHeadline"><span>${GEM}獲得ダイヤ</span><b data-result-gems>＋0</b></div><p data-result-reward-detail></p><div class="rewardWallet">所持ダイヤ <b data-result-balance>0</b></div><div class="rewardMissionList" data-result-missions></div><p class="saveNote" data-save-note hidden></p></div>
+      <button class="resultClaim" data-result-claim hidden></button><p class="resultClaimStatus" data-claim-status role="status"></p>
+      <div class="resultGrowth" data-result-growth></div>
+      <div class="resultActions"><button class="ovBtn" data-retry>もう一回 <span>↻</span></button><button class="ovBtn sub" data-select>曲一覧</button></div>
+      <button class="doubleReward" data-double-reward disabled>▶ 広告でダイヤ2倍</button><p class="adStatus" data-ad-status role="status"></p>
+      <button class="resultSkip" data-result-skip>演出をスキップ</button>
+      <details class="resultDetails"><summary>プレイの詳細</summary><div class="resultStats"><div class="resultStat"><small>判定精度</small><b data-result-accuracy></b></div><div class="resultStat"><small>最大コンボ</small><b data-result-combo></b></div></div><dl class="judgmentList">${[['PERFECT','#8f6800'],['GREAT','#007e9c'],['GOOD','#426b06'],['MISS','#b32651']].map(([k,col])=>`<div class="judgmentRow" data-judgment="${k}" style="--tone:${col}"><dt>${k}</dt><dd><span>0</span><small>回</small></dd></div>`).join('')}</dl><div class="resultFoot"><span class="resultBadge" data-result-badge></span><span data-result-foot></span></div><button class="ovBtn sub diagOpenBtn" data-diag hidden>判定診断を見る</button><details class="scoreHelp"><summary>記録のしくみ</summary><p></p></details></details>
     </div>`;
   }
   function decorateResult(result, ov) {
     const steps = result.mode === 'distance' || result.mode === 'endless' && result.scoring === 'rush';
     const comparable = steps || result.endless || scoreOn();
     const prev = result.previousBest || 0, delta = result.score - prev;
+    delete ov.dataset.celebrated;
     ov.classList.toggle('stepsResult', steps); ov.classList.toggle('personalBest', result.newBest);
-    ov.querySelector('.resultTitle').textContent = result.newBest ? '自己ベスト更新！' : result.clear ? 'CLEAR!' : 'NICE RUN!';
+    ov.querySelector('.resultTitle').textContent = result.newBest ? (prev?'自己ベスト更新！':'最初の記録！') : result.clear ? '完走！' : 'おつかれさま！';
     ov.querySelector('.scoreLabel span').textContent = steps ? 'TOTAL STEPS' : result.endless ? '到達距離' : scoreOn() ? 'TOTAL SCORE' : 'SCORE / 1,000,000';
     ov.querySelector('[data-result-delta]').textContent = result.newBest ? prev ? `前の記録より ＋${fmt(delta)}${result.unit || ''}` : 'はじめての自己ベスト！' : prev ? delta === 0 ? '自己ベストと同じ記録！' : `自己ベスト更新まで あと${fmt(Math.max(1, prev - result.score + 1))}${result.unit || ''}` : 'ここから、記録を伸ばそう';
-    const next = steps ? Math.max(Math.floor(result.best / 50) * 50 + 50, 50) : result.best + 1;
+    const next = result.newBest||!prev ? (steps?Math.max(Math.floor(result.best/50)*50+50,50):result.best+1) : prev+1;
     ov.querySelector('[data-result-track]').style.width = `${Math.min(100, result.score / Math.max(1, result.newBest ? next : prev) * 100)}%`;
-    ov.querySelector('[data-result-next]').textContent = steps ? `NEXT TARGET　${fmt(next)} STEPS` : comparable && prev ? `BEST　${fmt(result.best)}${result.unit || ''}` : '次の一回で、もっと先へ。';
+    ov.querySelector('[data-result-next]').textContent = steps ? `次の目標　${fmt(next)} STEPS` : comparable && prev ? `BEST　${fmt(result.best)}${result.unit || ''}` : '次の一回で、もっと先へ。';
     if (steps) ov.querySelector('.scoreHelp p').textContent = '記録はコンボ倍率込みのSTEPS。20コンボで1マス＝2 STEPS、50コンボで3 STEPS。必殺技で進んだマスにも倍率がかかります。PERFECT・GREATでコンボ継続、GOOD・MISSでリセット。ブレイクで力をため、満タンで必殺技。ワープごとに速度＋0.1（最大2.2倍）。ライフ切れ、またはワープ前に曲が終わると終了です。';
     else if (scoreOn()) ov.querySelector('.scoreHelp p').textContent = '進むたびに直前のブレイク判定に応じて加点。ブレイクそのものでも加点されます。曲が終わるまでにスコアを伸ばそう。';
     else if (!result.endless) ov.querySelector('.scoreHelp p').textContent = '判定精度 × 到達率 × 1,000,000点。自己ベストはクリアした記録を曲・難易度ごとに保存します。';
@@ -255,18 +290,23 @@ window.NBWorkshop = (() => {
     const rewards = result.rewards || {total: 0, tiles: 0, missions: [], balance: ledger?.state.gems || 0};
     ov.querySelector('[data-result-gems]').textContent = '＋' + rewards.total;
     ov.querySelector('[data-result-balance]').textContent = fmt(rewards.balance);
-    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? `忍者 ＋${rewards.tiles}　／　ミッション・ランク ＋${rewards.total - rewards.tiles}` : isTutorial() ? '練習のあとは、本編でダイヤに挑戦！' : 'ミッション達成や忍者を捕まえてGET！';
-    ov.querySelector('.rankProgressResult')?.remove();
-    if(result.progression){const p=result.progression;ov.querySelector('.rewardPanel').insertAdjacentHTML('beforeend',`<div class="rankProgressResult"><b>${p.rank>p.oldRank?'RANK UP!　':''}PLAYER RANK ${p.rank}</b><span>＋${p.xp} XP${p.reward?'　💎＋'+p.reward:''}</span><progress max="${p.need}" value="${p.progress}"></progress><small>${p.progress} / ${p.need} XP${p.unlocked.length?'　新しい曲を解放！':''}</small></div>`);}
-    const earned = rewards.missions.slice(0, 2);
-    ov.querySelector('[data-result-missions]').innerHTML = earned.map(m => `<span>✓ ${m.title} <b>＋${m.reward}</b></span>`).join('') + (rewards.missions.length > 2 ? `<small>ほか${rewards.missions.length - 2}件達成</small>` : '');
-    const details=ov.querySelector('.resultDetails');
-    ['.resultStats','.rankProgressResult','.resultFoot','.scoreHelp'].forEach(selector=>{const el=ov.querySelector(selector);if(el)details.append(el);});
-    details.querySelector('summary').textContent='くわしい結果';
+    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? `忍者 ＋${rewards.tiles}　／　ランクアップ ＋${rewards.total - rewards.tiles}` : isTutorial() ? '練習のあとは、本編でダイヤに挑戦！' : 'ミッション達成や忍者を捕まえてGET！';
+    const growth=ov.querySelector('[data-result-growth]');growth.innerHTML='';
+    if(result.progression){const p=result.progression;growth.innerHTML=`<div class="growthLabel"><b>${p.rank>p.oldRank?'RANK UP　'+p.oldRank+' → '+p.rank:'RANK '+p.rank}</b><span>＋${p.xp} XP</span></div><progress max="${p.need}" value="${p.progress}" aria-label="次のランクへの進捗"></progress><small>${p.unlocked.length?'新しい曲を解放！':'次のランクまで '+(p.need-p.progress)+' XP'}</small>`;}
+    const highlights=[];
+    if(result.maxCombo>=10)highlights.push(`<span>つながった！ <b>${fmt(result.maxCombo)} COMBO</b></span>`);
+    if((result.counts?.PERFECT||0)>0)highlights.push(`<span>PERFECT <b>${fmt(result.counts.PERFECT)}回</b></span>`);
+    if(highlights.length<2&&result.rushes)highlights.push(`<span>必殺技 <b>${result.rushes}回</b></span>`);
+    const highlight=ov.querySelector('[data-result-highlights]');highlight.innerHTML=highlights.slice(0,2).join('');highlight.hidden=!highlights.length;
+    const claim=ov.querySelector('[data-result-claim]'),claimStatus=ov.querySelector('[data-claim-status]');claimStatus.textContent='';
+    const keys=new Set(rewards.missions.map(m=>m.key));
+    const available=()=>ledger.missionEntries().filter(m=>keys.has(m.key)&&m.done&&!m.claimed);
+    const paintClaim=()=>{const pending=available(),amount=pending.reduce((n,m)=>n+m.reward,0);claim.hidden=!keys.size;claim.disabled=!pending.length;claim.innerHTML=pending.length?`<span>ミッション ${pending.length}件達成<small>報酬を受け取る</small></span><b>${GEM}＋${amount}</b>`:'✓ ミッション報酬 受取済み';};paintClaim();
+    claim.onclick=()=>{finishResultReveal();const receipt=ledger.claimMissions([...keys]);claimStatus.textContent=claimFeedback(receipt);rewards.balance=ledger.state.gems;paintClaim();};
     const ad=ov.querySelector('[data-double-reward]'),status=ov.querySelector('[data-ad-status]');
-    ad.textContent='▶ 広告を見てダイヤ2倍'+(rewards.total?'（＋'+rewards.total+'）':'');
+    ad.textContent=NBAds.available()?'▶ 広告で獲得ダイヤ2倍'+(rewards.total?'（＋'+rewards.total+'）':''):'▶ 広告でダイヤ2倍 · 準備中';
     ad.disabled=!result.adEligible||!rewards.total||!NBAds.available();
-    status.textContent=!rewards.total?'今回の対象ダイヤはありません':!NBAds.available()?'広告は準備中です':'';
+    status.textContent=NBAds.available()&&!rewards.total?'今回の対象ダイヤはありません':'';
     ad.onclick=async()=>{
       if(ad.disabled)return;ad.disabled=true;status.textContent='広告を読み込み中…';
       const earned=await NBAds.show(result.rewardId);
@@ -281,7 +321,8 @@ window.NBWorkshop = (() => {
     ov.querySelector('[data-result-gems]').textContent = '＋' + (result.rewards?.total || 0);
     ov.querySelector('[data-result-balance]').textContent = fmt(result.rewards?.balance || 0);
     ov.querySelector('.scorePanel').classList.add('scoreLanded');
-    if (result.newBest && !reduceMotion.matches) {
+    if (result.newBest && !reduceMotion.matches && !ov.dataset.celebrated) {
+      ov.dataset.celebrated='yes';
       const box = ov.querySelector('.scorePanel'); box.querySelectorAll('.resultSpark').forEach(el => el.remove());
       for (let i = 0; i < 12; i++) { const dot = document.createElement('i'); dot.className = 'resultSpark'; dot.style.setProperty('--sx', `${Math.cos(i * Math.PI / 6) * 145}px`); dot.style.setProperty('--sy', `${Math.sin(i * Math.PI / 6) * 100}px`); dot.style.setProperty('--sc', ['#caff65','#88ffef','#fff2ab'][i % 3]); box.appendChild(dot); }
     }
@@ -315,8 +356,7 @@ window.NBWorkshop = (() => {
     if(sg===SONGS[0]){pickSong(sg,$('homeTutorial'));return;}
     $('songChoice')?.remove();
     const panel=document.createElement('div');panel.id='songChoice';panel.className='overlay songChoice';panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');panel.setAttribute('aria-label',sg.name+'のモード選択');
-    const progress=ledger.songProgress(sg.file);
-    panel.innerHTML=`<div class="songChoicePanel"><button class="choiceClose" aria-label="閉じる">×</button><h2>${escape(sg.name)}</h2><p>遊び方を選ぶ</p><button data-play="distance">♫ 1曲チャレンジ</button><button data-play="endless">∞ エンドレス</button><details><summary>曲ミッション ${progress.claimed.length} / ${NBProgression.songMissions.length}</summary>${NBProgression.songMissions.map(m=>`<p>${progress.claimed.includes(m.id)?'✓':'○'} ${m.label} <b>💎${m.reward}</b></p>`).join('')}</details></div>`;
+    panel.innerHTML=`<div class="songChoicePanel"><button class="choiceClose" aria-label="閉じる">×</button><h2>${escape(sg.name)}</h2><p>遊び方を選ぶ</p><button data-play="distance">♫ 1曲チャレンジ</button><button data-play="endless">∞ エンドレス</button></div>`;
     document.body.append(panel);const close=()=>panel.remove();panel.querySelector('.choiceClose').onclick=close;
     panel.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();close();}});
     panel.querySelectorAll('[data-play]').forEach(b=>b.onclick=()=>{if(state!=='ready'||pickingSong)return;playMode=b.dataset.play;endless=true;updateModeUI();try{localStorage.setItem('neon-blade-mode',playMode);}catch(_){}close();pickSong(sg,document.querySelector(`[data-song-file="${sg.file}"]`));});
@@ -327,8 +367,8 @@ window.NBWorkshop = (() => {
     for(const sg of SONGS){
       if(sg===SONGS[0])continue;
       const item=NBProgression.songs.find(x=>x.id===sg.file),owned=ownsSong(sg),progress=ledger.songProgress(sg.file),total=NBProgression.songMissions.length;
-      const next=NBProgression.songMissions.find(m=>!progress.claimed.includes(m.id));
-      const ratio=NBProgression.songMissions.reduce((sum,m)=>sum+Math.min(1,progress[m.stat]/m.target),0)/total;
+      const completed=NBProgression.songMissions.filter(m=>progress.claimed.includes(m.id)||progress[m.stat]>=m.target).length;
+      const ratio=completed/total;
       const row=document.createElement('article');row.className='songRow songCard'+(!owned?' isLocked':'');
       const b=document.createElement('button');b.className='songBtn'+(!owned?' lockedSong':'');b.dataset.songFile=sg.file;
       b.innerHTML=`<span class="songTitle">${!owned?'<span class="chainMark" aria-label="未解放">⛓</span>':''}${escape(sg.name)}</span><small class="songUnlock">${owned?'プレイする ›':(item.rank?'ランク'+item.rank+'で解放<br>または ':'')+'💎 '+item.price+' で解放'}</small>`;
@@ -339,7 +379,7 @@ window.NBWorkshop = (() => {
         const result=ledger.purchase('songs',sg.file);if(result.ok){NBSound.play('unlock');refreshWallet();renderSongs();}else b.querySelector('.songUnlock').textContent=result.reason==='funds'?'ダイヤが足りません':ledger.error;
       });row.appendChild(b);
       const preview=document.createElement('button');preview.className='songPreview';preview.innerHTML=previewIcon('play');preview.setAttribute('aria-label',sg.name+'を試聴');preview.setAttribute('aria-pressed','false');preview.addEventListener('click',()=>previewSong(sg,preview));row.appendChild(preview);
-      const gauge=document.createElement('div');gauge.className='songMission';gauge.innerHTML=`<span>曲ミッション <b>${progress.claimed.length} / ${total}</b></span><progress max="100" value="${Math.round(ratio*100)}" aria-label="${escape(sg.name)}のミッション進捗"></progress><small>${next?escape(next.label)+'　'+Math.min(next.target,progress[next.stat])+'/'+next.target:'全ミッション達成！'}</small>`;row.append(gauge);list.append(row);
+      const gauge=document.createElement('button');gauge.type='button';gauge.className='songMission';gauge.setAttribute('aria-label',sg.name+'のミッション詳細を見る');gauge.innerHTML=`<span>ミッション達成率 <b>${Math.round(ratio*100)}% <span aria-hidden="true">›</span></b></span><progress max="${total}" value="${completed}" aria-label="${escape(sg.name)}のミッション達成率"></progress>`;gauge.onclick=()=>openSongMissions(sg.file);row.append(gauge);list.append(row);
     }
     const upload=document.createElement('button');upload.className='songBtn';upload.innerHTML='<span>📁 自分の曲をえらぶ</span><small>この端末から</small>';upload.addEventListener('click',()=>{stopSongPreview();if(state==='ready'&&!pickingSong)myFile.click();});list.append(upload);
   }
@@ -352,5 +392,5 @@ window.NBWorkshop = (() => {
   }
   function ownedHero(id){return ledger.state.heroes.includes(id);}
   function flush() { if (ledger) { ledger.flush(); refreshWallet(); } }
-  return {shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, palette, drawTile, drawAtmosphere, resultMarkup, decorateResult, finishReveal, paintScore, flush, clearToasts};
+  return {refreshWallet,openRank,shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, palette, drawTile, drawAtmosphere, resultMarkup, decorateResult, finishReveal, paintScore, flush, clearToasts};
 })();

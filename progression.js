@@ -34,10 +34,10 @@
   const dayKey = (now=Date.now()) => new Date(now+9*3600000).toISOString().slice(0,10);
   const dailyMissions=[{id:'hits',stat:'hits',title:'リズムに乗ろう',label:'GREAT以上',target:150,reward:5},{id:'steps',stat:'steps',title:'今日の一歩',label:'合計STEPS',target:150,reward:5},{id:'rush',stat:'rush',title:'必殺技を決めよう',label:'必殺技',target:3,reward:5}];
   const songMissions=[{id:'hits150',stat:'hits',target:150,label:'GREAT以上 150回',reward:5},{id:'steps100',stat:'steps',target:100,label:'100 STEPS到達',reward:5},{id:'hits500',stat:'hits',target:500,label:'GREAT以上 500回',reward:8},{id:'steps250',stat:'steps',target:250,label:'250 STEPS到達',reward:8},{id:'hits1500',stat:'hits',target:1500,label:'GREAT以上 1,500回',reward:12},{id:'steps500',stat:'steps',target:500,label:'500 STEPS到達',reward:12}];
-  const fresh = () => ({version: 2, daily:{day:dayKey(),stats:{hits:0,steps:0,rush:0},claimed:[]}, songStats:{}, adReward:null, xp:0, songs:songs.filter(s=>!s.price).map(s=>s.id), heroes:['ninja'], testGrants: [], gems: 0, earned: 0, stats: {hits: 0, steps: 0, combo: 0, rush: 0, tiles: 0}, claimed: [], themes: ['classic'], theme: 'classic'});
+  const fresh = () => ({version: 3, pendingDaily:[], daily:{day:dayKey(),stats:{hits:0,steps:0,rush:0},claimed:[]}, songStats:{}, adReward:null, xp:0, songs:songs.filter(s=>!s.price).map(s=>s.id), heroes:['ninja'], testGrants: [], gems: 0, earned: 0, stats: {hits: 0, steps: 0, combo: 0, rush: 0, tiles: 0}, claimed: [], themes: ['classic'], theme: 'classic'});
   const integer = v => Number.isSafeInteger(v) && v >= 0;
   function validate(raw) {
-    if (!raw || ![1,2].includes(raw.version) || !integer(raw.gems) || !integer(raw.earned) || !raw.stats || !Array.isArray(raw.claimed) || !Array.isArray(raw.themes)) throw Error('invalid save');
+    if (!raw || ![1,2,3].includes(raw.version) || !integer(raw.gems) || !integer(raw.earned) || !raw.stats || !Array.isArray(raw.claimed) || !Array.isArray(raw.themes)) throw Error('invalid save');
     const out = fresh();
     out.gems = raw.gems; out.earned = raw.earned;
     out.testGrants = Array.isArray(raw.testGrants) ? raw.testGrants.filter(x=>x==='v56-shopping') : [];
@@ -48,7 +48,7 @@
     out.claimed = [...new Set(raw.claimed.filter(id => missions.some(m => m.id === id)))];
     out.themes = [...new Set(['classic', ...raw.themes.filter(id => themes.some(t => t.id === id))])];
     out.theme = out.themes.includes(raw.theme) ? raw.theme : 'classic';
-    if(raw.version===2){
+    if(raw.version>=2){
       if(!integer(raw.xp)||!Array.isArray(raw.songs)||!Array.isArray(raw.heroes))throw Error('invalid collection');
       out.xp=raw.xp;
       out.songs=[...new Set([...out.songs,...raw.songs.filter(id=>songs.some(s=>s.id===id))])];
@@ -57,6 +57,7 @@
     if(raw.daily && /^\d{4}-\d{2}-\d{2}$/.test(raw.daily.day) && raw.daily.stats && ['hits','steps','rush'].every(k=>integer(raw.daily.stats[k])) && Array.isArray(raw.daily.claimed))out.daily={day:raw.daily.day,stats:{...raw.daily.stats},claimed:raw.daily.claimed.filter(id=>dailyMissions.some(m=>m.id===id))};
     for(const [id,v] of Object.entries(raw.songStats||{}))if(songs.some(s=>s.id===id)&&v&&integer(v.hits)&&integer(v.steps)&&Array.isArray(v.claimed))out.songStats[id]={hits:v.hits,steps:v.steps,claimed:v.claimed.filter(id=>songMissions.some(m=>m.id===id))};
     if(raw.adReward&&typeof raw.adReward.id==='string'&&integer(raw.adReward.amount)&&typeof raw.adReward.claimed==='boolean')out.adReward={...raw.adReward};
+    if(Array.isArray(raw.pendingDaily))out.pendingDaily=raw.pendingDaily.filter((v,i,a)=>v&&/^\d{4}-\d{2}-\d{2}$/.test(v.day)&&v.day<out.daily.day&&dailyMissions.some(m=>m.id===v.id)&&a.findIndex(x=>x.day===v.day&&x.id===v.id)===i).map(v=>({day:v.day,id:v.id}));
     return out;
   }
   function create(storage) {
@@ -74,28 +75,57 @@
       catch (_) { error = '保存できませんでした。ページを閉じると今回の進行が失われる可能性があります。'; return false; }
     }
     function schedule() { dirty = true; if (!timer) timer = setTimeout(flush, 1000); }
-    function daily(){const today=dayKey();if(today>state.daily.day){state.daily={day:today,stats:{hits:0,steps:0,rush:0},claimed:[]};schedule();}return state.daily;}
+    function daily(){
+      const today=dayKey();
+      if(today>state.daily.day){
+        const d=state.daily;
+        for(const m of dailyMissions)if(!d.claimed.includes(m.id)&&d.stats[m.stat]>=m.target)state.pendingDaily.push({day:d.day,id:m.id});
+        state.daily={day:today,stats:{hits:0,steps:0,rush:0},claimed:[]};schedule();
+      }
+      return state.daily;
+    }
     function songProgress(id){return state.songStats[id]||{hits:0,steps:0,claimed:[]};}
+    function missionEntries(){
+      const d=daily();
+      const entry=(m,kind,key,stats,claimed,extra={})=>({...m,kind,key,...extra,value:Math.min(m.target,stats[m.stat]||0),claimed:claimed.includes(m.id),done:claimed.includes(m.id)||(stats[m.stat]||0)>=m.target});
+      return [
+        ...missions.map(m=>entry(m,'normal','normal:'+m.id,state.stats,state.claimed)),
+        ...dailyMissions.map(m=>entry(m,'daily','daily:'+d.day+':'+m.id,d.stats,d.claimed,{day:d.day})),
+        ...state.pendingDaily.map(v=>{const m=dailyMissions.find(m=>m.id===v.id);return entry(m,'daily','daily:'+v.day+':'+m.id,{[m.stat]:m.target},[],{day:v.day,archived:true});}),
+        ...songs.filter(s=>!s.id.includes('tutorial')).flatMap(s=>{const v=songProgress(s.id);return songMissions.map(m=>entry({...m,title:m.label},'song','song:'+s.id+':'+m.id,v,v.claimed,{songId:s.id}));})
+      ];
+    }
+    function claimMissions(keys=null){
+      const selected=keys===null?null:new Set(keys);
+      const ready=missionEntries().filter(m=>m.done&&!m.claimed&&(!selected||selected.has(m.key)));
+      if(!ready.length)return {ok:false,reason:'empty',amount:0};
+      const before=JSON.parse(JSON.stringify(state));
+      for(const m of ready){
+        if(m.kind==='normal')state.claimed.push(m.id);
+        else if(m.kind==='song')state.songStats[m.songId].claimed.push(m.id);
+        else if(m.archived)state.pendingDaily=state.pendingDaily.filter(v=>v.day!==m.day||v.id!==m.id);
+        else state.daily.claimed.push(m.id);
+      }
+      const amount=ready.reduce((sum,m)=>sum+m.reward,0);
+      state.gems+=amount;state.earned+=amount;dirty=true;
+      if(!flush()){state=before;dirty=true;return {ok:false,reason:'storage',amount:0};}
+      return {ok:true,amount,count:ready.length};
+    }
     function update(add = {}, maxima = {}, tileReward = 0, context = {}) {
+      const before=new Set(missionEntries().filter(m=>m.done).map(m=>m.key));
       for (const key of ['hits', 'rush', 'tiles']) if (integer(add[key])) state.stats[key] += add[key];
       for (const key of ['steps', 'combo']) if (integer(maxima[key])) state.stats[key] = Math.max(state.stats[key], maxima[key]);
-      const awarded = missions.filter(m => !state.claimed.includes(m.id) && state.stats[m.stat] >= m.target);
-      state.claimed.push(...awarded.map(m => m.id));
       const d=daily();for(const k of ['hits','steps','rush'])if(integer(add[k]))d.stats[k]+=add[k];
-      const dailyAwards=dailyMissions.filter(m=>!d.claimed.includes(m.id)&&d.stats[m.stat]>=m.target);
-      d.claimed.push(...dailyAwards.map(m=>m.id));
-      awarded.push(...dailyAwards.map(m=>({...m,id:'daily-'+d.day+'-'+m.id,title:'デイリー：'+m.title})));
-      if(songs.some(s=>s.id===context.songId)){
+      if(songs.some(s=>s.id===context.songId)&&!context.songId.includes('tutorial')){
         const v=state.songStats[context.songId] ||= {hits:0,steps:0,claimed:[]};
         if(integer(add.hits))v.hits+=add.hits;if(integer(maxima.steps))v.steps=Math.max(v.steps,maxima.steps);
-        const won=songMissions.filter(m=>!v.claimed.includes(m.id)&&v[m.stat]>=m.target);v.claimed.push(...won.map(m=>m.id));
-        awarded.push(...won.map(m=>({...m,title:'曲ミッション：'+m.label})));
       }
-      const reward = (integer(tileReward) ? tileReward : 0) + awarded.reduce((n, m) => n + m.reward, 0);
-      state.gems += reward; state.earned += reward;
-      schedule();
-      if (reward) flush();
-      return {reward, awarded};
+      const awarded=missionEntries().filter(m=>m.done&&!before.has(m.key));
+      // Only catches pay immediately. Completed missions wait for an explicit claim.
+      const reward=integer(tileReward)?tileReward:0;
+      state.gems+=reward;state.earned+=reward;schedule();
+      if(reward||awarded.length)flush();
+      return {reward,awarded};
     }
     function selectTheme(id) {
       const theme = themes.find(t => t.id === id);
@@ -141,7 +171,7 @@
       return {...info,xp:Math.min(amount,2000),oldRank:old,reward,unlocked};
     }
     return {
-      get state() { return state; }, get error() { return error; }, update, flush, selectTheme, purchase, awardXP, grantShoppingTest, daily, songProgress, prepareAdReward, claimAdReward,
+      get state() { return state; }, get error() { return error; }, update, missionEntries, claimMissions, flush, selectTheme, purchase, awardXP, grantShoppingTest, daily, songProgress, prepareAdReward, claimAdReward,
       nextMissions: () => groups.map(([stat]) => missions.find(m => m.stat === stat && !state.claimed.includes(m.id))).filter(Boolean)
     };
   }

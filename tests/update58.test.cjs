@@ -3,13 +3,13 @@ const P=require('../progression.js');
 const memory=()=>{let raw=null;return {getItem:()=>raw,setItem:(_,v)=>{raw=v}}};
 test('JST daily boundary and rollover preserve lifetime progress and never reaward same day',()=>{
  assert.equal(P.dayKey(Date.parse('2026-10-01T14:59:59Z')),'2026-10-01');assert.equal(P.dayKey(Date.parse('2026-10-01T15:00:00Z')),'2026-10-02');
- const s=memory(),p=P.create(s);p.update({hits:150,steps:150,rush:3});assert.equal(p.daily().claimed.length,3);const balance=p.state.gems;
+ const s=memory(),p=P.create(s);p.update({hits:150,steps:150,rush:3});assert.equal(p.daily().claimed.length,0);p.claimMissions();assert.equal(p.daily().claimed.length,3);const balance=p.state.gems;
  assert.equal(p.update({hits:1,steps:1,rush:1}).reward,0);p.flush();assert.equal(P.create(s).state.gems,balance);
  const raw=JSON.parse(s.getItem());raw.daily.day='2020-01-01';s.setItem(P.KEY,JSON.stringify(raw));const q=P.create(s);assert.equal(q.daily().stats.hits,0);assert.equal(q.state.stats.hits,151);assert.equal(q.state.gems,balance);q.flush();
 });
 test('song-specific missions persist, are isolated and cannot pay twice',()=>{
  const s=memory(),p=P.create(s),a='audio/song.mp3',b='audio/neon_rush.mp3';
- p.update({hits:150},{steps:100},0,{songId:a});assert.equal(p.songProgress(a).claimed.length,2);assert.equal(p.songProgress(b).hits,0);
+ p.update({hits:150},{steps:100},0,{songId:a});assert.equal(p.songProgress(a).claimed.length,0);p.claimMissions();assert.equal(p.songProgress(a).claimed.length,2);assert.equal(p.songProgress(b).hits,0);
  assert.equal(p.update({hits:1},{steps:100},0,{songId:a}).reward,0);p.flush();assert.equal(P.create(s).songProgress(a).hits,151);
 });
 test('ad reward is tied to one result and survives reload; storage failures roll back',()=>{

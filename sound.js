@@ -13,6 +13,8 @@ window.NBSound=(()=>{
   }
   function play(key,judgment){
     if(key==='tap'){if(ctx?.state==='suspended'){ctx.resume().then(()=>tone(740,.10,.05)).catch(()=>{});}else tone(740,.10,.05);return;}
+    if(key==='claim'){play('diamond');[784,988,1175].forEach((f,i)=>tone(f,.12,.14,i*.065));return;}
+    if(key==='record'){[523,659,784,1046].forEach((f,i)=>tone(f,.12,.24,i*.085));return;}
     if(key==='unlock'){play('diamond');[660,880,1320].forEach((f,i)=>tone(f,.15,.17,i*.075));return;}
     if(key==='miss'){tone(180,.15,.09);return;}
     const buffer=buffers[key],s=spec[key];if(!buffer||!ctx||ctx.state!=='running')return null;
