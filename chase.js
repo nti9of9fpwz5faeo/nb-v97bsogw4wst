@@ -1,33 +1,65 @@
-/* Four ranked ninjas: discrete cells, timed teleports and legitimate ultimate catches. */
+/* A run-long diamond hunter: advance to grow, choose when to collect. */
 (function(root){
   'use strict';
   const types=[
-    {id:'novice',name:'初級',reward:5,color:'#73eaff',weight:.60,jump:3,wait:12},
-    {id:'adept',name:'中級',reward:15,color:'#ffd44f',weight:.30,jump:4,wait:11},
-    {id:'master',name:'上級',reward:40,color:'#e878ff',weight:.095,jump:6,wait:10},
-    {id:'divine',name:'神級',reward:150,color:'#fff4b1',weight:.005,jump:8,wait:9}
+    {id:'novice',name:'初級',reward:5,color:'#73eaff'},
+    {id:'adept',name:'中級',reward:15,color:'#ffd44f'},
+    {id:'master',name:'上級',reward:40,color:'#e878ff'},
+    {id:'divine',name:'神級',reward:150,color:'#fff4b1'}
   ];
+  const tuning={spawnChance:.28,adeptAt:35,masterAt:105,divineFrom:175,divineEvery:35,divineChance:.005,reach:3,choiceTravel:6,passAhead:8};
   function spawn(random=Math.random){
-    if(random()>=.28)return null;
-    const roll=random();let sum=0;const type=types.find(x=>(sum+=x.weight)>roll)||types[3];
-    return {type,rarity:type,trigger:14+Math.floor(random()*4),idx:null,visible:false,done:false,outcome:null,nextAt:null,surpriseUntil:null,events:[]};
+    if(random()>=tuning.spawnChance)return null;
+    return {type:types[0],rarity:types[0],trigger:14,idx:null,visible:false,done:false,outcome:null,
+      distance:0,lastPlayer:0,nextDivineAt:tuning.divineFrom,offer:false,offerAt:0,deferred:false,surpriseUntil:null,events:[]};
   }
-  function advance(n,t,spb,player,end,playing=true){
+  function promote(n,random){
+    let rank=n.distance>=tuning.masterAt?2:n.distance>=tuning.adeptAt?1:0;
+    if(n.type.id==='divine')return;
+    // Each distance milestone rolls once, independent of frame rate and waiting.
+    while(n.distance>=n.nextDivineAt){
+      n.nextDivineAt+=tuning.divineEvery;
+      if(random()<tuning.divineChance){rank=3;break;}
+    }
+    n.type=n.rarity=types[rank];
+  }
+  function pass(n,t,player,end){
+    if(!n||n.done||!n.offer)return false;
+    n.events.push({idx:n.idx,t});n.offer=false;
+    n.deferred=player+tuning.passAhead>=end;
+    n.idx=Math.min(end-1,Math.floor(player)+tuning.passAhead);
+    n.events.push({idx:n.idx,t});return true;
+  }
+  function advance(n,t,spb,player,end,playing=true,random=Math.random){
     if(!n||n.done||!playing)return null;
+    player=Math.max(0,Math.min(end,Math.floor(player)));
+    n.distance+=Math.max(0,player-n.lastPlayer);n.lastPlayer=player;
+    const oldType=n.type;promote(n,random);
     if(!n.visible){
       if(player<n.trigger)return null;
-      if(player>end-5){n.done=true;n.outcome='skipped';return null;}
-      n.visible=true;n.idx=Math.ceil(player)+2;n.surpriseUntil=t+.28;n.nextAt=t+.28;
-      n.events.push({idx:n.idx,t});return 'appeared';
+      n.visible=true;n.idx=Math.min(end-1,player+tuning.reach);n.surpriseUntil=t+.28;
+      n.events.push({idx:n.idx,t});
     }
-    if(player>=n.idx){n.done=true;n.outcome='caught';n.events.push({idx:n.idx,t});return 'caught';}
-    if(t>=n.nextAt){
-      n.events.push({idx:n.idx,t});n.idx+=n.type.jump;
-      if(n.idx>=end){n.done=true;n.outcome='escaped';return 'escaped';}
-      n.events.push({idx:n.idx,t});n.nextAt=t+n.type.wait*spb;return 'warped';
-    }
-    return null;
+    if(n.offer&&n.distance-n.offerAt>=tuning.choiceTravel){pass(n,t,player,end);return 'passed';}
+    if(!n.offer&&!n.deferred&&player>=n.idx-tuning.reach){n.offer=true;n.offerAt=n.distance;}
+    return oldType!==n.type?'promoted':null;
   }
-  const api={types,rarities:types,spawn,advance};
+  function catchHunter(n,playing=true){
+    if(!playing||!n||n.done||!n.offer)return 0;
+    n.done=true;n.offer=false;n.outcome='caught';return n.type.reward;
+  }
+  function nextCourse(n,end){
+    if(!n||n.done)return;
+    n.lastPlayer=0;n.events=[];n.offer=false;n.deferred=false;n.surpriseUntil=null;
+    if(n.visible)n.idx=Math.min(tuning.passAhead,end-1);
+  }
+  function growth(n){
+    if(n.type.id==='divine')return {label:'神級 · 最大報酬',value:1,max:1};
+    const base=n.type.id==='novice'?0:n.type.id==='adept'?tuning.adeptAt:tuning.masterAt;
+    const target=n.type.id==='novice'?tuning.adeptAt:n.type.id==='adept'?tuning.masterAt:n.nextDivineAt;
+    const left=Math.max(0,target-n.distance);
+    return {label:n.type.id==='master'?`神級の抽選まで ${left}マス`:`${n.type.id==='novice'?'中級':'上級'}まで ${left}マス`,value:n.distance-base,max:target-base};
+  }
+  const api={types,rarities:types,tuning,spawn,advance,pass,catchHunter,nextCourse,growth};
   if(typeof module!=='undefined')module.exports=api;else root.NBChase=api;
 })(typeof window==='undefined'?globalThis:window);

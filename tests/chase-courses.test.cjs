@@ -1,27 +1,38 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const C=require('../chase.js'),M=require('../courses.js');
-function spawn(rank=0){let a=[0,rank,0];return C.spawn(()=>a.shift());}
-test('ranks bind reward to jump; divine is 0.5% of appearances',()=>{
- assert.equal(C.spawn(()=>.3),null);
- for(const [roll,id,reward,jump] of [[0,'novice',5,3],[.65,'adept',15,4],[.92,'master',40,6],[.999,'divine',150,8]]){
- const n=spawn(roll);assert.equal(n.type.id,id);assert.equal(n.rarity.reward,reward);assert.equal(n.type.jump,jump);}
- assert.equal(C.types[3].weight,.005);
+const spawn=()=>C.spawn(()=>0);
+const advance=(n,p,t=0,random=()=>1)=>C.advance(n,t,.5,p,35,true,random);
+test('only run start is rolled; every appearance begins as novice',()=>{
+ assert.equal(C.spawn(()=>.3),null);const n=spawn();assert.equal(n.type.id,'novice');assert.equal(n.type.reward,5);
+ advance(n,13);assert.equal(n.visible,false);advance(n,14);assert.equal(n.visible,true);assert.equal(n.idx,17);assert.equal(n.offer,true);
 });
-test('invisible until midcourse; surprise then discrete three-cell warp and stationary wait',()=>{
- const n=spawn();assert.equal(C.advance(n,0,.5,0,35),null);assert.equal(n.visible,false);
- assert.equal(C.advance(n,10,.5,14,35),'appeared');assert.equal(n.idx,16);
- C.advance(n,10.2,.5,14,35);assert.equal(n.idx,16);
- assert.equal(C.advance(n,10.3,.5,14,35),'warped');assert.equal(n.idx,19);
- for(let t=10.4;t<16;t+=.1){C.advance(n,t,.5,14,35);assert.equal(n.idx,19);}
- assert.equal(C.advance(n,16.4,.5,14,35),'warped');assert.equal(n.idx,22);
+test('waiting never teleports, grows or expires the capture offer',()=>{
+ const n=spawn();advance(n,14);for(let t=1;t<100;t++)advance(n,14,t);
+ assert.equal(n.idx,17);assert.equal(n.distance,14);assert.equal(n.offer,true);assert.equal(C.catchHunter(n),5);assert.equal(C.catchHunter(n),0);
 });
-test('saved ultimate and purple jumps catch exactly once; paused, skipped, escaped cannot pay',()=>{
- for(const roll of [0,.7,.95,.999]){const n=spawn(roll);C.advance(n,0,.5,15,35);C.advance(n,.3,.5,15,35);assert.equal(C.advance(n,.4,.5,28,35),'caught');assert.equal(C.advance(n,1,.5,30,35),null);}
- const n=spawn();C.advance(n,0,.5,15,35,false);assert.equal(n.visible,false);C.advance(n,0,.5,34,35);assert.equal(n.outcome,'skipped');
- const e=spawn(.999);C.advance(e,0,.5,17,35);for(let t=.3;t<20;t+=5)C.advance(e,t,.5,17,35);assert.equal(e.outcome,'escaped');assert.equal(C.advance(e,30,.5,35,35),null);
+test('purple or ultimate crossing never auto-captures; passing makes a discrete jump',()=>{
+ const n=spawn();advance(n,25);assert.equal(n.done,false);assert.equal(n.offer,true);
+ assert.equal(C.pass(n,1,25,35),true);assert.equal(n.idx,33);assert.equal(n.offer,false);
+ advance(n,30);assert.equal(n.offer,true);assert.equal(C.catchHunter(n),5);
+ const auto=spawn();advance(auto,14);advance(auto,20);assert.equal(auto.idx,28);assert.equal(auto.offer,false);assert.equal(auto.done,false);
 });
-test('wait measured in beats respects accelerated playback',()=>{
- for(const rate of [1,1.5,2.2]){const n=spawn();const spb=.5/rate;C.advance(n,0,spb,14,35);C.advance(n,.3,spb,14,35);C.advance(n,.3+11*spb,spb,14,35);assert.equal(n.idx,19);C.advance(n,.3+12.1*spb,spb,14,35);assert.equal(n.idx,22);}
+test('same hunter survives goal and song clock reset; only real forward cells grow it',()=>{
+ const n=spawn();advance(n,14);C.pass(n,1,14,35);advance(n,35,8);
+ assert.equal(n.distance,35);assert.equal(n.type.id,'adept');assert.equal(n.done,false);
+ C.nextCourse(n,35);assert.equal(n.idx,8);assert.equal(n.type.id,'adept');advance(n,0,0);assert.equal(n.distance,35);
+ advance(n,5,1);assert.equal(n.offer,true);assert.equal(C.catchHunter(n),15);
+});
+test('growth to master and rare divine uses one roll per crossed distance milestone',()=>{
+ const n=spawn();let rolls=0;
+ for(let lap=0;lap<5;lap++){advance(n,35,10,()=>{rolls++;return 1});C.nextCourse(n,35);}
+ assert.equal(n.distance,175);assert.equal(n.type.id,'master');assert.equal(rolls,1);
+ for(let t=0;t<50;t++)advance(n,0,t,()=>{rolls++;return 0});assert.equal(rolls,1);
+ advance(n,35,51,()=>{rolls++;return 0});assert.equal(n.type.id,'divine');assert.equal(rolls,2);assert.equal(n.type.reward,150);
+ C.nextCourse(n,35);advance(n,5);assert.equal(C.catchHunter(n),150);
+});
+test('paused, closed run and distant capture do not pay; no resampling after capture',()=>{
+ const n=spawn();C.advance(n,0,.5,20,35,false);assert.equal(n.distance,0);assert.equal(n.visible,false);assert.equal(C.catchHunter(n),0);
+ advance(n,14);assert.equal(C.catchHunter(n,false),0);assert.equal(C.catchHunter(n),5);C.nextCourse(n,35);advance(n,35);assert.equal(C.catchHunter(n),0);
 });
 test('five valid layouts have same 35-step goal and four beyond-goal source cells',()=>{
  const signatures=[];

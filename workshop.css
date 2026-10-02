@@ -61,3 +61,15 @@
 @media(max-width:360px){.resultScreen{padding-left:12px;padding-right:12px}.resultScreen .resultHero{width:120px;right:-8px}.resultScreen .resultPortrait canvas{width:145px;height:102px}.resultScreen .scorePanel{padding:18px 15px 14px}.resultScreen .scoreLabel{gap:4px}.resultScreen .newBest{font-size:8px}.menuHeader #menuTitle{font-size:17px!important}.menuWallet{font-size:13px}.claimToolbar{flex-wrap:wrap}}
 @media(prefers-reduced-motion:reduce){.walletPop,.scoreLanded,.resultSpark,.rewardArrive,.resultReveal{animation:none!important}.recordTrack i{transition:none}}
 .resultScreen .rewardHeadline>span{color:#165951}.resultScreen .rewardPanel .saveNote{color:#9e3434}.resultScreen .scoreValue{justify-content:flex-start}.resultScreen .resultClaim b .gemIcon{margin-right:3px}
+
+/* v60: optional hunter decisions, separate from the rhythm controls. */
+#hunterPanel{flex:none;box-sizing:border-box;width:min(100%,500px);padding:8px 12px;background:#10294ff5;color:#eefcff;border:1px solid #78e8df;border-radius:15px;text-shadow:none;font:600 12px/1.4 system-ui}
+#hunterPanel[hidden],#hunterActions[hidden]{display:none}
+.hunterSummary{display:flex;align-items:center;gap:10px}.hunterSummary strong{font-size:13px}.hunterSummary b{color:#acfff0}.hunterSummary span{margin-left:auto;font-size:11px;color:#d0e8f5}
+#hunterProgress{display:block;width:100%;height:4px;margin:5px 0;accent-color:#77f5c6}
+#hunterActions{display:flex;gap:8px;margin:7px 0 4px}
+#hunterActions button{flex:1;min-height:44px;border:0;border-radius:9px;font:800 14px system-ui;cursor:pointer;touch-action:manipulation;text-shadow:none}
+#hunterCatch{background:#c9ff72;color:#10283c}#hunterPass{background:#284b70;color:#fff}
+#hunterHint{display:block;font-size:10px;color:#c7e0ef;text-align:center}
+#hunterActions button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+@media(max-height:680px){#hunterPanel{padding:5px 10px}#hunterActions{margin-top:4px}#hunterHint{font-size:9px}}

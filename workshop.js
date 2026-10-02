@@ -53,13 +53,13 @@ window.NBWorkshop = (() => {
     run = {gems: 0, tileGems: 0, missions: [], rushes: 0, serial: 0, hits:0, stepValue:0, id:globalThis.crypto?.randomUUID?.() || String(Date.now())+Math.random(), seen: new Set(), finished: false};
     makeTile(0); refreshWallet();
   }
-  function suspendRun() { if (ledger) ledger.flush(); run = null; }
+  function suspendRun() { if (ledger) ledger.flush(); run = null; tile = null; renderHunter(); }
   function makeTile(serial) {
     tile = NBChase.spawn(Math.random);
   }
   function nextCourse() {
     if (!active()) return;
-    tick(songTime()); run.serial++; run.seen.clear(); makeTile(run.serial); NBSound.play('warp');
+    tick(songTime()); run.serial++; run.seen.clear(); NBChase.nextCourse(tile,GOAL_INDEX); renderHunter(); NBSound.play('warp');
   }
   function judged(word, beat, t) {
     if (!active() || (word !== 'PERFECT' && word !== 'GREAT')) return;
@@ -72,15 +72,40 @@ window.NBWorkshop = (() => {
   function steps(value) {
     if(active()&&value>run.stepValue){const delta=value-run.stepValue;run.stepValue=value;apply({steps:delta},{steps:value});}
   }
+  function renderHunter() {
+    const panel=$('hunterPanel');if(!panel)return;
+    panel.hidden=!active()||!tile||!tile.visible||tile.done;
+    if(panel.hidden)return;
+    const r=tile.type,growth=NBChase.growth(tile);
+    $('hunterName').textContent=r.name+'忍者';
+    $('hunterPrize').textContent='💎 '+r.reward;
+    $('hunterGrowth').textContent=growth.label;
+    $('hunterProgress').value=growth.value;$('hunterProgress').max=growth.max;
+    $('hunterActions').hidden=!tile.offer;
+    $('hunterHint').textContent=tile.offer?'通り過ぎても育ちます · 終了すると未捕獲分は失います':'進んで育てる · 接近時に捕獲 · 終了すると未捕獲分は失います';
+    $('hunterCatch').textContent='捕まえる ＋'+r.reward;
+  }
   function tick(t){
-    if(!active()||!tile)return;
-    const outcome=NBChase.advance(tile,t,SPB,playerVis(t),GOAL_INDEX);
-    if(outcome==='caught'){
-      apply({tiles:1},{},tile.rarity.reward);NBSound.play('diamond');
-      const idx=Math.min(player.idx,GOAL_INDEX);
-      fx.push({type:'milestone',idx,t,d:.65,col:tile.rarity.color});
-      texts.push({s:`◆ +${tile.rarity.reward}`,idx,t,col:tile.rarity.color,big:true});
+    if(!active()||!tile){renderHunter();return;}
+    const outcome=NBChase.advance(tile,t,SPB,player.idx,GOAL_INDEX);
+    if(outcome==='promoted'){
+      tile.events.push({idx:tile.idx,t});NBSound.play('mission');
+      texts.push({s:tile.type.name+'に昇格！',idx:Math.min(player.idx,GOAL_INDEX),t,col:tile.type.color,big:true});
     }
+    renderHunter();
+  }
+  function chooseHunter(capture){
+    if(!active()||!tile)return;
+    const t=songTime();tick(t);
+    if(capture){
+      const reward=NBChase.catchHunter(tile);
+      if(!reward)return;
+      apply({tiles:1},{},reward);NBSound.play('diamond');
+      const idx=Math.min(player.idx,GOAL_INDEX);
+      fx.push({type:'milestone',idx,t,d:.65,col:tile.type.color});
+      texts.push({s:`◆ +${reward}`,idx,t,col:tile.type.color,big:true});
+    }else NBChase.pass(tile,t,player.idx,GOAL_INDEX);
+    renderHunter();
   }
 
   function rush() {
@@ -100,6 +125,7 @@ window.NBWorkshop = (() => {
       result.rewardId=run.id;result.adEligible=ledger.prepareAdReward(run.id,result.rewards.total);
     }
     if (run) run.finished = true;
+    renderHunter();
   }
   function palette(index, fallback) {
     if (!initialized || isTutorial() || ledger.state.theme === 'classic') return fallback;
@@ -109,6 +135,7 @@ window.NBWorkshop = (() => {
   }
   function drawTile(t) {
     if($('gemCue'))$('gemCue').hidden=true;
+    renderHunter();
     if(!initialized||!run||isTutorial()||!tile)return;
     tile.events=tile.events.filter(e=>t-e.t<.45);
     for(const e of tile.events){
@@ -245,6 +272,10 @@ window.NBWorkshop = (() => {
 
     $('verBadge').insertAdjacentHTML('afterend', `<div class="collectionBar"><button id="missionsOpen">ミッション <span class="missionDot"></span></button><button id="themesOpen">${GEM}<b data-wallet>0</b><span>解放 ↗</span></button></div><p class="saveNote" data-save-note hidden></p>`);
     $('fieldWrap').insertAdjacentHTML('beforeend', '<div id="gemCue" hidden></div>');
+    $('controls').insertAdjacentHTML('beforebegin', `<aside id="hunterPanel" hidden aria-label="ダイヤハンター"><div class="hunterSummary"><strong id="hunterName"></strong><b id="hunterPrize"></b><span id="hunterGrowth"></span></div><progress id="hunterProgress" aria-label="忍者の成長"></progress><div id="hunterActions" hidden><button id="hunterCatch" type="button"></button><button id="hunterPass" type="button">育てる ↗</button></div><small id="hunterHint"></small></aside>`);
+    $('hunterCatch').addEventListener('click',()=>chooseHunter(true));
+    $('hunterPass').addEventListener('click',()=>chooseHunter(false));
+    $('hunterPanel').addEventListener('keydown',e=>{if(e.key===' ')e.stopPropagation();});
     document.body.insertAdjacentHTML('beforeend', `<div id="missionToast" role="status" aria-live="polite"></div><div id="collectionOv" class="overlay hide" role="dialog" aria-modal="true" aria-labelledby="collectionHeading"><div class="collectionPanel"><header><button id="collectionClose" aria-label="ホームへ戻る">‹</button><h2 id="collectionHeading"></h2><span class="wallet">${GEM}<b data-wallet>0</b></span></header><p id="collectionIntro"></p><div id="collectionBody"></div><p id="collectionStatus" role="status"></p><p class="saveNote" data-save-note hidden></p></div></div>`);
     $('missionsOpen').addEventListener('click', () => openPanel('missions'));
     $('themesOpen').addEventListener('click', () => openPanel('shop'));
@@ -392,5 +423,5 @@ window.NBWorkshop = (() => {
   }
   function ownedHero(id){return ledger.state.heroes.includes(id);}
   function flush() { if (ledger) { ledger.flush(); refreshWallet(); } }
-  return {refreshWallet,openRank,shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, palette, drawTile, drawAtmosphere, resultMarkup, decorateResult, finishReveal, paintScore, flush, clearToasts};
+  return {chooseHunter,refreshWallet,openRank,shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, palette, drawTile, drawAtmosphere, resultMarkup, decorateResult, finishReveal, paintScore, flush, clearToasts};
 })();
