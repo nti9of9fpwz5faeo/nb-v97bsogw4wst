@@ -62,14 +62,24 @@
 @media(prefers-reduced-motion:reduce){.walletPop,.scoreLanded,.resultSpark,.rewardArrive,.resultReveal{animation:none!important}.recordTrack i{transition:none}}
 .resultScreen .rewardHeadline>span{color:#165951}.resultScreen .rewardPanel .saveNote{color:#9e3434}.resultScreen .scoreValue{justify-content:flex-start}.resultScreen .resultClaim b .gemIcon{margin-right:3px}
 
-/* v60: optional hunter decisions, separate from the rhythm controls. */
-#hunterPanel{flex:none;box-sizing:border-box;width:min(100%,500px);padding:8px 12px;background:#10294ff5;color:#eefcff;border:1px solid #78e8df;border-radius:15px;text-shadow:none;font:600 12px/1.4 system-ui}
-#hunterPanel[hidden],#hunterActions[hidden]{display:none}
-.hunterSummary{display:flex;align-items:center;gap:10px}.hunterSummary strong{font-size:13px}.hunterSummary b{color:#acfff0}.hunterSummary span{margin-left:auto;font-size:11px;color:#d0e8f5}
-#hunterProgress{display:block;width:100%;height:4px;margin:5px 0;accent-color:#77f5c6}
-#hunterActions{display:flex;gap:8px;margin:7px 0 4px}
-#hunterActions button{flex:1;min-height:44px;border:0;border-radius:9px;font:800 14px system-ui;cursor:pointer;touch-action:manipulation;text-shadow:none}
-#hunterCatch{background:#c9ff72;color:#10283c}#hunterPass{background:#284b70;color:#fff}
-#hunterHint{display:block;font-size:10px;color:#c7e0ef;text-align:center}
-#hunterActions button:focus-visible{outline:3px solid #fff;outline-offset:2px}
-@media(max-height:680px){#hunterPanel{padding:5px 10px}#hunterActions{margin-top:4px}#hunterHint{font-size:9px}}
+/* Diamond race: transient cues stay on the playfield. */
+#raceCaption{position:absolute;left:50%;top:8%;transform:translateX(-50%);width:min(92%,360px);z-index:6;text-align:center;pointer-events:none;color:#fff;text-shadow:0 2px 2px #071326}
+#raceCaption[hidden],#raceSkip[hidden],#raceStatus[hidden]{display:none}
+#raceCaption small{display:block;font:800 11px/1.5 system-ui;letter-spacing:.18em;color:#b8f8ff}
+#raceCaption strong{display:block;font:900 clamp(20px,6vw,30px)/1.25 system-ui;margin:5px 0}
+#raceCaption span{display:inline-block;padding:5px 12px;border-radius:20px;background:#092343e8;font:700 12px/1.5 system-ui}
+#raceCaption.ready{top:30%}#raceCaption.ready strong{font-size:52px}
+#raceSkip{position:absolute;bottom:10px;right:12px;z-index:7;border:1px solid #b8d8e9;border-radius:22px;background:#0a2344e8;color:white;padding:10px 16px;min-height:44px;font:700 12px system-ui}
+#raceStatus{position:absolute;left:50%;top:4px;transform:translateX(-50%);z-index:5;padding:6px 13px;border-radius:20px;background:#0a2344ed;color:#fff;font:800 13px system-ui;pointer-events:none;white-space:nowrap}
+.raceTest{padding:16px;margin:12px 0;background:#edf8ff;color:#132e4b;border:1px solid #b5cde0;border-radius:16px;width:100%;font:600 14px/1.5 system-ui;text-align:left;box-sizing:border-box;text-shadow:none}
+.raceTest summary{font-weight:900;cursor:pointer}.raceTest label{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0}.raceTest select{font:800 15px system-ui;min-height:44px;max-width:65%;border-radius:8px;padding:6px;background:white;color:#132e4b}.raceTest input{width:22px;height:22px}.raceTest p{font-size:12px;line-height:1.7;margin:8px 0}.raceTest button,.hunterTestLink{min-height:44px;border:0;border-radius:10px;padding:10px 16px;background:#133a72;color:#fff;font:800 14px system-ui;cursor:pointer}.hunterTestLink{margin:8px 0;width:100%}
+#pauseOv .raceTest{margin:8px 0;padding:10px}#pauseOv .raceTest label{margin:8px 0}
+@media(max-height:680px){#raceCaption{top:2%}#raceCaption strong{font-size:21px}#raceCaption.ready{top:23%}#raceCaption.ready strong{font-size:40px}}
+
+#fieldWrap.raceCinema{background:radial-gradient(ellipse at 50% 54%,#143c65e6,#071b36f2);border-radius:24px;box-shadow:inset 0 0 0 1px #89eaff33;margin-top:10px}
+#fieldWrap.raceCinema #cv{mask-image:linear-gradient(transparent,#000 25px,#000 calc(100% - 25px),transparent);-webkit-mask-image:linear-gradient(transparent,#000 25px,#000 calc(100% - 25px),transparent)}
+#raceCaption{top:calc(50% - 175px)}#raceCaption.ready{top:25%}
+#pauseOv{overflow-y:auto;justify-content:flex-start}#pauseOv .pausePanel{flex-shrink:0;margin:auto 0;max-width:100%}
+@media(max-height:680px){#raceCaption{top:8px}#raceCaption.ready{top:5%}#pauseOv{padding:12px}#pauseOv .pausePanel{padding:16px}}
+#page-settings details.raceTest{background:#edf8ff;color:#132e4b;border:1px solid #b5cde0;text-shadow:none}
+#page-settings details.raceTest p,#page-settings details.raceTest summary,#page-settings details.raceTest label{color:#132e4b;text-shadow:none}

@@ -51,16 +51,18 @@ window.NBWorkshop = (() => {
     if (!initialized) return;
     ledger.flush(); clearToasts();
     run = {gems: 0, tileGems: 0, missions: [], rushes: 0, serial: 0, hits:0, stepValue:0, id:globalThis.crypto?.randomUUID?.() || String(Date.now())+Math.random(), seen: new Set(), finished: false};
-    makeTile(0); refreshWallet();
+    tile=null; refreshWallet();
   }
-  function suspendRun() { if (ledger) ledger.flush(); run = null; tile = null; renderHunter(); }
-  function makeTile(serial) {
-    tile = NBChase.spawn(Math.random);
-  }
+  function suspendRun() { if (ledger) ledger.flush(); run = null; tile = null; }
   function nextCourse() {
     if (!active()) return;
-    tick(songTime()); run.serial++; run.seen.clear(); NBChase.nextCourse(tile,GOAL_INDEX); renderHunter(); NBSound.play('warp');
+    tick(songTime()); run.serial++; run.seen.clear(); tile=null; NBSound.play('warp');
   }
+  function beginRace(forced=null){
+    if(!active()||player.idx!==0)return null;
+    tile=NBChase.spawn(Math.random,forced,GOAL_INDEX);return tile;
+  }
+  function race(){return tile;}
   function judged(word, beat, t) {
     if (!active() || (word !== 'PERFECT' && word !== 'GREAT')) return;
     // A blue note's two distinct beats count. Repeated processing of one beat never does.
@@ -72,40 +74,21 @@ window.NBWorkshop = (() => {
   function steps(value) {
     if(active()&&value>run.stepValue){const delta=value-run.stepValue;run.stepValue=value;apply({steps:delta},{steps:value});}
   }
-  function renderHunter() {
-    const panel=$('hunterPanel');if(!panel)return;
-    panel.hidden=!active()||!tile||!tile.visible||tile.done;
-    if(panel.hidden)return;
-    const r=tile.type,growth=NBChase.growth(tile);
-    $('hunterName').textContent=r.name+'忍者';
-    $('hunterPrize').textContent='💎 '+r.reward;
-    $('hunterGrowth').textContent=growth.label;
-    $('hunterProgress').value=growth.value;$('hunterProgress').max=growth.max;
-    $('hunterActions').hidden=!tile.offer;
-    $('hunterHint').textContent=tile.offer?'通り過ぎても育ちます · 終了すると未捕獲分は失います':'進んで育てる · 接近時に捕獲 · 終了すると未捕獲分は失います';
-    $('hunterCatch').textContent='捕まえる ＋'+r.reward;
-  }
+  function renderHunter() {} // No persistent panel competing with the notes.
   function tick(t){
-    if(!active()||!tile){renderHunter();return;}
-    const outcome=NBChase.advance(tile,t,SPB,player.idx,GOAL_INDEX);
-    if(outcome==='promoted'){
-      tile.events.push({idx:tile.idx,t});NBSound.play('mission');
-      texts.push({s:tile.type.name+'に昇格！',idx:Math.min(player.idx,GOAL_INDEX),t,col:tile.type.color,big:true});
-    }
-    renderHunter();
-  }
-  function chooseHunter(capture){
-    if(!active()||!tile)return;
-    const t=songTime();tick(t);
-    if(capture){
-      const reward=NBChase.catchHunter(tile);
-      if(!reward)return;
-      apply({tiles:1},{},reward);NBSound.play('diamond');
-      const idx=Math.min(player.idx,GOAL_INDEX);
-      fx.push({type:'milestone',idx,t,d:.65,col:tile.type.color});
-      texts.push({s:`◆ +${reward}`,idx,t,col:tile.type.color,big:true});
-    }else NBChase.pass(tile,t,player.idx,GOAL_INDEX);
-    renderHunter();
+    if(!active()||!tile||tile.done)return;
+    const beat=raceBeat(t);
+    if(tile.phase==='ready'&&!moveLocked)NBChase.start(tile,beat);
+    const pos=rushAnim?playerVis(t):player.idx;
+    const arrival=rushAnim&&pos>=tile.target
+      ?raceBeat(rushAnim.moveAt+Math.max(0,tile.target-rushAnim.from)*RUSH_CELL_SEC):null;
+    const outcome=NBChase.advance(tile,beat,pos,true,arrival);
+    if(!outcome)return;
+    const won=outcome==='won',reward=tile.type.reward;
+    if(won){apply({tiles:1},{},reward);NBSound.play('diamond');}
+    else NBSound.play('miss');
+    showRaceResult(won,reward,tile.type.color);
+    if(won)fx.push({type:'milestone',idx:tile.target,t,d:.65,col:tile.type.color});
   }
 
   function rush() {
@@ -133,37 +116,34 @@ window.NBWorkshop = (() => {
     const p = theme.colors;
     return p;
   }
-  function drawTile(t) {
-    if($('gemCue'))$('gemCue').hidden=true;
-    renderHunter();
-    if(!initialized||!run||isTutorial()||!tile)return;
-    tile.events=tile.events.filter(e=>t-e.t<.45);
-    for(const e of tile.events){
-      const age=Math.max(0,(t-e.t)/.45),p=cellXY(e.idx);
-      if(e.idx>revealEnd)continue;
-      g.save();g.globalAlpha=(1-age)*.8;g.fillStyle='#effaff';g.strokeStyle='#92afcb';g.lineWidth=1;
-      for(let i=0;i<6;i++){
-        const a=i*Math.PI/3,spread=cell*(.12+age*.36),radius=cell*(.11+age*.08);
-        g.beginPath();g.arc(p.x+Math.cos(a)*spread,p.y-cell*.15+Math.sin(a)*spread,radius,0,Math.PI*2);g.fill();g.stroke();
-      }g.restore();
+  function drawTile(t,preview=false) {
+    if(!initialized||!run||isTutorial()||!tile||tile.done)return;
+    const n=tile,r=n.type,beat=raceBeat(t);
+    const visible=idx=>preview||idx<=revealEnd;
+    // The prize stays on the course; opponents have no floating reward labels.
+    if(visible(n.target)){
+      const p=cellXY(n.target),gem=IMG['gems/'+r.id],bob=reduceMotion.matches?0:Math.sin(t*3)*cell*.035;
+      g.save();g.translate(p.x,p.y);g.fillStyle=r.color+'55';g.beginPath();g.ellipse(0,cell*.2,cell*.38,cell*.12,0,0,Math.PI*2);g.fill();
+      g.shadowColor=r.color;g.shadowBlur=12;
+      if(gem?.naturalWidth)g.drawImage(gem,-cell*.38,-cell*.65+bob,cell*.76,cell*.76);
+      else{g.fillStyle=r.color;g.beginPath();g.moveTo(0,-cell*.6);g.lineTo(cell*.3,-cell*.2);g.lineTo(0,cell*.1);g.lineTo(-cell*.3,-cell*.2);g.closePath();g.fill();}
+      g.restore();
     }
-    if(!tile.visible||tile.done||tile.idx>revealEnd)return;
-    const p=cellXY(tile.idx),r=tile.type;
-    if(p.y < -cell || p.y>boardH+cell)return;
-    const art=IMG['ninjas/'+r.id],surprised=r.id==='novice'&&t<tile.surpriseUntil;
-    const displayArt=(!surprised&&r.id==='novice'&&IMG['ninjas/novice-idle']?.naturalWidth)?IMG['ninjas/novice-idle']:art;
-    g.save();g.translate(p.x,p.y);
-    g.fillStyle='#071c3f44';g.beginPath();g.ellipse(0,cell*.32,cell*.25,cell*.06,0,0,Math.PI*2);g.fill();
-    g.save();g.scale(facesRight(tile.idx)?-1:1,1);
-    if(displayArt?.naturalWidth){
-      const h=cell*1.15,w=h*displayArt.naturalWidth/displayArt.naturalHeight;
-      const pop=surprised&&!reduceMotion.matches?1.08:1;g.scale(pop,pop);
-      g.drawImage(displayArt,-w*.5,-h+cell*.34,w,h);
-    }
+    n.events=n.events.filter(e=>beat-e.beat<.8);
+    for(const e of n.events){if(!visible(e.idx))continue;const p=cellXY(e.idx),k=Math.max(0,(beat-e.beat)/.8);
+      g.save();g.globalAlpha=(1-k)*.8;g.fillStyle='#edf8ff';for(let i=0;i<5;i++){const a=i*Math.PI*.4;g.beginPath();g.arc(p.x+Math.cos(a)*cell*k*.5,p.y+Math.sin(a)*cell*k*.3,cell*(.1+k*.1),0,Math.PI*2);g.fill();}g.restore();}
+    if(!visible(n.idx))return;
+    const moving=!preview&&n.phase==='race'&&!n.warning;
+    const progress=moving?Math.max(0,Math.min(1,(beat-n.moveBeat)/.24)):1;
+    const idx=n.events.length?n.idx:n.from+(n.idx-n.from)*(1-Math.pow(1-progress,3));
+    const p=cellXY(idx);if(p.y < -cell || p.y>boardH+cell)return;
+    const art=IMG['ninjas/'+r.id];g.save();g.translate(p.x,p.y);
+    g.fillStyle='#071c3f55';g.beginPath();g.ellipse(0,cell*.3,cell*.25,cell*.065,0,0,Math.PI*2);g.fill();
+    if(n.warning){g.strokeStyle=r.color;g.lineWidth=3;g.beginPath();g.arc(0,0,cell*.45,0,Math.PI*2);g.stroke();g.font='900 '+Math.round(cell*.4)+'px system-ui';g.textAlign='center';g.fillStyle=r.color;g.fillText('!',0,-cell);}
+    const hop=moving&&!reduceMotion.matches?Math.sin(progress*Math.PI)*cell*.09:0;
+    g.translate(0,-hop);g.scale(facesRight(Math.max(0,Math.floor(idx)-1))?1:-1,1);
+    if(art?.naturalWidth){const h=cell*1.22,w=h*art.naturalWidth/art.naturalHeight;g.drawImage(art,-w/2,-h+cell*.34,w,h);}
     g.restore();
-    const gem=IMG['gems/'+r.id];if(gem?.naturalWidth)g.drawImage(gem,-cell*.24,-cell*1.13,cell*.25,cell*.25);
-    g.font=`900 ${Math.max(10,Math.round(cell*.21))}px system-ui`;g.textAlign='left';g.lineWidth=3;g.strokeStyle='#071326';
-    const label='+'+r.reward;g.strokeText(label,cell*.03,-cell*.93);g.fillStyle=r.color;g.fillText(label,cell*.03,-cell*.93);g.restore();
   }
   function drawAtmosphere(t) {
     if (!initialized || isTutorial() || ledger.state.theme === 'classic') return;
@@ -272,10 +252,6 @@ window.NBWorkshop = (() => {
 
     $('verBadge').insertAdjacentHTML('afterend', `<div class="collectionBar"><button id="missionsOpen">ミッション <span class="missionDot"></span></button><button id="themesOpen">${GEM}<b data-wallet>0</b><span>解放 ↗</span></button></div><p class="saveNote" data-save-note hidden></p>`);
     $('fieldWrap').insertAdjacentHTML('beforeend', '<div id="gemCue" hidden></div>');
-    $('controls').insertAdjacentHTML('beforebegin', `<aside id="hunterPanel" hidden aria-label="ダイヤハンター"><div class="hunterSummary"><strong id="hunterName"></strong><b id="hunterPrize"></b><span id="hunterGrowth"></span></div><progress id="hunterProgress" aria-label="忍者の成長"></progress><div id="hunterActions" hidden><button id="hunterCatch" type="button"></button><button id="hunterPass" type="button">育てる ↗</button></div><small id="hunterHint"></small></aside>`);
-    $('hunterCatch').addEventListener('click',()=>chooseHunter(true));
-    $('hunterPass').addEventListener('click',()=>chooseHunter(false));
-    $('hunterPanel').addEventListener('keydown',e=>{if(e.key===' ')e.stopPropagation();});
     document.body.insertAdjacentHTML('beforeend', `<div id="missionToast" role="status" aria-live="polite"></div><div id="collectionOv" class="overlay hide" role="dialog" aria-modal="true" aria-labelledby="collectionHeading"><div class="collectionPanel"><header><button id="collectionClose" aria-label="ホームへ戻る">‹</button><h2 id="collectionHeading"></h2><span class="wallet">${GEM}<b data-wallet>0</b></span></header><p id="collectionIntro"></p><div id="collectionBody"></div><p id="collectionStatus" role="status"></p><p class="saveNote" data-save-note hidden></p></div></div>`);
     $('missionsOpen').addEventListener('click', () => openPanel('missions'));
     $('themesOpen').addEventListener('click', () => openPanel('shop'));
@@ -321,7 +297,7 @@ window.NBWorkshop = (() => {
     const rewards = result.rewards || {total: 0, tiles: 0, missions: [], balance: ledger?.state.gems || 0};
     ov.querySelector('[data-result-gems]').textContent = '＋' + rewards.total;
     ov.querySelector('[data-result-balance]').textContent = fmt(rewards.balance);
-    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? `忍者 ＋${rewards.tiles}　／　ランクアップ ＋${rewards.total - rewards.tiles}` : isTutorial() ? '練習のあとは、本編でダイヤに挑戦！' : 'ミッション達成や忍者を捕まえてGET！';
+    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? `争奪戦 ＋${rewards.tiles}　／　ランクアップ ＋${rewards.total - rewards.tiles}` : isTutorial() ? '練習のあとは、本編でダイヤに挑戦！' : 'ミッション達成やダイヤ争奪戦でGET！';
     const growth=ov.querySelector('[data-result-growth]');growth.innerHTML='';
     if(result.progression){const p=result.progression;growth.innerHTML=`<div class="growthLabel"><b>${p.rank>p.oldRank?'RANK UP　'+p.oldRank+' → '+p.rank:'RANK '+p.rank}</b><span>＋${p.xp} XP</span></div><progress max="${p.need}" value="${p.progress}" aria-label="次のランクへの進捗"></progress><small>${p.unlocked.length?'新しい曲を解放！':'次のランクまで '+(p.need-p.progress)+' XP'}</small>`;}
     const highlights=[];
@@ -423,5 +399,5 @@ window.NBWorkshop = (() => {
   }
   function ownedHero(id){return ledger.state.heroes.includes(id);}
   function flush() { if (ledger) { ledger.flush(); refreshWallet(); } }
-  return {chooseHunter,refreshWallet,openRank,shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, palette, drawTile, drawAtmosphere, resultMarkup, decorateResult, finishReveal, paintScore, flush, clearToasts};
+  return {beginRace,race,refreshWallet,openRank,shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, palette, drawTile, drawAtmosphere, resultMarkup, decorateResult, finishReveal, paintScore, flush, clearToasts};
 })();

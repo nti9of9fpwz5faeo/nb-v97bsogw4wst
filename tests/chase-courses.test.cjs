@@ -1,38 +1,37 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const C=require('../chase.js'),M=require('../courses.js');
-const spawn=()=>C.spawn(()=>0);
-const advance=(n,p,t=0,random=()=>1)=>C.advance(n,t,.5,p,35,true,random);
-test('only run start is rolled; every appearance begins as novice',()=>{
- assert.equal(C.spawn(()=>.3),null);const n=spawn();assert.equal(n.type.id,'novice');assert.equal(n.type.reward,5);
- advance(n,13);assert.equal(n.visible,false);advance(n,14);assert.equal(n.visible,true);assert.equal(n.idx,17);assert.equal(n.offer,true);
+const race=(id='novice')=>{const n=C.spawn(()=>0,id,35);C.start(n,0);return n;};
+test('natural event chance, rare ranks and all explicit opponents',()=>{
+ assert.equal(C.spawn(()=>.8),null);assert.equal(C.spawn(()=>0,'off'),null);
+ for(const r of C.types){const n=C.spawn(()=>.99,r.id);assert.equal(n.type.id,r.id);assert.equal(n.idx,35);assert.equal(n.target,17.5);assert.equal(n.phase,'intro');}
+ const values=[0,.999];assert.equal(C.spawn(()=>values.shift()).type.id,'divine');
 });
-test('waiting never teleports, grows or expires the capture offer',()=>{
- const n=spawn();advance(n,14);for(let t=1;t<100;t++)advance(n,14,t);
- assert.equal(n.idx,17);assert.equal(n.distance,14);assert.equal(n.offer,true);assert.equal(C.catchHunter(n),5);assert.equal(C.catchHunter(n),0);
+test('intro and ready cannot move; paused race does not advance',()=>{
+ const n=C.spawn(()=>0,'novice');C.advance(n,100,0);assert.equal(n.idx,35);
+ C.start(n,0);C.advance(n,100,0,false);assert.equal(n.idx,35);
 });
-test('purple or ultimate crossing never auto-captures; passing makes a discrete jump',()=>{
- const n=spawn();advance(n,25);assert.equal(n.done,false);assert.equal(n.offer,true);
- assert.equal(C.pass(n,1,25,35),true);assert.equal(n.idx,33);assert.equal(n.offer,false);
- advance(n,30);assert.equal(n.offer,true);assert.equal(C.catchHunter(n),5);
- const auto=spawn();advance(auto,14);advance(auto,20);assert.equal(auto.idx,28);assert.equal(auto.offer,false);assert.equal(auto.done,false);
+test('non-divine opponents only walk in one-cell steps',()=>{
+ for(const type of C.types.slice(0,3)){const n=race(type.id);for(let i=1;i<=10;i++){C.advance(n,i*type.stepBeats,0);assert.equal(n.idx,35-i);assert.equal(n.warning,null);assert.equal(n.events.length,0);}}
 });
-test('same hunter survives goal and song clock reset; only real forward cells grow it',()=>{
- const n=spawn();advance(n,14);C.pass(n,1,14,35);advance(n,35,8);
- assert.equal(n.distance,35);assert.equal(n.type.id,'adept');assert.equal(n.done,false);
- C.nextCourse(n,35);assert.equal(n.idx,8);assert.equal(n.type.id,'adept');advance(n,0,0);assert.equal(n.distance,35);
- advance(n,5,1);assert.equal(n.offer,true);assert.equal(C.catchHunter(n),15);
+test('ultimate from start cannot reach midpoint; crossing it wins once',()=>{
+ for(const type of C.types){const n=race(type.id);assert.equal(C.advance(n,1,10),null);assert.equal(C.advance(n,2,18),'won');assert.equal(C.advance(n,3,30),null);}
 });
-test('growth to master and rare divine uses one roll per crossed distance milestone',()=>{
- const n=spawn();let rolls=0;
- for(let lap=0;lap<5;lap++){advance(n,35,10,()=>{rolls++;return 1});C.nextCourse(n,35);}
- assert.equal(n.distance,175);assert.equal(n.type.id,'master');assert.equal(rolls,1);
- for(let t=0;t<50;t++)advance(n,0,t,()=>{rolls++;return 0});assert.equal(rolls,1);
- advance(n,35,51,()=>{rolls++;return 0});assert.equal(n.type.id,'divine');assert.equal(rolls,2);assert.equal(n.type.reward,150);
- C.nextCourse(n,35);advance(n,5);assert.equal(C.catchHunter(n),150);
+test('hunter wins on exact scheduled arrival; late frames respect earlier winner and ties favor player',()=>{
+ const a=race();assert.equal(C.advance(a,100,0),'lost');const arrival=a.finishedBeat;
+ const b=race();assert.equal(C.advance(b,100,18,true,arrival-.1),'won');
+ const c=race();assert.equal(C.advance(c,100,18,true,arrival+.1),'lost');
+ const d=race();assert.equal(C.advance(d,100,18,true,arrival),'won');
 });
-test('paused, closed run and distant capture do not pay; no resampling after capture',()=>{
- const n=spawn();C.advance(n,0,.5,20,35,false);assert.equal(n.distance,0);assert.equal(n.visible,false);assert.equal(C.catchHunter(n),0);
- advance(n,14);assert.equal(C.catchHunter(n,false),0);assert.equal(C.catchHunter(n),5);C.nextCourse(n,35);advance(n,35);assert.equal(C.catchHunter(n),0);
+test('divine visibly warns, teleports, walks again and never teleports onto prize',()=>{
+ const n=race('divine');C.advance(n,5,0);assert.equal(n.idx,30);
+ C.advance(n,6,0);assert.equal(n.idx,30);assert.ok(n.warning);assert.equal(n.warning.to,27);
+ C.advance(n,7.4,0);assert.equal(n.idx,30);C.advance(n,7.5,0);assert.equal(n.idx,27);assert.equal(n.events.length,2);
+ C.advance(n,8.5,0);assert.equal(n.idx,26);assert.equal(n.warning,null);
+ while(!n.done){const before=n.idx;C.advance(n,n.nextBeat,0);if(n.idx-before < -1)assert.ok(n.idx>n.target);}
+ assert.equal(n.outcome,'lost');assert.equal(n.idx,n.target);
+});
+test('new courses receive new events and clean clocks',()=>{
+ const a=race('master');C.advance(a,100,0);const b=race('novice');assert.equal(b.done,false);assert.equal(b.idx,35);assert.equal(b.lastBeat,0);
 });
 test('five valid layouts have same 35-step goal and four beyond-goal source cells',()=>{
  const signatures=[];

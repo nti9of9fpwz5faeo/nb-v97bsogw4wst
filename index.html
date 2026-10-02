@@ -301,7 +301,7 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=60">
+<link rel="stylesheet" href="workshop.css?v=61">
 </head>
 <body>
 <div id="app">
@@ -360,13 +360,14 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
-<script src="progression.js?v=59"></script>
-<script src="chase.js?v=60"></script>
+<script src="progression.js?v=61"></script>
+<script src="chase.js?v=61"></script>
 <script src="courses.js?v=56"></script>
 <script src="menu.js?v=59"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
-<script src="workshop.js?v=60"></script>
+<script src="workshop.js?v=61"></script>
+<script src="race.js?v=61"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -703,6 +704,7 @@ let pendingExtension=null;
 let moveLocked = true; // 最初のブロックを壊すまで進めない
 
 function reset(){
+  clearRacePresentation();
   NBWorkshop.suspendRun();
   cancelResultReveal();cancelResume();stopMoveScheduler();stopRushHold();
   coach=null;recentHits=[];
@@ -1205,6 +1207,7 @@ function hideJudge(){
 }
 
 function freeMove(t, rec){
+  NBWorkshop.tick(t);
   const stuck = notes.find(x => x.hit && x.idx <= player.idx);
   if (stuck){ texts.push({ s: 'もう1回ブレイク！', idx: player.idx, t, col: '#ff5a5a' }); diagResult(rec, { status: 'invalid', reason: '赤ノーツが残っていて進めない', noteId: stuck.id }); return; }
   if (moveLocked){ texts.push({ s: 'まず1個ブレイク', idx: player.idx, t, col: '#ffffff' }); diagResult(rec, { status: 'invalid', reason: '移動ロック中（最初の1個を壊すまで）' }); return; }
@@ -1228,6 +1231,7 @@ function freeMove(t, rec){
     } else texts.push({ s: '+' + pts, idx: player.idx, t, col: '#ffffff', dim: true });
     diagEv('el_move', { inputId: rec?.inputId ?? null, combo, mult: m, points: pts, stepBonusUsed: used, bonusPoints: bonus, stepsAdded: m, moveSteps, recordSteps, score: elScore });
   }
+  NBWorkshop.tick(t);
   tutProgress('move');
   checkHit(t, '進んだ先にノーツがあった', rec?.inputId); // ブロックに突っ込んだらその場で当たり
 }
@@ -2028,6 +2032,8 @@ function noteView(nt,t,pre,nb,vp){
 }
 function draw(t){
   g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,boardW,boardH);
+  if(drawRaceIntro(t))return;
+  drawRaceStatus(t);
   // 音の時計を基準に表示だけ動かす。入力ボタンと当たり判定の座標は固定。
   cv.style.transform=`translateY(${impactOffset(t).toFixed(2)}px)`;
   cameraRow=cameraAtTime(t);
@@ -2240,8 +2246,9 @@ function checkLines(t){
 function loop(){
   requestAnimationFrame(loop);
   if (state === 'loading') return;
-  const t = ['play','paused','resuming','clear','over'].includes(state) ? songTime() : 0;
+  const t = ['play','huntIntro','paused','resuming','clear','over'].includes(state) ? songTime() : 0;
   { const pn = performance.now(); if (lastFramePerf != null) frameDtMs = r2(pn - lastFramePerf); lastFramePerf = pn; }
+  if(state==='huntIntro')updateRaceIntro(t);
   if (state === 'play'){
     syncClock();
     // Process deadlines and beats in chronological order, including a late frame.
@@ -2268,7 +2275,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v60', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v61', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2480,6 +2487,7 @@ function nextCourse(t){
   cameraRow=0;cameraFrom=0;cameraTarget=0;cameraAt=-9;setPalette(courseLap % PALETTES.length);
   revealEnd=REVEAL_ENDS[0];revealFrom=revealEnd;
   texts.push({ s: 'COURSE ' + (courseLap + 1), idx: 0, t, col: '#ffe941', big: true });
+  startRaceEvent();
 }
 function nextLap(t, songEnded){
   NBWorkshop.nextCourse(); chooseCourse();
@@ -2498,6 +2506,7 @@ function nextLap(t, songEnded){
   moveLocked = true; setLockUI(true); // 新しい周も、最初の1個を壊すまで進めない
   stopMoveScheduler(); startMusicAt(); startMoveScheduler();
   texts.push({ s: 'LAP ' + (lap + 1), idx: 0, t: songTime(), col: '#ffe941', big: true });
+  startRaceEvent();
 }
 function startGame(){
   NBWorkshop.stopSongPreview();NBSound.stop(); NBMenu.playing();
@@ -2509,15 +2518,16 @@ function startGame(){
   coach=null;
   if(isTutorial())coachStart();else layout();
   if(ctx.state==='suspended')ctx.resume();
-  startMusicAt();state='play';startMoveScheduler();
+  startMusicAt();state='play';
+  if(!startRaceEvent())startMoveScheduler();
   if(isTutorial())coachUI();
 }
 function pauseGame(){
   NBWorkshop.flush();
   stopRushHold();
   if(state==='resuming'){cancelResume();state='paused';}
-  else if(state==='play'){
-    pausedAt=songTime();state='paused';stopSong();stopMoveScheduler();hideJudge();
+  else if(state==='play'||state==='huntIntro'){
+    racePauseKind=state;pausedAt=songTime();state='paused';stopSong();stopMoveScheduler();hideJudge();
     diagEv('pause',{pausedAt:r4(pausedAt)});diagSave();
   }else return;
   document.getElementById('pauseDiag').hidden=!diagRun;
@@ -2543,15 +2553,17 @@ async function resumeGame(){
     const elapsed=ctx.currentTime-resumeStarted,count=Math.max(0,5-Math.floor((elapsed+1e-6)/SPB));
     if(count!==lastCount){counter.textContent=count;lastCount=count;uiTone(count?660:1046,.07);}
     if(count===0){
-      resumeFloor=pausedAt;startMusicAt(pausedAt+timingMs/1000,0);state='play';resumePerf=performance.now();diagEv('resume',{from:r4(pausedAt)});pausedAt=null;
-      document.querySelectorAll('#controls button').forEach(b=>b.disabled=false);
-      if(isTutorial())coachUI();startMoveScheduler();document.getElementById('pauseBtn').focus();
+      resumeFloor=pausedAt;startMusicAt(pausedAt+timingMs/1000,0);state=racePauseKind==='huntIntro'?'huntIntro':'play';racePauseKind=null;resumePerf=performance.now();diagEv('resume',{from:r4(pausedAt)});pausedAt=null;
+      document.querySelectorAll('#controls button').forEach(b=>b.disabled=state==='huntIntro');
+      if(state==='huntIntro')songGain?.gain.setTargetAtTime(.62,ctx.currentTime,.06);
+      if(isTutorial())coachUI();if(state==='play')startMoveScheduler();document.getElementById('pauseBtn').focus();
       resumeTimer=setTimeout(()=>counter.remove(),Math.min(SPB*650,350));return;
     }
     resumeTimer=setTimeout(tick,16);
   };tick();
 }
 function returnToSongs(){
+  clearRacePresentation();NBWorkshop.suspendRun();
   NBWorkshop.flush(); NBWorkshop.clearToasts(); NBWorkshop.renderSongs();
   if(state==='play'||state==='paused'||state==='resuming'){diagEv('quit',{});diagSave();}
   cancelResume();cancelResultReveal();stopMoveScheduler();stopSong();stopRushHold();
@@ -2568,7 +2580,7 @@ document.getElementById('resumeBtn').addEventListener('click',resumeGame);
 document.getElementById('pauseRetry').addEventListener('click',startGame);
 document.getElementById('pauseQuit').addEventListener('click',returnToSongs);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseGame();});
-window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(state==='play'||state==='resuming')pauseGame();else if(state==='paused')resumeGame();}});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(state==='play'||state==='huntIntro'||state==='resuming')pauseGame();else if(state==='paused')resumeGame();}});
 document.querySelectorAll('[data-retry]').forEach(b=>b.addEventListener('click',startGame));
 document.querySelectorAll('[data-select]').forEach(b=>b.addEventListener('click',returnToSongs));
 function showTimingValue(){document.getElementById('timingValue').textContent=`${timingMs>0?'+':''}${timingMs} ms`;document.getElementById('timingRange').value=timingMs;}
@@ -2660,7 +2672,7 @@ document.getElementById('myPlay').addEventListener('click',()=>{
 
 // ===== 起動 =====
 NBWorkshop.init();
-NBMenu.init();
+NBMenu.init();initRaceControls();
 (async () => {
   layout();
   ctx = new (window.AudioContext || window.webkitAudioContext)();

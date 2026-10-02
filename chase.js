@@ -1,65 +1,51 @@
-/* A run-long diamond hunter: advance to grow, choose when to collect. */
+/* Diamond race: one roll per course entry, deterministic beat-based opponents. */
 (function(root){
   'use strict';
   const types=[
-    {id:'novice',name:'初級',reward:5,color:'#73eaff'},
-    {id:'adept',name:'中級',reward:15,color:'#ffd44f'},
-    {id:'master',name:'上級',reward:40,color:'#e878ff'},
-    {id:'divine',name:'神級',reward:150,color:'#fff4b1'}
+    {id:'novice',name:'初級',reward:5,color:'#73eaff',stepBeats:2.2},
+    {id:'adept',name:'中級',reward:15,color:'#ffd44f',stepBeats:1.7},
+    {id:'master',name:'上級',reward:40,color:'#e878ff',stepBeats:1.25},
+    {id:'divine',name:'神級',reward:150,color:'#fff4b1',stepBeats:1}
   ];
-  const tuning={spawnChance:.28,adeptAt:35,masterAt:105,divineFrom:175,divineEvery:35,divineChance:.005,reach:3,choiceTravel:6,passAhead:8};
-  function spawn(random=Math.random){
-    if(random()>=tuning.spawnChance)return null;
-    return {type:types[0],rarity:types[0],trigger:14,idx:null,visible:false,done:false,outcome:null,
-      distance:0,lastPlayer:0,nextDivineAt:tuning.divineFrom,offer:false,offerAt:0,deferred:false,surpriseUntil:null,events:[]};
+  const tuning={spawnChance:.22,divineChance:.01,teleportEvery:5,teleportCells:3,warningBeats:1.5};
+  function spawn(random=Math.random,forced=null,end=35){
+    if(forced==='off'||!forced&&random()>=tuning.spawnChance)return null;
+    const roll=forced?0:random();
+    const type=types.find(r=>r.id===forced)||types[roll<.60?0:roll<.88?1:roll<1-tuning.divineChance?2:3];
+    return {type,idx:end,from:end,target:end/2,visible:true,done:false,outcome:null,
+      phase:'intro',nextBeat:Infinity,moveBeat:0,moves:0,warning:null,events:[],lastBeat:null,lastPlayer:0};
   }
-  function promote(n,random){
-    let rank=n.distance>=tuning.masterAt?2:n.distance>=tuning.adeptAt?1:0;
-    if(n.type.id==='divine')return;
-    // Each distance milestone rolls once, independent of frame rate and waiting.
-    while(n.distance>=n.nextDivineAt){
-      n.nextDivineAt+=tuning.divineEvery;
-      if(random()<tuning.divineChance){rank=3;break;}
+  function start(n,beat){
+    if(!n||n.done||n.phase==='race')return;
+    n.phase='race';n.nextBeat=beat+n.type.stepBeats;n.lastBeat=beat;
+  }
+  function settle(n,outcome,beat){n.done=true;n.outcome=outcome;n.finishedBeat=beat;n.warning=null;return outcome;}
+  function advance(n,beat,player,playing=true,arrivalBeat=null){
+    if(!playing||!n||n.done||n.phase!=='race'||!Number.isFinite(beat))return null;
+    if(beat<n.lastBeat)return null;
+    const playerArrival=player>=n.target?(arrivalBeat??beat):Infinity;
+    // Compare actual arrival times, so a late frame cannot give the wrong winner.
+    while(n.nextBeat<=beat+1e-8){
+      const at=n.nextBeat;
+      if(playerArrival<=at+1e-8){n.lastBeat=beat;return settle(n,'won',playerArrival);}
+      if(n.warning){
+        n.from=n.idx;n.idx=n.warning.to;n.moveBeat=at;
+        n.events.push({idx:n.from,beat:at},{idx:n.idx,beat:at});n.warning=null;
+        n.nextBeat=at+n.type.stepBeats;
+      }else if(n.type.id==='divine'&&n.moves>0&&n.moves%tuning.teleportEvery===0&&n.idx>n.target+2){
+        // A visible wind-up, and the final approach is always on foot.
+        n.warning={at,to:Math.max(n.target+1,n.idx-tuning.teleportCells)};
+        n.moves++;n.nextBeat=at+tuning.warningBeats;
+      }else{
+        n.from=n.idx;n.idx=Math.max(n.target,n.idx-1);n.moveBeat=at;n.moves++;
+        n.nextBeat=at+n.type.stepBeats;
+      }
+      if(n.idx<=n.target){n.lastBeat=beat;return settle(n,'lost',at);}
     }
-    n.type=n.rarity=types[rank];
+    n.lastBeat=beat;n.lastPlayer=player;
+    if(Number.isFinite(playerArrival))return settle(n,'won',playerArrival);
+    return null;
   }
-  function pass(n,t,player,end){
-    if(!n||n.done||!n.offer)return false;
-    n.events.push({idx:n.idx,t});n.offer=false;
-    n.deferred=player+tuning.passAhead>=end;
-    n.idx=Math.min(end-1,Math.floor(player)+tuning.passAhead);
-    n.events.push({idx:n.idx,t});return true;
-  }
-  function advance(n,t,spb,player,end,playing=true,random=Math.random){
-    if(!n||n.done||!playing)return null;
-    player=Math.max(0,Math.min(end,Math.floor(player)));
-    n.distance+=Math.max(0,player-n.lastPlayer);n.lastPlayer=player;
-    const oldType=n.type;promote(n,random);
-    if(!n.visible){
-      if(player<n.trigger)return null;
-      n.visible=true;n.idx=Math.min(end-1,player+tuning.reach);n.surpriseUntil=t+.28;
-      n.events.push({idx:n.idx,t});
-    }
-    if(n.offer&&n.distance-n.offerAt>=tuning.choiceTravel){pass(n,t,player,end);return 'passed';}
-    if(!n.offer&&!n.deferred&&player>=n.idx-tuning.reach){n.offer=true;n.offerAt=n.distance;}
-    return oldType!==n.type?'promoted':null;
-  }
-  function catchHunter(n,playing=true){
-    if(!playing||!n||n.done||!n.offer)return 0;
-    n.done=true;n.offer=false;n.outcome='caught';return n.type.reward;
-  }
-  function nextCourse(n,end){
-    if(!n||n.done)return;
-    n.lastPlayer=0;n.events=[];n.offer=false;n.deferred=false;n.surpriseUntil=null;
-    if(n.visible)n.idx=Math.min(tuning.passAhead,end-1);
-  }
-  function growth(n){
-    if(n.type.id==='divine')return {label:'神級 · 最大報酬',value:1,max:1};
-    const base=n.type.id==='novice'?0:n.type.id==='adept'?tuning.adeptAt:tuning.masterAt;
-    const target=n.type.id==='novice'?tuning.adeptAt:n.type.id==='adept'?tuning.masterAt:n.nextDivineAt;
-    const left=Math.max(0,target-n.distance);
-    return {label:n.type.id==='master'?`神級の抽選まで ${left}マス`:`${n.type.id==='novice'?'中級':'上級'}まで ${left}マス`,value:n.distance-base,max:target-base};
-  }
-  const api={types,rarities:types,tuning,spawn,advance,pass,catchHunter,nextCourse,growth};
+  const api={types,rarities:types,tuning,spawn,start,advance};
   if(typeof module!=='undefined')module.exports=api;else root.NBChase=api;
 })(typeof window==='undefined'?globalThis:window);
