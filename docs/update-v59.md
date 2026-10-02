@@ -25,4 +25,4 @@ Ninja catches and rank-up gems still pay immediately. Result mission rewards are
 
 ## Verification
 
-28 behavioral tests passed across progression, v58 regressions, v59 claims/migration, workshop economy hooks, engine ultimate charging, and ninja/course rules. Browser download failed in this execution environment; live UI verification is tracked separately after deployment.
+28 behavioral tests passed across progression, v58 regressions, v59 claims/migration, workshop economy hooks, engine ultimate charging, and ninja/course rules. Browser download failed in this execution environment. The deployed app was then checked through the cloud browser: compact home rank, four navigation items, song list without player rank, song-specific mission navigation, daily tab, mode selection, game start, result display and retry. A low-contrast inherited reward-label color was found visually and corrected. This browser viewport was desktop width with the mobile-width content column; a physical Android device and final audio perception were not tested.

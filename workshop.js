@@ -159,7 +159,7 @@ window.NBWorkshop = (() => {
   function missionCard(m) {
     const status=m.claimed?'受取済み':m.done?'達成！':'挑戦中';
     const condition=m.kind==='song'?m.label:`${m.label} ${fmt(m.target)}${m.stat==='steps'?' STEPS':m.stat==='combo'?'コンボ':'回'}`;
-    return `<article class="missionCard ${m.done&&!m.claimed?'claimable':''} ${m.claimed?'claimed':''}"><div><small>${status}${m.archived?' ・ '+m.day+' 達成分':''}</small><h3>${escape(m.title)}</h3><p>${escape(condition)}</p></div><b class="missionPrize">${GEM}＋${m.reward}</b><progress max="${m.target}" value="${m.done?m.target:m.value}" aria-label="${escape(m.title)}の進捗"></progress><span class="missionProgress">${fmt(m.done?m.target:m.value)} / ${fmt(m.target)}</span><button class="claimButton" data-claim="${escape(m.key)}" ${!m.done||m.claimed?'disabled':''}>${m.claimed?'✓ 受取済み':m.done?'受け取る':'挑戦中'}</button></article>`;
+    return `<article class="missionCard ${m.done&&!m.claimed?'claimable':''} ${m.claimed?'claimed':''}"><div><small>${status}${m.archived?' ・ '+m.day+' 達成分':''}</small><h3>${escape(m.title)}</h3>${m.kind==='song'?'':`<p>${escape(condition)}</p>`}</div><b class="missionPrize">${GEM}＋${m.reward}</b><progress max="${m.target}" value="${m.done?m.target:m.value}" aria-label="${escape(m.title)}の進捗"></progress><span class="missionProgress">${fmt(m.done?m.target:m.value)} / ${fmt(m.target)}</span><button class="claimButton" data-claim="${escape(m.key)}" ${!m.done||m.claimed?'disabled':''}>${m.claimed?'✓ 受取済み':m.done?'受け取る':'挑戦中'}</button></article>`;
   }
   function missionContent(){
     const all=ledger.missionEntries(),pending=all.filter(m=>m.done&&!m.claimed);
@@ -182,7 +182,7 @@ window.NBWorkshop = (() => {
     return `💎 ${receipt.amount} ダイヤを受け取りました！`;
   }
   function bindMissions(){
-    document.querySelectorAll('[data-mission-tab]').forEach(b=>b.onclick=()=>{missionTab=b.dataset.missionTab;panel('missions');});
+    document.querySelectorAll('[data-mission-tab]').forEach(b=>b.onclick=()=>{missionTab=b.dataset.missionTab;panel('missions');document.querySelector('[data-mission-tab="'+missionTab+'"]').focus();});
     $('missionSongSelect')?.addEventListener('change',e=>{missionSong=e.target.value;panel('missions');});
     document.querySelectorAll('[data-claim]').forEach(b=>b.onclick=()=>{const r=ledger.claimMissions([b.dataset.claim]);panel('missions');$('collectionStatus').textContent=claimFeedback(r);});
     if($('claimAll'))$('claimAll').onclick=()=>{const keys=ledger.missionEntries().filter(m=>m.kind===missionTab&&(missionTab!=='song'||m.songId===missionSong)).map(m=>m.key);const r=ledger.claimMissions(keys);panel('missions');$('collectionStatus').textContent=claimFeedback(r);$('claimAll').focus();};
