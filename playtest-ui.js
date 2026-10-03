@@ -19,7 +19,7 @@ window.NBMeasure=(()=>{
   }
   function tick(t,rebase=false,bonus=0){
     if(!active())return;
-    NBPlaytest.observe(current,{player:rushAnim?playerVis(t):player.idx,snapshot:NBChase.sample(player.idx,notes,moveLocked,gIdx,GOAL_INDEX),time:t,rush:!!rushAnim,rebase,bonus,rate});
+    NBPlaytest.observe(current,{player:rushAnim?playerVis(t):player.idx,snapshot:NBMovement.sample(player.idx,notes,moveLocked,gIdx,GOAL_INDEX),time:t,rush:!!rushAnim,rebase,bonus,rate});
   }
   function finish(result={},interrupted=false){
     if(!active())return null;
@@ -67,7 +67,7 @@ window.NBMeasure=(()=>{
   }
   function decorate(result,ov){
     let b=ov.querySelector('[data-measure-result]');
-    if(!b){b=document.createElement('button');b.className='measureResultButton';b.dataset.measureResult='';ov.querySelector('.resultActions').before(b);}
+    if(!b){b=document.createElement('button');b.className='measureResultButton';b.dataset.measureResult='';ov.querySelector('.resultDetails').append(b);}
     b.hidden=!result.measurement;b.textContent='プレイ記録を見る・渡す';b.onclick=()=>{finishResultReveal();show(result.measurement);};
   }
   function init(){
@@ -76,13 +76,9 @@ window.NBMeasure=(()=>{
     document.body.insertAdjacentHTML('beforeend','<div class="overlay hide" id="measureOv" role="dialog" aria-modal="true" aria-labelledby="measureTitle"><div class="measurePanel"><button id="measureClose" class="measureSecondary">閉じる</button><h2 id="measureTitle">いつものプレイの記録</h2><p id="measureQuality"></p><pre id="measureText"></pre><p id="measureSave"></p><div class="measureActions"><button id="measureShare">記録を共有</button><button id="measureJson">JSONを保存</button><button id="measureTxt">TXTを保存</button><button id="measureCopy">結果をコピー</button></div><p id="measureShareStatus" role="status"></p><textarea id="measureCopyText" readonly hidden aria-label="コピーする記録"></textarea><button id="measureAgain" class="measureSecondary">もう1曲記録する</button></div></div>');
     $('measureTitle').insertAdjacentHTML('afterend','<label for="measureHistory">保存した記録</label><select id="measureHistory"></select>');
     $('measureHistory').onchange=()=>show(records.find(r=>r.id===$('measureHistory').value));
-    $('hunterTestOpen').before(document.querySelector('.measureEntry'));
     const choose=()=>{
       $('measureOv').classList.add('hide');
       if(state!=='ready')returnToSongs();
-      // Remove the previous manual tuning and full-ultimate start from this ordinary run.
-      raceSettings.type='auto';raceSettings.full=false;saveRaceSettings();
-      document.querySelectorAll('[data-race-type]').forEach(e=>e.value='auto');document.querySelectorAll('[data-race-full]').forEach(e=>{e.checked=false;e.disabled=true;});document.querySelectorAll('.raceTuning').forEach(e=>e.disabled=true);
       playMode='distance';endless=true;updateModeUI();document.querySelectorAll('[data-song-mode]').forEach(e=>e.setAttribute('aria-pressed',String(e.dataset.songMode==='distance')));
       arm();NBMenu.show('songs');
     };
@@ -92,6 +88,6 @@ window.NBMeasure=(()=>{
     $('measureCopy').onclick=async()=>{if(!shown)return;try{await navigator.clipboard.writeText(summary(shown));$('measureShareStatus').textContent='コピーしました。このチャットに貼り付けてください。';}catch(_){const e=$('measureCopyText');e.hidden=false;e.value=summary(shown);e.focus();e.select();$('measureShareStatus').textContent='表示された記録を長押ししてコピーしてください。';}};
     $('measureOv').addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();$('measureOv').classList.add('hide');}});refresh();
   }
-  function hunter(n){if(active())current.hunters.push({name:n.type.name,id:n.type.id,outcome:n.outcome,reason:n.reason||null,missed:n.missed,used:n.used,travelled:n.travelled,rules:{...n.rules}});}
-  return {active,pending,arm,start,tick,finish,interrupt,init,decorate,show,summary,hunter,warp:()=>NBPlaytest.warp(current),purple:()=>NBPlaytest.purple(current)};
+
+  return {active,pending,arm,start,tick,finish,interrupt,init,decorate,show,summary,warp:()=>NBPlaytest.warp(current),purple:()=>NBPlaytest.purple(current)};
 })();

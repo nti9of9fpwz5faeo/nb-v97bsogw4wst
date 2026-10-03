@@ -1,4 +1,4 @@
-const test=require('node:test'),assert=require('node:assert/strict'),C=require('../chase.js'),P=require('../playtest.js');
+const test=require('node:test'),assert=require('node:assert/strict'),C=require('../movement.js'),P=require('../playtest.js');
 const sample=(player,idx,id=1)=>C.sample(player,[{id,idx}]);
 test('successful movement, closing gaps and repeated frames are counted separately',()=>{
  const r=P.create({appVersion:'v64'});P.observe(r,{player:0,snapshot:sample(0,6),time:0});
@@ -53,10 +53,10 @@ test('occupied destinations are separate from useful movement; no opportunities 
  for(const idx of [7,6,5])P.observe(goal,{player:5,snapshot:C.sample(5,[{id:1,idx}],false,9,5),time:2});
  assert.equal(goal.taken,1);assert.equal(goal.missed,0);assert.equal(goal.occupiedSteps,0);
 });
-test('shared hunter clock includes actual moves and does not double-charge them',()=>{
- const n=C.spawn(()=>0,'novice',0,C.testDefaults);
+test('movement accounting counts actual moves once',()=>{
+ const n={meter:null};
  C.account(n,sample(0,2));let a=C.account(n,sample(1,2),{moved:1});assert.equal(a.opportunities,1);assert.equal(a.taken,1);
- C.advance(n,1,1,a.opportunities,a);assert.equal(n.used,1);assert.equal(n.missed,0);
+ assert.equal(a.missed,0);
  a=C.account(n,sample(1,2));assert.equal(a.opportunities,0);
 });
 test('speed context survives acceleration and twenty-opportunity windows',()=>{

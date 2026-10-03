@@ -1,0 +1,69 @@
+/* v68: opaque neon arcade results. The record and retry are the primary focus. */
+#clearOv.resultScreen,#overOv.resultScreen{background:#0b192c;color:#f4fbff;backdrop-filter:none;isolation:isolate;overflow-x:hidden;overflow-y:auto;touch-action:pan-y;justify-content:flex-start;padding:calc(env(safe-area-inset-top) + 28px) 24px calc(env(safe-area-inset-bottom) + 20px)}
+.resultScreen:before{display:none!important}
+.resultScreen .arcadeResult{width:min(390px,100%);max-width:390px;min-height:min(620px,calc(100dvh - 56px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));display:flex;flex-direction:column;margin:auto;flex:none}
+.resultScreen .resultHeader{text-align:left;margin:0 0 24px}
+.resultScreen .resultHeader .resultEyebrow{font:750 11px/1.5 system-ui;letter-spacing:.2em;color:#a9c3d5;margin:0 0 22px}
+.resultScreen .resultHeader .resultTitle,#overOv.resultScreen .resultHeader .resultTitle{font:900 clamp(25px,7.5vw,34px)/1.3 system-ui!important;color:#f4fbff!important;letter-spacing:-.025em;-webkit-text-stroke:0!important;text-shadow:none!important;margin:0 0 16px;overflow-wrap:anywhere}
+.resultScreen.personalBest .resultHeader .resultTitle,#overOv.resultScreen.personalBest .resultHeader .resultTitle{color:#d4fa4d!important}
+.resultScreen .resultSong{font:700 15px/1.5 system-ui;color:#e4eff8;margin:0;overflow-wrap:anywhere}
+.resultScreen .resultDifficulty{font:650 10px/1.4 system-ui;background:#22394e;color:#cce2f1;border:0;padding:3px 6px;vertical-align:middle}
+.resultScreen .endReason{font:500 12px/1.5 system-ui;color:#a9bfd2;margin:4px 0 0}
+.resultScreen .resultMoment{margin:0;position:relative}
+.resultScreen .resultHero{display:none;margin:0;height:80px}
+.resultScreen.personalBest .resultHero,#clearOv.resultScreen .resultHero{display:flex;height:80px;justify-content:flex-end}
+.resultScreen .resultPortrait{width:126px;margin:0}
+.resultScreen .resultPortrait canvas{width:126px;height:88px;filter:none}
+.resultScreen .resultPortrait:before,.resultScreen .resultPortrait:after{display:none}
+.resultScreen .resultRank,.resultScreen .resultHeroName{display:none!important}
+.resultScreen .scorePanel,.resultScreen.personalBest .scorePanel{border:0;border-left:4px solid #5de7e3;background:transparent;box-shadow:none;border-radius:0;text-align:left;padding:0 0 0 18px;margin:0}
+.resultScreen .scoreLabel{justify-content:flex-start;font:750 11px/1.5 system-ui;color:#b3d3e1;letter-spacing:.06em;gap:12px;max-width:none}
+.resultScreen .newBest{background:#d4fa4d;color:#1d3013;font:800 9px/1.5 system-ui;border:0;transform:none;letter-spacing:.03em;padding:2px 5px;border-radius:4px}
+.resultScreen .scoreValue{display:flex;justify-content:flex-start;gap:8px;max-width:none;white-space:nowrap;margin:12px 0;font:950 clamp(42px,18vw,76px)/1.05 system-ui!important;color:#f4fbff!important;letter-spacing:-.055em;text-shadow:none;font-variant-numeric:tabular-nums}
+.resultScreen:not(.stepsResult) .scoreValue{font-size:clamp(32px,12vw,52px)!important}
+.resultScreen .scoreValue small{font:700 16px/1 system-ui;color:#b3d3e1;letter-spacing:0}
+.resultScreen .resultDelta{font:800 17px/1.5 system-ui;color:#d4fa4d;margin:8px 0;overflow-wrap:anywhere}
+.resultScreen .bestValue{font:500 13px/1.5 system-ui;color:#acc0d1;margin:0}
+.resultScreen .recordTrack{height:7px;padding:0;border:0;background:#263a50;border-radius:8px;box-shadow:none;margin:17px 0 0;overflow:hidden}
+.resultScreen .recordTrack i{height:100%;display:block;border-radius:8px;background:#5de7e3;box-shadow:none;transition:none}
+.resultScreen .recordTrack i:after{display:none}
+.resultScreen .nextRecord{font:500 11px/1.5 system-ui;color:#a9bfd2;text-align:right;margin:7px 0 0}
+.resultScreen .runHighlights{justify-content:flex-start;gap:0;margin:19px 0 0}
+.resultScreen .runHighlights>span{color:#a9bfd2;font:500 12px/1.5 system-ui;border:0;background:none;padding:0;flex:none}
+.resultScreen .runHighlights b{font:750 13px/1.5 system-ui;color:#deebf6;margin-left:4px}
+.resultScreen .resultLoot{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:24px;margin:22px 0;padding:15px 0;border-top:1px solid #32475c;border-bottom:1px solid #32475c;grid-template-columns:none}
+.resultScreen .rewardPanel,.resultScreen .resultGrowth{display:block;min-height:0;min-width:0;border:0;border-radius:0;background:transparent;box-shadow:none;padding:0;margin:0;flex:none}
+.resultScreen .rewardHeadline{display:flex;flex-direction:row;align-items:center;gap:8px}
+.resultScreen .rewardHeadline>span{display:flex;align-items:center;gap:5px;color:#bbdbe9;font:650 12px/1.5 system-ui}
+.resultScreen .rewardHeadline .gemIcon{width:24px;height:24px;filter:none;margin:0}
+.resultScreen .rewardHeadline>b{color:#d1f6ff;font:850 22px/1.2 system-ui;text-shadow:none}
+.resultScreen .growthLabel{display:block;color:#c8bbef;font:700 13px/1.5 system-ui}
+.resultScreen .growthLabel [data-xp-earned]{font:800 20px/1.2 system-ui;white-space:nowrap;color:#d8c8ff;text-shadow:none}
+.resultScreen .resultGrowth .growthLabel b,.resultScreen .resultGrowth progress,.resultScreen .resultGrowth small{display:none}
+.resultScreen .resultActions{position:static;display:flex;flex-direction:column;gap:9px;padding:0;margin:12px 0 0;margin-top:auto;background:none;box-shadow:none;border-radius:0}
+.resultScreen .resultActions .ovBtn,#overOv.resultScreen .resultActions .ovBtn:not(.sub){width:100%;min-height:58px;border:0;border-radius:14px;background:#d4fa4d;color:#1d3013;font:850 21px/1.3 system-ui;letter-spacing:0;-webkit-text-stroke:0;text-shadow:none;box-shadow:0 5px 0 #749524;margin:0;gap:15px}
+.resultScreen .resultActions .ovBtn.sub{min-height:45px;background:transparent;color:#c1d4e2;border:0;box-shadow:none;font:650 14px/1.5 system-ui;text-shadow:none}
+.resultScreen .resultActions .ovBtn:active{transform:translateY(3px);box-shadow:0 2px 0 #749524}
+.resultScreen .resultActions .ovBtn.sub:active{box-shadow:none}
+.resultScreen .resultSkip{font:500 11px/1.5 system-ui;min-height:30px;background:none;color:#a9bfd2;margin:5px auto 0}
+.resultScreen .resultDetails{margin:2px 0 0;padding:0;border-top:1px solid #263a50;color:#cfdfeb}
+.resultScreen .resultDetails>summary{font:600 12px/1.5 system-ui;color:#a9bfd2;min-height:44px;padding:12px;text-align:center}
+.resultScreen .resultStat,.resultScreen .judgmentList{background:#142a40;border:0;box-shadow:none;color:#e4eff8}
+.resultScreen .resultStat small,.resultScreen .resultFoot,.resultScreen .resultBadge{color:#b4c9d9}
+.resultScreen .resultStat b,.resultScreen .judgmentRow dd{color:#f4fbff}
+.resultScreen .judgmentRow dt{color:var(--tone)}
+.resultScreen .rewardWallet,.resultScreen .rewardBreakdown{display:block;color:#b4c9d9;font:500 12px/1.6 system-ui;text-align:left;margin:12px 0}
+.resultScreen .saveNote{color:#ffb9b9;font:650 12px/1.5 system-ui}
+.resultScreen .scoreHelp p{background:#142a40;color:#d2e0eb;border:0;font:500 12px/1.6 system-ui}
+.resultScreen .resultClaim{width:100%;background:#223d4e;border:1px solid #456475;color:#e5efbd;box-shadow:none}
+.resultScreen [hidden]{display:none!important}
+.resultEnter .resultHeader,.resultEnter .resultHero,.resultEnter .resultLoot,.resultEnter .resultLoot.lootArrive{animation:none;opacity:1;transform:none}
+.resultScreen .scoreLanded{animation:none}
+.resultScreen.personalBest .scoreLanded{animation:arcadeRecord .25s ease-out}
+@keyframes arcadeRecord{50%{transform:translateX(3px)}}
+@media(max-height:650px){#clearOv.resultScreen,#overOv.resultScreen{padding-top:calc(env(safe-area-inset-top) + 16px);padding-bottom:12px}.resultScreen .arcadeResult{min-height:min(490px,calc(100dvh - 28px - env(safe-area-inset-top) - env(safe-area-inset-bottom)))}.resultScreen .resultHeader{margin-bottom:18px}.resultScreen .resultHeader .resultEyebrow{margin-bottom:12px}.resultScreen .resultHeader .resultTitle,#overOv.resultScreen .resultHeader .resultTitle{font-size:25px!important;margin-bottom:10px}.resultScreen .scoreValue{font-size:58px!important;margin:8px 0}.resultScreen:not(.stepsResult) .scoreValue{font-size:35px!important}.resultScreen .resultDelta{font-size:14px}.resultScreen .recordTrack{margin-top:12px}.resultScreen .runHighlights{display:none}.resultScreen .resultLoot{margin:16px 0;padding:12px 0}.resultScreen.personalBest .resultHero,#clearOv.resultScreen .resultHero{height:48px}.resultScreen .resultPortrait canvas{width:90px;height:63px}.resultScreen .resultPortrait{width:90px}.resultScreen .resultActions .ovBtn,#overOv.resultScreen .resultActions .ovBtn:not(.sub){min-height:50px;font-size:19px}}
+@media(max-width:350px){#clearOv.resultScreen,#overOv.resultScreen{padding-left:18px;padding-right:18px}.resultScreen .resultDelta{font-size:14px}.resultScreen .resultLoot{gap:18px}.resultScreen .rewardHeadline>span>span{display:none}}
+@media(prefers-reduced-motion:reduce){.resultScreen.personalBest .scoreLanded{animation:none}.resultScreen .resultSpark{display:none}}
+
+.resultScreen .resultGrowthDetail{font:650 13px/1.6 system-ui;color:#d8c8ff;margin:16px 0}
+.resultScreen .resultDetails .rewardMissionList{display:flex!important;flex-wrap:wrap;gap:6px}

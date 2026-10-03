@@ -301,7 +301,8 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=67">
+<link rel="stylesheet" href="workshop.css?v=68">
+<link rel="stylesheet" href="result-arcade.css?v=68">
 </head>
 <body>
 <div id="app">
@@ -331,7 +332,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v67</span>
+  <span id="verBadge">バージョン v68</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -360,17 +361,16 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
-<script src="progression.js?v=62"></script>
-<script src="chase.js?v=66"></script>
-<script src="playtest.js?v=66"></script>
-<script src="playtest-ui.js?v=66"></script>
+<script src="progression.js?v=68"></script>
+<script src="movement.js?v=68"></script>
+<script src="gems.js?v=68"></script>
+<script src="playtest.js?v=68"></script>
+<script src="playtest-ui.js?v=68"></script>
 <script src="courses.js?v=56"></script>
 <script src="menu.js?v=62"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
-<script src="workshop.js?v=67"></script>
-<script src="race.js?v=67"></script>
-<script src="flowers.js?v=67"></script>
+<script src="workshop.js?v=68"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -508,7 +508,7 @@ const path = [];
 let coursePattern = 0;
 const courseDeck = NBCourses.deck();
 function chooseCourse(tutorial=false){
-  coursePattern=tutorial?0:raceTestActive()?courseLap%5:courseDeck.next();
+  coursePattern=tutorial?0:courseDeck.next();
   path.splice(0,path.length,...NBCourses.build(coursePattern));
 }
 path.push(...NBCourses.build(0));
@@ -523,7 +523,7 @@ const EXIT_INDEX = path.length - 1;
 
 // ===== 画像 =====
 const IMG = {};
-const imgList = ['char_idle.png','char_move.png','char_slash.png','char_damage.png','ninjas/novice.webp','ninjas/novice-idle.webp','ninjas/adept.webp','ninjas/master.webp','ninjas/divine.webp','gems/novice.webp','gems/adept.webp','gems/master.webp','gems/divine.webp'];
+const imgList = ['char_idle.png','char_move.png','char_slash.png','char_damage.png','gems/novice.webp'];
 function loadImg(n){return new Promise(res=>{const i=new Image();i.onload=()=>res();i.onerror=()=>res();i.src='img/'+n;IMG[n.split('.')[0]]=i;});}
 
 // 見た目だけの選択。HP・移動・判定にはキャラ別の変更を加えない。
@@ -707,7 +707,6 @@ let pendingExtension=null;
 let moveLocked = true; // 最初のブロックを壊すまで進めない
 
 function reset(){
-  clearRacePresentation();
   NBWorkshop.suspendRun();
   cancelResultReveal();cancelResume();stopMoveScheduler();stopRushHold();
   coach=null;recentHits=[];
@@ -737,11 +736,11 @@ function reset(){
   notes = []; effects = []; texts = []; fx = [];
   setLockUI(true); tutClearUI();
   nextBeat = 0; acted = -1; pendingCheck = [];
-  charState = 'idle'; charUntil = 0; shakeUntil = 0; spawnSeed = raceTestActive()?24681:Math.floor(Math.random() * 100000) + 1; earlyInput = null;
+  charState = 'idle'; charUntil = 0; shakeUntil = 0; spawnSeed = Math.floor(Math.random() * 100000) + 1; earlyInput = null;
   nextGap = 4; runLen = 1;
   lineK = 0; gIdx = gIndexFor(0); gMoveAt = -9; gFrom = gIdx;
   counts = { PERFECT: 0, GREAT: 0, GOOD: 0, MISS: 0 }; combo = 0; maxCombo = 0;
-  drawHud(); NBWorkshop.resetRun();NBFlower.reset();
+  drawHud(); NBWorkshop.resetRun();
 }
 let lineK = 0, gIdx = 0, gFrom = 0, gMoveAt = -9;
 function gIndexFor(k){ return Math.min(LINES[k] + G_AHEAD, EXIT_INDEX); }
@@ -1220,7 +1219,7 @@ function freeMove(t, rec, charge=false){
   if (player.idx >= GOAL_INDEX){ diagResult(rec, { status: 'invalid', reason: 'ゴール位置' }); return; }
   diagResult(rec, { status: 'moved', reason: '進む（判定なし）', playerFrom: player.idx, playerTo: player.idx + 1 });
   fx.push({ type: 'ghost', idx: player.idx, t, d: .13, flip: facesRight(player.idx) });
-  player.from = player.idx; player.idx += 1; player.at = t;NBFlower.moved();
+  player.from = player.idx; player.idx += 1; player.at = t;
   fx.push({ type: 'spark', idx: player.idx, t, d: .2 });
   charState = 'move'; charUntil = t + 0.18;
   if (scoreOn()){ runSteps++; addScore(movePrice, t, true); }
@@ -1396,7 +1395,7 @@ function drawRushAnim(t){
 }
 // 満タンで発動できるとき、キャラの横に小さく「OK」（点滅なし）
 function drawRushOk(t){
-  if (NBFlower.blocksRush() || !rushOn() || rushRelease !== 'manual' || rushAnim || moveLocked || !rushReady()) return;
+  if (!rushOn() || rushRelease !== 'manual' || rushAnim || moveLocked || !rushReady()) return;
   const p = cellXY(playerVis(t)), fs = Math.max(10, Math.round(cell * .24)), x = p.x + cell * .42, y = p.y - cell * .46;
   g.save(); g.font = `900 ${fs}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
   const w = g.measureText('OK').width + fs * .8, h = fs * 1.35;
@@ -1406,7 +1405,7 @@ function drawRushOk(t){
 // 必殺技の発動：目の前のブロックがその場で回り出し、溜めのあとに5マス突き抜ける
 function doRush(t, rec, auto){
   const cells = Math.min(RUSH_CELLS, GOAL_INDEX - player.idx);
-  if (NBFlower.blocksRush() || cells <= 0 || moveLocked || !rushReady()) return false;
+  if (cells <= 0 || moveLocked || !rushReady()) return false;
   const P = player.idx, to = P + cells;
   rushAnim = { from: P, to, t0: t, moveAt: t + RUSH_WINDUP_SEC, dur: cells * RUSH_CELL_SEC, blown: takeBlown(to), trail: P, moved: false };
   rushGuardUntil = rushAnim.moveAt + rushAnim.dur + RUSH_GUARD_SEC;
@@ -1429,7 +1428,6 @@ function doAction(type, n, t, diff, rec){
   acted = n;
   const word = judgeOf(diff), sub = Math.abs(diff) <= 0.045 ? '' : (diff < 0 ? 'FAST' : 'LATE');
   if (type === 'charge'){
-    const harvesting=NBFlower.at();
     const target = notes.filter(x => x.purple && x.idx <= player.idx).sort((a,b)=>a.idx-b.idx)[0];
     if (!target){ diagResult(rec, { status: 'moved', reason: '突進の対象がもういないので、普通に進む' }); freeMove(t, null); return; }
     notes.splice(notes.indexOf(target), 1);
@@ -1440,14 +1438,14 @@ function doAction(type, n, t, diff, rec){
     if(isTutorial())coachOnBreak(target,word,t,true);
     if (word === 'PERFECT') countPerfect(t);
     const elPts = (speedOn() || endlessScoreOn()) ? elBreak(word, sub) : null;
-    diagResult(rec, { status: 'judged', judge: word, charge: true, points: elPts, combo: speedOn() ? combo : null, beat: n, offsetMs: r2(diff * 1000), noteId: target.id, playerFrom: player.idx, playerTo: player.idx + (harvesting?0:1) });
+    diagResult(rec, { status: 'judged', judge: word, charge: true, points: elPts, combo: speedOn() ? combo : null, beat: n, offsetMs: r2(diff * 1000), noteId: target.id, playerFrom: player.idx, playerTo: player.idx + 1 });
     diagShow('突進 ' + word + '：' + msText(diff * 1000));
     // 目の前に隙間なく続くブロックを、まとめて1マス押し返す（突き破る）。進んだ先でぶつからない
-    const chain = []; for (let k = player.idx + 1; !harvesting; k++){ const nt = notes.find(x => x.idx === k); if (!nt) break; chain.push(nt); }
+    const chain = []; for (let k = player.idx + 1; ; k++){ const nt = notes.find(x => x.idx === k); if (!nt) break; chain.push(nt); }
     for (const nt of chain){ nt.from = nt.idx; nt.idx += 1; nt.at = t; }
     if (chain.length) fx.push({ type: 'stomp', idx: player.idx + 1, t, d: .2, strong: false });
     diagEv('knockback', { inputId: rec?.inputId ?? null, count: chain.length, noteIds: chain.map(x => x.id) });
-    if(harvesting)NBWorkshop.tick(t,true);else freeMove(t, null, true); // 花の上では紫を壊すだけ。それ以外は1マス進む（前進の点・歩数もここで入る）
+    freeMove(t, null, true); // 紫への突進は通常どおり1マス進む。
     charState = 'slash'; charUntil = t + 0.22;
     return;
   }
@@ -1508,7 +1506,6 @@ function input(type, e, device){
   if (ev.perf != null && ev.perf < resumePerf){ diagInputEnd(rec, { status: 'invalid', reason: 'ポーズ解除前に押された入力' }); if (type === 'break') diagShow('無効：ポーズ解除前の入力'); return; }
   if (rushAnim && type !== 'rush'){ diagInputEnd(rec, { status: 'invalid', reason: '必殺技の発動中' }); return; }
   if (type === 'rush'){
-    if(NBFlower.blocksRush())return;
     if (rushOn() && rushRelease === 'manual' && rushReady() && !moveLocked && !rushAnim){ diagInputEnd(rec, { status: 'immediate', reason: 'ため解放（判定なし）' }); doRush(tNow, rec, false); }
     else diagInputEnd(rec, { status: 'invalid', reason: 'ためが足りない（解放できない）' });
     return;
@@ -1516,11 +1513,6 @@ function input(type, e, device){
   if (type === 'move'){
     if (!chargeTarget()){ diagInputEnd(rec, { status: 'immediate', reason: '進むは判定なし・押した瞬間に実行' }); freeMove(tNow, rec); return; } // 進むは拍に関係なく、押した瞬間に動く
     type = 'charge'; if (rec) rec.type = 'charge'; // 紫ノーツへの突進：ブレイクと同じように拍で判定
-  }
-  // Harvest presses on empty/purple tiles must not consume the purple judgment beat.
-  if(type==='break'&&NBFlower.at()){
-    const near=nearestBeat(t),reach=near>=nextBeat&&notesWillMove()?near-nextBeat+1:0;
-    if(!notes.some(x=>!x.purple&&x.idx<=player.idx+reach))return;
   }
   const n = nearestBeat(t);
   const diff = t - beatTime(n);
@@ -1728,7 +1720,6 @@ function renderResult(result){
   ov.querySelector('[data-result-skip]').disabled=false;
   ov.querySelector('.scorePanel').classList.remove('scoreLanded');
   ov.querySelectorAll('.resultSpark').forEach(el=>el.remove());
-  try{ov.style.setProperty('--result-scene',`url("${cv.toDataURL()}")`);}catch(_){}
   NBWorkshop.decorateResult(result,ov);
 }
 initResultScreens();
@@ -1800,11 +1791,12 @@ function startResultReveal(result){
   NBWorkshop.animateResult(result,ov,0,0);
   if(reduceMotion.matches){finishResultReveal();NBSound.play('result');return;}
   ov.classList.remove('resultEnter');void ov.offsetWidth;ov.classList.add('resultEnter');
+  const duration=result.newBest||result.clear?850:450;
   const start=performance.now();let lastTick=-1,landed=false,rewarded=false;
   const animate=now=>{
     if(token!==resultRevealToken)return;
-    const age=now-start,p=Math.max(0,Math.min(1,(age-180)/1050)),eased=1-Math.pow(1-p,2);
-    const rp=Math.max(0,Math.min(1,(age-1230)/650));
+    const age=now-start,p=Math.max(0,Math.min(1,age/duration)),eased=1-Math.pow(1-p,2);
+    const rp=Math.max(0,Math.min(1,age/duration));
     NBWorkshop.paintScore(ov.querySelector('[data-result-score]'),Math.round(result.score*eased),result);
     NBWorkshop.animateResult(result,ov,eased,rp);
     const tick=Math.floor(p*9);if(tick!==lastTick&&p>0&&p<1){lastTick=tick;uiTone(440+tick*60,.025);}
@@ -1879,7 +1871,7 @@ function end(clear){
   finishedRun=captureResult(clear);
   diagSave();
   document.querySelectorAll('#controls button').forEach(b=>{b.disabled=true;b.classList.remove('press');});
-  if(!clear){resultTimer=setTimeout(()=>finishResult(false),500);return;}
+  if(!clear){resultTimer=setTimeout(()=>finishResult(false),180);return;}
   hideJudge();
   const p=cellXY(player.idx),r=cv.getBoundingClientRect();
   victoryOrigin={x:r.left+p.x,y:r.top+p.y};
@@ -2042,8 +2034,6 @@ function noteView(nt,t,pre,nb,vp){
 }
 function draw(t){
   g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,boardW,boardH);
-  if(drawRaceIntro(t))return;
-  drawRaceStatus(t);
   // 音の時計を基準に表示だけ動かす。入力ボタンと当たり判定の座標は固定。
   cv.style.transform=`translateY(${impactOffset(t).toFixed(2)}px)`;
   cameraRow=cameraAtTime(t);
@@ -2105,7 +2095,6 @@ function draw(t){
     g.restore();
   }
 
-  NBWorkshop.drawTile(t); // Keep the fleeing character readable in front of distant notes.
   effects=effects.filter(e=>t-e.t<.32);
   for(const e of effects){
     const k=Math.max(0,(t-e.t)/.32),p=cellXY(e.idx);
@@ -2127,7 +2116,7 @@ function draw(t){
   const rDim=rushDimAmount(t);
   if(rDim>0){g.save();g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-atop';g.globalAlpha=.5*rDim;g.fillStyle=poisonHero()?'#12051f':'#050b18';g.fillRect(0,0,g.canvas.width,g.canvas.height);g.restore();}
   drawRushAnim(t);
-  NBFlower.draw(t);
+  NBWorkshop.drawTile(t); // Static diamonds stay separate from note centers.
   drawChar(t);
   if(isTutorial())drawCoachTarget(t);
   drawRushOk(t);
@@ -2214,7 +2203,7 @@ function drawPose(k, x, y){
 function drawChar(t){
   if (t > charUntil) charState = 'idle';
   const p = cellXY(playerVis(t));
-  if (!NBFlower.at() && rushOn() && rushUnits > 0){
+  if (rushOn() && rushUnits > 0){
     const fr = rushUnits / RUSH_FULL, ready = rushReady(), swell = Math.max(0, 1 - (performance.now() - rushGainAt) / 250);
     const R = cell * (.4 + .4 * fr + .12 * swell), rg = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, R);
     const col = ready ? '198,255,68' : '138,243,250';
@@ -2257,9 +2246,8 @@ function checkLines(t){
 function loop(){
   requestAnimationFrame(loop);
   if (state === 'loading') return;
-  const t = ['play','huntIntro','paused','resuming','clear','over'].includes(state) ? songTime() : 0;
+  const t = ['play','paused','resuming','clear','over'].includes(state) ? songTime() : 0;
   { const pn = performance.now(); if (lastFramePerf != null) frameDtMs = r2(pn - lastFramePerf); lastFramePerf = pn; }
-  if(state==='huntIntro')updateRaceIntro(t);
   if (state === 'play'){
     syncClock();
     // Process deadlines and beats in chronological order, including a late frame.
@@ -2270,7 +2258,6 @@ function loop(){
       else{lastBeatLagMs=r2((t-bt)*1000);if(diagRun&&lastBeatLagMs>50)diagEv('beat_late',{beat:nextBeat,lagMs:lastBeatLagMs,frameDtMs});onBeat(nextBeat,bt);nextBeat++;}
     }
     NBWorkshop.tick(t);
-    NBFlower.tick();
     const lapped = checkLines(t);
     if (isTutorial())coachUpdate(t);
     if (state==='play' && !lapped && t > songBuf.duration / rate){
@@ -2287,7 +2274,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v67', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v68', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2458,11 +2445,10 @@ let holdTimer = null, holdStartedPerf = null;
 function startRushHold(device){
   stopRushHold();
   if (state!=='play'||!rushOn() || rushRelease !== 'manual'||isTutorial()&&coach?.phase!=='play') return;
-  if(NBFlower.begin())return;
   holdStartedPerf=performance.now();
   holdTimer = setTimeout(() => { holdTimer = null; holdStartedPerf=null; input('rush', { timeStamp: performance.now() }, device + '-hold'); }, RUSH_HOLD_MS);
 }
-function stopRushHold(){ NBFlower.release();clearTimeout(holdTimer); holdTimer = null; holdStartedPerf=null; }
+function stopRushHold(){clearTimeout(holdTimer); holdTimer = null; holdStartedPerf=null; }
 function bindBtn(id, type){
   const el = document.getElementById(id);
   el.addEventListener('pointerdown', e => { e.preventDefault(); el.classList.add('press'); input(type, e, e.pointerType || 'unknown'); if (type === 'break') startRushHold(e.pointerType || 'touch'); });
@@ -2493,17 +2479,16 @@ function startMusicAt(rawPosition=0,lead=.12){
 // 1周まわった（または曲が終わった）ときに、速くして最初から
 // スコアモード：最後のラインに着いたらコースの頭から続ける。曲・拍・速さはそのまま
 function nextCourse(t){
-  NBFlower.nextCourse();NBWorkshop.nextCourse();
+  NBWorkshop.nextCourse();
   courseLap++; chooseCourse();
   player = { idx: 0, from: 0, at: t }; notes = []; effects = []; fx = []; pendingCheck = []; nextGap = 4; runLen = 1;
   lineK = 0; gIdx = gIndexFor(0); gFrom = gIdx; gMoveAt = -9;
   cameraRow=0;cameraFrom=0;cameraTarget=0;cameraAt=-9;setPalette(courseLap % PALETTES.length);
   revealEnd=REVEAL_ENDS[0];revealFrom=revealEnd;
   texts.push({ s: 'COURSE ' + (courseLap + 1), idx: 0, t, col: '#ffe941', big: true });
-  startRaceEvent();
 }
 function nextLap(t, songEnded){
-  NBFlower.nextCourse();NBWorkshop.nextCourse(); chooseCourse();
+  NBWorkshop.nextCourse(); chooseCourse();
   if(!songEnded){ lap++; rate = Math.min(SPEED_MAX, 1 + lap * SPEED_STEP); applyRate(); diagEv('speed_up', { rate, lap }); } // 足し算で加速（掛け算ではない）
   else { diagAttempt++; diagEv('song_restart', { reason: 'ゴール前に曲が終わった。この挑戦の集計は破棄', lap, attempt: diagAttempt }); }
   // 周回突破と速度アップを伝える（点のボーナスはなし）
@@ -2519,7 +2504,6 @@ function nextLap(t, songEnded){
   moveLocked = true; setLockUI(true); // 新しい周も、最初の1個を壊すまで進めない
   stopMoveScheduler(); startMusicAt(); startMoveScheduler();
   texts.push({ s: 'LAP ' + (lap + 1), idx: 0, t: songTime(), col: '#ffe941', big: true });
-  startRaceEvent();
 }
 function startGame(){
   if(NBMeasure.active()||(['clear','over'].includes(state)&&finishedRun?.measurement))NBMeasure.arm();
@@ -2533,15 +2517,15 @@ function startGame(){
   if(isTutorial())coachStart();else layout();
   if(ctx.state==='suspended')ctx.resume();
   startMusicAt();state='play';
-  if(!startRaceEvent())startMoveScheduler();
+  startMoveScheduler();
   if(isTutorial())coachUI();
 }
 function pauseGame(){
   NBWorkshop.flush();
   stopRushHold();
   if(state==='resuming'){cancelResume();state='paused';}
-  else if(state==='play'||state==='huntIntro'){
-    racePauseKind=state;pausedAt=songTime();state='paused';stopSong();stopMoveScheduler();hideJudge();
+  else if(state==='play'){
+    pausedAt=songTime();state='paused';stopSong();stopMoveScheduler();hideJudge();
     diagEv('pause',{pausedAt:r4(pausedAt)});diagSave();
   }else return;
   document.getElementById('pauseDiag').hidden=!diagRun;
@@ -2567,9 +2551,8 @@ async function resumeGame(){
     const elapsed=ctx.currentTime-resumeStarted,count=Math.max(0,5-Math.floor((elapsed+1e-6)/SPB));
     if(count!==lastCount){counter.textContent=count;lastCount=count;uiTone(count?660:1046,.07);}
     if(count===0){
-      resumeFloor=pausedAt;startMusicAt(pausedAt+timingMs/1000,0);state=racePauseKind==='huntIntro'?'huntIntro':'play';racePauseKind=null;resumePerf=performance.now();diagEv('resume',{from:r4(pausedAt)});pausedAt=null;
-      document.querySelectorAll('#controls button').forEach(b=>b.disabled=state==='huntIntro');
-      if(state==='huntIntro')songGain?.gain.setTargetAtTime(.62,ctx.currentTime,.06);
+      resumeFloor=pausedAt;startMusicAt(pausedAt+timingMs/1000,0);state='play';resumePerf=performance.now();diagEv('resume',{from:r4(pausedAt)});pausedAt=null;
+      document.querySelectorAll('#controls button').forEach(b=>b.disabled=false);
       if(isTutorial())coachUI();if(state==='play')startMoveScheduler();document.getElementById('pauseBtn').focus();
       resumeTimer=setTimeout(()=>counter.remove(),Math.min(SPB*650,350));return;
     }
@@ -2577,7 +2560,7 @@ async function resumeGame(){
   };tick();
 }
 function returnToSongs(){
-  clearRacePresentation();NBWorkshop.suspendRun();
+  NBWorkshop.suspendRun();
   NBWorkshop.flush(); NBWorkshop.clearToasts(); NBWorkshop.renderSongs();
   if(state==='play'||state==='paused'||state==='resuming'){diagEv('quit',{});diagSave();}
   cancelResume();cancelResultReveal();stopMoveScheduler();stopSong();stopRushHold();
@@ -2594,7 +2577,7 @@ document.getElementById('resumeBtn').addEventListener('click',resumeGame);
 document.getElementById('pauseRetry').addEventListener('click',startGame);
 document.getElementById('pauseQuit').addEventListener('click',returnToSongs);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseGame();});
-window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(state==='play'||state==='huntIntro'||state==='resuming')pauseGame();else if(state==='paused')resumeGame();}});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(state==='play'||state==='resuming')pauseGame();else if(state==='paused')resumeGame();}});
 document.querySelectorAll('[data-retry]').forEach(b=>b.addEventListener('click',startGame));
 document.querySelectorAll('[data-select]').forEach(b=>b.addEventListener('click',returnToSongs));
 function showTimingValue(){document.getElementById('timingValue').textContent=`${timingMs>0?'+':''}${timingMs} ms`;document.getElementById('timingRange').value=timingMs;}
@@ -2686,7 +2669,7 @@ document.getElementById('myPlay').addEventListener('click',()=>{
 
 // ===== 起動 =====
 NBWorkshop.init();
-NBMenu.init();initRaceControls();NBMeasure.init();NBFlower.init();
+NBMenu.init();NBMeasure.init();
 (async () => {
   layout();
   ctx = new (window.AudioContext || window.webkitAudioContext)();

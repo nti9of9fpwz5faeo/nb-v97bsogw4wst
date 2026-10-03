@@ -1,0 +1,3 @@
+const test=require('node:test'),assert=require('node:assert/strict'),G=require('../gems.js');
+test('fixed course diamonds exclude spawn and goal',()=>{assert.deepEqual(G.create(35).tiles.map(t=>t.idx),[7,14,21,28]);assert.equal(G.create(Infinity).tiles.length,0);});
+test('normal and skipped traversal collect once; backwards and repeated frames do not pay',()=>{const c=G.create(35);assert.equal(G.collect(c,6.99).length,0);assert.equal(G.collect(c,7).length,1);assert.equal(G.collect(c,23).length,2);assert.equal(G.collect(c,23).length,0);assert.equal(G.collect(c,0).length,0);assert.equal(G.collect(c,NaN).length,0);assert.equal(G.collect(c,35).length,1);assert.equal(G.collect(G.create(35),7).length,1);});

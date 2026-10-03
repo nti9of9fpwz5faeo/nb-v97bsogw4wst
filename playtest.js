@@ -1,7 +1,7 @@
 /* Passive movement telemetry. No difficulty changes, timing changes or rank estimates. */
 (function(root){
   'use strict';
-  const chase=typeof module!=='undefined'?require('./chase.js'):root.NBChase;
+  const chase=typeof module!=='undefined'?require('./movement.js'):root.NBMovement;
   const round=n=>Math.round(n*1000)/1000;
   function create(meta){return {meta:{...meta},meter:null,lastPlayer:0,lastTime:null,wasRush:false,done:false,
     seconds:0,opportunities:0,taken:0,missed:0,normalSteps:0,occupiedSteps:0,purpleSteps:0,rushSteps:0,rushes:0,warps:0,speedMin:Infinity,speedMax:0,

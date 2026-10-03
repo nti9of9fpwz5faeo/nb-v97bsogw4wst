@@ -1,6 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {create,KEY,rankInfo}=require('../progression.js');
-const chase=require('../chase.js');
 function memory(){const data=new Map();return {data,getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value)};}
 test('no early mission flood; rewards persist and cannot be awarded twice',()=>{const s=memory(),p=create(s);assert.equal(p.update({hits:10},{steps:10,combo:10}).reward,0);assert.equal(p.update({hits:140}).reward,0);assert.equal(p.claimMissions().amount,13);const q=create(s);assert.equal(q.update({hits:1}).reward,0);assert.equal(q.state.gems,13);p.flush();q.flush();});
 test('record missions use maximum rather than repeated HUD sums',()=>{const p=create(memory());assert.equal(p.update({}, {steps:100}).reward,0);assert.equal(p.claimMissions().amount,8);assert.equal(p.update({}, {steps:100}).reward,0);assert.equal(p.update({}, {steps:10}).reward,0);p.flush();});

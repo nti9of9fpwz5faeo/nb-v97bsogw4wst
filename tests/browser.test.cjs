@@ -8,11 +8,11 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_PATH || undefined,args:['--no-sandbox','--disable-dev-shm-usage','--autoplay-policy=no-user-gesture-required']});
  const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
  const errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
- await page.goto('http://127.0.0.1:8123');await page.waitForFunction(()=>document.querySelectorAll('.songBtn').length===9);
+ await page.goto('http://127.0.0.1:8123');await page.waitForFunction(()=>state==='ready');
  console.log('ready',await page.evaluate(()=>({state,hero:selectedHero,version:APP_VERSION})),errors);
  await page.screenshot({path:path.join(qa,'home.png')});
- await page.click('[data-nav="missions"]');await page.screenshot({path:path.join(qa,'missions.png')});await page.click('#collectionClose');
- await page.click('[data-nav="shop"]');await page.screenshot({path:path.join(qa,'themes.png')});await page.click('#collectionClose');
+ await page.click('#homeMissions');await page.screenshot({path:path.join(qa,'missions.png')});await page.click('#collectionClose');
+ await page.click('[data-nav="shop"]');await page.click('#themeCatalogOpen');await page.screenshot({path:path.join(qa,'themes.png')});await page.click('#collectionClose');
  await page.evaluate(()=>{playMode='endless';endless=true;setSong(SONGS[3]);songBuf=ctx.createBuffer(1,ctx.sampleRate*120,ctx.sampleRate);startGame();stopMoveScheduler();state='paused';});
  const assert=require('node:assert/strict');
  const actual=await page.evaluate(()=>{
@@ -25,8 +25,8 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
    NBWorkshop.tick(songTime());NBWorkshop.judged('PERFECT',3,songTime());NBWorkshop.flush();
    const second=JSON.parse(localStorage.getItem(NBProgression.KEY));state='paused';return {first,second};
  });
- assert.equal(actual.first.stats.tiles,1);assert.equal(actual.first.stats.hits,4);assert.equal(actual.first.gems,5);assert.deepEqual(actual.first,actual.second);
- console.log('ninja catch, reward once and beat dedup verified');
+ assert.equal(actual.first.stats.tiles,3);assert.equal(actual.first.stats.hits,4);assert.equal(actual.first.gems,3);assert.deepEqual(actual.first,actual.second);
+ console.log('tile passage, reward once and beat dedup verified');
  // Render, skip and render again must never pay again; retry must clear the run summary only.
  await page.evaluate(()=>{state='play';recordSteps=151;moveSteps=70;combo=20;maxCombo=20;NBWorkshop.steps(recordSteps);hp=0;endReason='hp';end(false);finishResult(false);finishResultReveal();});
  const before=await page.evaluate(()=>localStorage.getItem(NBProgression.KEY));
@@ -38,12 +38,13 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
  await page.evaluate(()=>{state='play';hp=0;end(false);finishResult(false);finishResultReveal();});
  assert.equal(await page.evaluate(()=>finishedRun.rewards.total),0);
  console.log('result skip / rerender / retry: no duplicate diamonds, previous records preserved');
- await page.reload();await page.waitForFunction(()=>document.querySelectorAll('.songBtn').length===9);
- assert.equal(await page.evaluate(()=>localStorage.getItem(NBProgression.KEY)),before);
+ const afterRetry=await page.evaluate(()=>localStorage.getItem(NBProgression.KEY));
+ await page.reload();await page.waitForFunction(()=>state==='ready');
+ assert.equal(await page.evaluate(()=>localStorage.getItem(NBProgression.KEY)),afterRetry);
  console.log('reload: wallet and mission state persist');
  // Purchase UI needs two taps, then selection cannot spend a second time.
  await page.evaluate(()=>{playMode='endless';endless=true;setSong(SONGS[3]);songBuf=ctx.createBuffer(1,ctx.sampleRate*120,ctx.sampleRate);startGame();stopMoveScheduler();recordSteps=1200;NBWorkshop.steps(1200);returnToSongs();});
- await page.click('[data-nav="shop"]');const balance0=await page.evaluate(()=>JSON.parse(localStorage.getItem(NBProgression.KEY)).gems);
+ await page.evaluate(()=>NBWorkshop.shoppingGift());await page.click('[data-nav="shop"]');await page.click('#themeCatalogOpen');const balance0=await page.evaluate(()=>JSON.parse(localStorage.getItem(NBProgression.KEY)).gems);
  await page.click('[data-theme="aurora"]');assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem(NBProgression.KEY)).gems),balance0);
  await page.click('[data-theme="aurora"]');
  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem(NBProgression.KEY)).gems),balance0-60);
@@ -75,6 +76,14 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
  assert.equal(await page.evaluate(()=>resultRevealActive),null);
  assert.equal(await page.locator('#overOv').evaluate(el=>el.classList.contains('hide')),true);
  console.log('retry cancels pending result frames and sounds');
+ for(const variant of ['record','clear']){
+  await page.setViewportSize({width:320,height:568});
+  await page.evaluate(variant=>{const result={...captureResult(variant==='clear'),clear:variant==='clear',newBest:true,score:412,best:412,previousBest:342,progression:{rank:3,oldRank:2,need:360,progress:50,totalXP:410,xp:348,reward:10,unlocked:[]},rewards:{total:14,tiles:4,balance:14,missions:[]}};state=result.clear?'clear':'over';document.getElementById(result.clear?'overOv':'clearOv').classList.add('hide');renderResult(result);document.getElementById(result.clear?'clearOv':'overOv').classList.remove('hide');startResultReveal(result);finishResultReveal();},variant);
+  const ov=variant==='clear'?'#clearOv':'#overOv',b=await page.locator(ov+' [data-retry]').boundingBox();assert.ok(b.y+b.height<=568,variant+' retry below fold');assert.equal(await page.locator(ov).evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(11, 25, 44)');
+  await page.screenshot({path:path.join(qa,variant+'-320.png')});await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(qa,variant+'-390.png')});
+ }
+ assert.equal(await page.locator('[src*="flowers.js"],[src*="race.js"],[src*="chase.js"],.flowerHome,.hunterGrades').count(),0);
+ console.log('record / clear: opaque background, 320px retry visible, retired modes absent');
  console.log('browser errors',errors);
 
  await browser.close();server.close();if(errors.length)process.exitCode=1;
