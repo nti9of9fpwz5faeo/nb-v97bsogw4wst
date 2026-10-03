@@ -100,3 +100,5 @@
 .resultScreen .growthLabel [data-xp-earned]{font-size:clamp(17px,5vw,23px);white-space:nowrap}
 
 .hunterGradeButtons{display:grid;grid-template-columns:1fr 1fr;gap:8px}.hunterGradeButtons button{min-height:48px}.hunterGrades{margin-top:16px}
+
+.hunterGrades p{color:#132e4b!important;text-shadow:none!important}
