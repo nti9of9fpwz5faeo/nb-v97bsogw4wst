@@ -1,7 +1,7 @@
 /* v63: repeatable novice tuning, with independent speed, distance, loss and starting gap. */
 let raceIntro=null,raceResult=null,racePauseKind=null;
 const RACE_TEST_KEY='neon-blade-hunter-test-v1';
-const raceSettings={type:'auto',skip:false,full:false,values:{...NBChase.testDefaults}};
+const raceSettings={balanceVersion:66,type:'auto',skip:false,full:false,values:{...NBChase.testDefaults}};
 let raceTestLast=null;
 try{
   const saved=JSON.parse(localStorage.getItem(RACE_TEST_KEY)||'null');
@@ -9,6 +9,7 @@ try{
     raceSettings.values=NBChase.normalizeTest(saved.values);
     if(['auto','off','novice-test',...NBChase.types.map(t=>t.id)].includes(saved.type))raceSettings.type=saved.type;
     raceSettings.skip=!!saved.skip;raceSettings.full=!!saved.full;
+    if(saved.balanceVersion!==66){raceSettings.type='auto';raceSettings.full=false;}
   }
 }catch(_){}
 function raceTestActive(){return !NBMeasure.pending()&&raceSettings.type==='novice-test';}
@@ -54,7 +55,7 @@ function drawRaceStatus(t){
   const el=document.getElementById('raceStatus'),n=NBWorkshop.race();
   let text='',color='#fff';
   if(raceResult&&t<raceResult.until){text=raceResult.text;color=raceResult.color;}
-  else if(n&&!n.done&&n.phase==='chase'){text=n.test?'初級テスト　失ったマス '+n.missed+'/'+n.test.loss+'　あと '+Math.max(0,Math.ceil(n.idx-player.idx))+'マス':n.type.name+'　残りチャンス '+n.remaining+' マス';color=n.type.color;}
+  else if(n&&!n.done&&n.phase==='chase'){text=(n.test?'初級テスト':n.type.name)+'　失ったマス '+n.missed+'/'+n.rules.loss+'　あと '+Math.max(0,Math.ceil(n.idx-player.idx))+'マス';color=n.type.color;}
   el.hidden=!text;if(text){el.textContent=text;el.style.color=color;}
 }
 function initRaceControls(){
@@ -66,6 +67,7 @@ function initRaceControls(){
   document.getElementById('page-settings').insertAdjacentHTML('beforeend',markup(false));
   document.querySelector('#pauseOv .pausePanel').insertAdjacentHTML('beforeend',markup(true));
   document.getElementById('page-home').insertAdjacentHTML('beforeend','<button class="hunterTestLink" id="hunterTestOpen">初級ハンターを調整してテスト ›</button>');
+  document.getElementById('hunterTestOpen').insertAdjacentHTML('beforebegin','<details class="raceTest hunterGrades"><summary>ハンターの等級を選んで試す</summary><p>相手を選んで、好きな曲で挑戦。プレイ記録も自動で残ります。</p><div class="hunterGradeButtons">'+NBChase.types.map(r=>`<button type="button" data-hunter-grade="${r.id}">${r.name}</button>`).join('')+'</div></details>');
   const sync=()=>{
     document.querySelectorAll('[data-race-type]').forEach(e=>e.value=raceSettings.type);
     document.querySelectorAll('[data-race-skip]').forEach(e=>e.checked=raceSettings.skip);
@@ -83,5 +85,7 @@ function initRaceControls(){
   document.querySelector('[data-race-retry]').onclick=startGame;
   document.querySelector('[data-race-songs]').onclick=()=>NBMenu.show('songs');
   document.getElementById('hunterTestOpen').onclick=()=>{raceSettings.type='novice-test';changed();NBMenu.show('settings');document.querySelector('#page-settings .raceTest').scrollIntoView({block:'start'});};
+  document.querySelectorAll('[data-hunter-grade]').forEach(e=>e.onclick=()=>{raceSettings.type=e.dataset.hunterGrade;raceSettings.full=false;changed();NBMeasure.arm();NBMenu.show('songs');});
   sync();
+  saveRaceSettings();
 }

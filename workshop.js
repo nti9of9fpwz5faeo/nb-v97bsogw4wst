@@ -91,6 +91,7 @@ window.NBWorkshop = (() => {
     const outcome=NBChase.advance(tile,t,pos,accounting.opportunities,accounting);
     if(!outcome)return;
     const won=outcome==='won',reward=tile.type.reward;
+    NBMeasure.hunter(tile);
     if(tile.test)recordRaceTest(tile);
     if(won){apply({tiles:1},{},reward);NBSound.play('diamond');}
     showRaceResult(won,reward,tile.type.color);

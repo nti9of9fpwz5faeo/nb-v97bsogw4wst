@@ -39,6 +39,7 @@ window.NBMeasure=(()=>{
       ...(r.schemaVersion>=2?[`うちノーツのあるマスへの前進：${r.occupiedSteps}マス（活用率から除外）`,`前進の集計照合：${r.reconciled?'一致':'差異あり'}`,`プレイ速度：×${r.speedMin.toFixed(1)}〜×${r.speedMax.toFixed(1)}`]:['旧方式の記録：v65以降の活用率とは直接比較できません。']),
       `必殺技：${r.rushes}回 ／ ${r.rushSteps}マス`,
       `連続で逃した最多：${r.maxConsecutiveMissed}マス ／ ワープ：${r.warps}回`,
+      ...(r.hunters?.length?['ハンター：'+r.hunters.map(h=>`${h.name} ${h.outcome==='won'?'捕獲':'逃走'}（逃した${h.missed}マス・追跡${h.used}チャンス）`).join('、')]:[]),
       `判定：PERFECT ${r.judgments.PERFECT||0}・GREAT ${r.judgments.GREAT||0}・GOOD ${r.judgments.GOOD||0}・MISS ${r.judgments.MISS||0}`,
       `最大コンボ：${r.maxCombo}`,`20チャンスごとの取りこぼし：${r.sections.map(s=>s.missed+'/'+s.opportunities+(s.speedMin?'（×'+s.speedMin.toFixed(1)+'〜'+s.speedMax.toFixed(1)+'）':'')).join('、')||'まだなし'}`,
       r.interpretation].join('\n');
@@ -91,5 +92,6 @@ window.NBMeasure=(()=>{
     $('measureCopy').onclick=async()=>{if(!shown)return;try{await navigator.clipboard.writeText(summary(shown));$('measureShareStatus').textContent='コピーしました。このチャットに貼り付けてください。';}catch(_){const e=$('measureCopyText');e.hidden=false;e.value=summary(shown);e.focus();e.select();$('measureShareStatus').textContent='表示された記録を長押ししてコピーしてください。';}};
     $('measureOv').addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();$('measureOv').classList.add('hide');}});refresh();
   }
-  return {active,pending,arm,start,tick,finish,interrupt,init,decorate,show,summary,warp:()=>NBPlaytest.warp(current),purple:()=>NBPlaytest.purple(current)};
+  function hunter(n){if(active())current.hunters.push({name:n.type.name,id:n.type.id,outcome:n.outcome,reason:n.reason||null,missed:n.missed,used:n.used,travelled:n.travelled,rules:{...n.rules}});}
+  return {active,pending,arm,start,tick,finish,interrupt,init,decorate,show,summary,hunter,warp:()=>NBPlaytest.warp(current),purple:()=>NBPlaytest.purple(current)};
 })();

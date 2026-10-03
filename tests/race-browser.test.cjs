@@ -18,16 +18,16 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
    const at=player.idx;notes=[{id:503,idx:at,purple:true,hp:1},{id:504,idx:at+1,hp:1}];NBWorkshop.tick(songTime(),true);
    doAction('charge',nearestBeat(songTime()),songTime(),0,null);NBWorkshop.tick(songTime());
    return {afterMove,afterWait,afterPurple:n.remaining,moved:player.idx-at,pushed:notes[0].idx-at};
- });assert.deepEqual(safe,{afterMove:29,afterWait:26,afterPurple:25,moved:1,pushed:2});
+ });assert.deepEqual(safe,{afterMove:20,afterWait:17,afterPurple:17,moved:1,pushed:2});
  const blocked=await page.evaluate(()=>{const n=NBWorkshop.race(),remaining=n.remaining;notes=[{id:510,idx:player.idx,from:player.idx,at:-9,pop:-9,hit:true,hp:1}];NBWorkshop.tick(songTime(),true);for(let i=0;i<100;i++)NBWorkshop.tick(songTime());return n.remaining===remaining;});assert.ok(blocked);
  // Logical destination is assigned ahead of the blade; capture follows its visual traversal.
  await page.evaluate(()=>{raceSettings.type='divine';raceSettings.full=true;startGame();nextBeat=100000;moveLocked=false;notes=[];doRush(songTime(),null,false);});
- await page.waitForFunction(()=>!rushAnim);assert.equal(await page.evaluate(()=>player.idx),5);assert.equal(await page.evaluate(()=>NBWorkshop.race().done),false);assert.equal(await page.evaluate(()=>NBWorkshop.race().remaining),24);
- await page.evaluate(()=>{player.idx=9;player.from=9;notes=[];NBWorkshop.tick(songTime(),true);rushUnits=120;doRush(songTime(),null,false);});
+ await page.waitForFunction(()=>!rushAnim);assert.equal(await page.evaluate(()=>player.idx),5);assert.equal(await page.evaluate(()=>NBWorkshop.race().done),false);assert.equal(await page.evaluate(()=>NBWorkshop.race().remaining),5);
+ await page.evaluate(()=>{player.idx=9;player.from=9;NBWorkshop.race().observedPlayer=9;NBWorkshop.race().lastPlayer=9;notes=[];NBWorkshop.tick(songTime(),true);rushUnits=120;doRush(songTime(),null,false);});
  await page.waitForFunction(()=>rushAnim?.moved);assert.equal(await page.evaluate(()=>NBWorkshop.race().done),false);
  await page.waitForFunction(()=>NBWorkshop.race().done);assert.equal(await page.evaluate(()=>NBWorkshop.race().outcome),'won');
  await page.evaluate(()=>{for(let i=0;i<10;i++)NBWorkshop.tick(songTime());NBWorkshop.flush();});assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem(NBProgression.KEY)).stats.tiles),1);
- const warp=await page.evaluate(()=>{raceSettings.type='master';startGame();nextBeat=100000;moveLocked=false;const n=NBWorkshop.race();n.origin=28;n.idx=40;n.from=40;n.used=6;n.remaining=20;n.observedPlayer=35;player.idx=35;notes=[];NBWorkshop.tick(songTime(),true);nextCourse(songTime());const same=NBWorkshop.race()===n;return {same,remaining:n.remaining,idx:n.idx,state};});assert.deepEqual(warp,{same:true,remaining:20,idx:5,state:'play'});
+ const warp=await page.evaluate(()=>{raceSettings.type='master';startGame();nextBeat=100000;moveLocked=false;const n=NBWorkshop.race();n.origin=28;n.idx=40;n.from=40;n.used=6;n.missed=3;n.remaining=15;n.lastPlayer=35;n.observedPlayer=35;player.idx=35;notes=[];NBWorkshop.tick(songTime(),true);nextCourse(songTime());const same=NBWorkshop.race()===n;return {same,remaining:n.remaining,idx:n.idx,state};});assert.deepEqual(warp,{same:true,remaining:15,idx:5,state:'play'});
  await page.evaluate(()=>{raceSettings.type='off';startGame();nextBeat=100000;});assert.equal(await page.evaluate(()=>NBWorkshop.race()),null);
  // Real result capture, XP persistence and measured intermediate bar fill.
  await page.evaluate(()=>{courseLap=4;player.idx=32;recordSteps=172;runSteps=172;moveSteps=172;counts.PERFECT=152;maxCombo=62;NBWorkshop.steps(172);for(let i=0;i<152;i++)NBWorkshop.judged('PERFECT',i,0);endReason='hp';end(false);finishedRun.previousBest=227;finishedRun.best=227;finishedRun.newBest=false;finishResult(false);});

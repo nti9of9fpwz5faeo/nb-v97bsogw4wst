@@ -25,7 +25,7 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
  });
  await page.waitForFunction(()=>!rushAnim);await page.evaluate(()=>{NBWorkshop.tick(songTime());endReason='song';end(true);finishResult(true);finishResultReveal();});
  const report=await page.evaluate(()=>finishedRun.measurement);
- assert.equal(report.taken,4);assert.equal(report.missed,1);assert.equal(report.normalSteps,4);assert.equal(report.purpleSteps,1);assert.equal(report.rushSteps,5);assert.equal(report.rushes,1);assert.equal(report.completed,true);assert.equal(report.schemaVersion,2);assert.equal(report.reconciled,true);assert.equal(report.taken+report.occupiedSteps,report.normalSteps);assert.equal(report.appVersion,'v65');
+ assert.equal(report.taken,4);assert.equal(report.missed,1);assert.equal(report.normalSteps,4);assert.equal(report.purpleSteps,1);assert.equal(report.rushSteps,5);assert.equal(report.rushes,1);assert.equal(report.completed,true);assert.equal(report.schemaVersion,2);assert.equal(report.reconciled,true);assert.equal(report.taken+report.occupiedSteps,report.normalSteps);assert.equal(report.appVersion,'v66');
  assert.equal(await page.locator('#clearOv [data-measure-result]').isVisible(),true);
  await page.click('#clearOv [data-measure-result]');await page.screenshot({path:out+'/record-390.png'});
  assert.ok((await page.locator('#measureText').textContent()).includes('順位や、初級の難易度を決める評価ではありません'));
@@ -43,6 +43,20 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
  const history=await page.evaluate(()=>JSON.parse(localStorage.getItem('neon-blade-play-records-v1')));assert.equal(history.length,2);assert.equal(history[1].completed,false);
  await page.evaluate(()=>NBMeasure.show());assert.equal(await page.locator('#measureHistory option').count(),2);await page.locator('#measureHistory').selectOption(report.id);
  assert.ok((await page.locator('#measureText').textContent()).includes('必殺技：1回 ／ 5マス'));
- assert.deepEqual(errors,[]);console.log('PASS: ordinary one-song entry, no manual tuning, telemetry after hunter ends, movement/wait/purple/ultimate separation, result, JSON+TXT downloads, no duplicate save, reload/history, interruption, 320px layout.');
+ await page.click('#measureClose');await page.setViewportSize({width:390,height:844});
+ for(const id of ['novice','adept','master','divine']){
+  await page.evaluate(()=>{returnToSongs();NBMenu.show('home');document.querySelector('.hunterGrades').open=true;});
+  await page.click(`[data-hunter-grade=${id}]`);await page.locator('#songList .songBtn:not(.lockedSong)').first().click();await page.waitForFunction(()=>state==='play');
+  const actual=await page.evaluate(()=>({id:NBWorkshop.race().type.id,rules:NBWorkshop.race().rules,active:NBMeasure.active(),full:rushUnits}));
+  assert.equal(actual.id,id);assert.equal(actual.active,true);assert.equal(actual.full,0);
+  if(id==='novice'){
+   assert.deepEqual(actual.rules,{speed:25,distance:20,loss:20,gap:3,smokeEvery:0,smokeStep:0});
+   const hunt=await page.evaluate(()=>{stopMoveScheduler();nextBeat=100000;moveLocked=false;notes=[];NBWorkshop.tick(songTime(),true);for(let i=0;i<3;i++)freeMove(songTime(),null);endReason='hp';end(false);finishResult(false);return finishedRun.measurement.hunters[0];});
+   assert.equal(hunt.id,'novice');assert.equal(hunt.outcome,'won');assert.equal(hunt.missed,0);
+  }
+ }
+ await page.evaluate(()=>{returnToSongs();localStorage.setItem(RACE_TEST_KEY,JSON.stringify({...raceSettings,balanceVersion:65,type:'novice-test',full:true}));});
+ await page.reload();await page.waitForFunction(()=>state==='ready');assert.equal(await page.evaluate(()=>raceSettings.type),'auto');assert.equal(await page.evaluate(()=>raceSettings.full),false);
+ assert.deepEqual(errors,[]);console.log('PASS: ordinary one-song entry, no manual tuning, telemetry after hunter ends, movement/wait/purple/ultimate separation, result, JSON+TXT downloads, reload/history, interruption, 320px layout, all four grade buttons, capture record, old-test migration.');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});

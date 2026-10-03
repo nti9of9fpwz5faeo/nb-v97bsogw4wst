@@ -2,13 +2,13 @@
 (function(root){
   'use strict';
   const types=[
-    {id:'novice',name:'初級',reward:5,color:'#73eaff',gap:7,budget:30,flee:8},
-    {id:'adept',name:'中級',reward:15,color:'#ffd44f',gap:8,budget:28,flee:10},
-    {id:'master',name:'上級',reward:40,color:'#e878ff',gap:10,budget:26,flee:12},
-    {id:'divine',name:'神級',reward:150,color:'#fff4b1',gap:12,budget:24,flee:10}
+    {id:'novice',name:'初級',reward:5,color:'#73eaff',speed:25,distance:20,loss:20,gap:3},
+    {id:'adept',name:'中級',reward:15,color:'#ffd44f',speed:40,distance:28,loss:20,gap:5},
+    {id:'master',name:'上級',reward:40,color:'#e878ff',speed:50,distance:36,loss:18,gap:7},
+    {id:'divine',name:'神級',reward:150,color:'#fff4b1',speed:75,distance:60,loss:5,gap:12,smokeEvery:8,smokeStep:2}
   ];
   const tuning={spawnChance:.22,divineChance:.01};
-  const testDefaults={speed:80,distance:30,loss:10,gap:5};
+  const testDefaults={speed:25,distance:20,loss:20,gap:3};
   const testLimits={speed:[10,150,5],distance:[5,300,5],loss:[1,50,1],gap:[1,30,1]};
   function normalizeTest(values={}){
     const result={};
@@ -24,7 +24,8 @@
     const type=types.find(r=>r.id===forced)||types[roll<.60?0:roll<.88?1:roll<.99?2:3];
     const test=forced==='novice'&&settings?normalizeTest(settings):null;
     const actual=test?{...type,gap:test.gap}:type;
-    return {type:actual,test,origin:start,idx:start+actual.gap,from:start+actual.gap,used:0,remaining:test?test.loss:type.budget,
+    const rules=test?{...test}:{speed:type.speed,distance:type.distance,loss:type.loss,gap:type.gap,smokeEvery:type.smokeEvery||0,smokeStep:type.smokeStep||0};
+    return {type:actual,test,rules,smokeCount:0,origin:start,idx:start+actual.gap,from:start+actual.gap,used:0,remaining:rules.loss,
       missed:0,travelled:0,playerTravelled:0,lastPlayer:start,observedPlayer:start,observedRush:false,
       phase:forced?'chase':'armed',done:false,outcome:null,moveAt:-9,events:[],meter:null,expiresAt:null};
   }
@@ -56,32 +57,23 @@
   function advance(n,t,player,opportunities=0,accounting=null){
     if(!n||n.done||n.phase!=='chase')return null;
     if(n.retime){if(n.expiresAt!==null)n.expiresAt=t+n.graceRemaining;n.retime=false;}
-    if(n.test){
+    {
+      const rules=n.rules;
       const moved=Math.max(0,player-n.lastPlayer);n.lastPlayer=player;n.playerTravelled+=moved;
       n.used+=Math.max(0,opportunities);
-      n.missed+=accounting?.missed??Math.max(0,opportunities-moved);n.remaining=Math.max(0,n.test.loss-n.missed);
+      n.missed+=accounting?.missed??Math.max(0,opportunities-moved);n.remaining=Math.max(0,rules.loss-n.missed);
       // Crossing, including an ultimate, catches immediately without a hidden minimum chase length.
       if(player>=n.idx)return settle(n,'won',t);
-      n.travelled=Math.min(n.test.distance,Math.floor(n.used*n.test.speed/100));
-      const to=n.origin+n.test.gap+n.travelled;
-      if(to>n.idx){n.from=n.idx;n.idx=to;n.moveAt=t;}
+      const smokeCount=rules.smokeEvery?Math.floor(n.used/rules.smokeEvery):0;
+      const jumped=smokeCount>n.smokeCount;n.smokeCount=smokeCount;
+      n.travelled=Math.min(rules.distance,Math.floor(n.used*rules.speed/100)+smokeCount*(rules.smokeStep||0));
+      const to=n.origin+rules.gap+n.travelled;
+      if(to>n.idx){n.from=n.idx;n.idx=to;n.moveAt=t;if(jumped)n.events.push({idx:n.from,t},{idx:n.idx,t});}
       if(!n.remaining){n.reason='missed';return settle(n,'lost',t);}
-      if(n.travelled>=n.test.distance&&n.expiresAt===null){n.reason='distance';n.expiresAt=t+.32;}
+      if(n.travelled>=rules.distance&&n.expiresAt===null){n.reason='distance';n.expiresAt=t+.32;}
       if(n.expiresAt!==null&&t>=n.expiresAt)return settle(n,'lost',t);
       return null;
     }
-    // A move or an ultimate crossing wins before the opponent's next step.
-    if(player>=n.idx)return settle(n,'won',t);
-    n.used=Math.min(n.type.budget,n.used+Math.max(0,opportunities));n.remaining=n.type.budget-n.used;
-    let steps=Math.floor(n.used/n.type.budget*n.type.flee);
-    // God alternates walking and two-cell smoke jumps. All movement uses the same opportunity clock.
-    if(n.type.id==='divine'&&steps%5===3)steps--;
-    const to=n.origin+n.type.gap+steps;
-    if(to>n.idx){const jump=to-n.idx>1&&n.type.id==='divine';n.from=n.idx;n.idx=to;n.moveAt=t;
-      if(jump)n.events.push({idx:n.from,t},{idx:n.idx,t});}
-    if(!n.remaining&&n.expiresAt===null)n.expiresAt=t+.32;
-    if(n.expiresAt!==null&&t>=n.expiresAt)return settle(n,'lost',t);
-    return null;
   }
   function warp(n,length=35,t=0){
     if(!n||n.done)return;n.idx-=length;n.from=n.idx;n.origin-=length;n.lastPlayer-=length;n.observedPlayer=0;n.observedRush=false;n.meter=null;n.events=[];n.moveAt=-9;

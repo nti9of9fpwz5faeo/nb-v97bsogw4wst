@@ -1,10 +1,10 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const C=require('../chase.js');
-const spawn=(values={})=>C.spawn(()=>0,'novice',0,{...C.testDefaults,...values});
+const spawn=(values={})=>C.spawn(()=>0,'novice',0,{speed:80,distance:30,loss:10,gap:5,...values});
 test('four values are clamped, defaults are independent, normal game retains its configuration',()=>{
- assert.deepEqual(C.normalizeTest({speed:Infinity,distance:999,loss:-8,gap:2.9}),{speed:80,distance:300,loss:1,gap:3});
+ assert.deepEqual(C.normalizeTest({speed:Infinity,distance:999,loss:-8,gap:2.9}),{speed:25,distance:300,loss:1,gap:3});
  const settings={...C.testDefaults},n=C.spawn(()=>0,'novice',0,settings);settings.speed=150;
- assert.equal(n.test.speed,80);assert.equal(n.idx,5);assert.equal(n.remaining,10);
+ assert.equal(n.test.speed,25);assert.equal(n.idx,3);assert.equal(n.remaining,20);
  assert.equal(C.spawn(()=>0,'novice',0).test,null);assert.equal(C.spawn(()=>0,'divine',0,settings).test,null);
 });
 test('safe movement consumes opportunities but does not count as lost; tenth wasted cell loses',()=>{
