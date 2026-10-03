@@ -82,12 +82,13 @@ window.NBWorkshop = (() => {
     if(!tile||tile.done)return;
     if(tile.phase==='armed'){
       if(player.idx<14)return;
-      tile.phase='chase';tile.meter=null;showHunterArrival(tile);
+      tile.phase='chase';tile.meter=null;tile.observedPlayer=player.idx;showHunterArrival(tile);
     }
     const pos=rushAnim?playerVis(t):player.idx;
-    const snapshot=NBChase.sample(player.idx,notes,moveLocked,gIdx);
-    const opportunities=NBChase.observe(tile,snapshot,rebase||!!rushAnim);
-    const outcome=NBChase.advance(tile,t,pos,rushAnim?0:opportunities+bonus);
+    const snapshot=NBChase.sample(player.idx,notes,moveLocked,gIdx,GOAL_INDEX);
+    const accounting=NBChase.account(tile,snapshot,{moved:Math.max(0,pos-tile.observedPlayer),rebase,bonus,special:!!rushAnim||tile.observedRush});
+    tile.observedPlayer=pos;tile.observedRush=!!rushAnim;
+    const outcome=NBChase.advance(tile,t,pos,accounting.opportunities,accounting);
     if(!outcome)return;
     const won=outcome==='won',reward=tile.type.reward;
     if(tile.test)recordRaceTest(tile);

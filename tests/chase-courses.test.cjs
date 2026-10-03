@@ -6,8 +6,8 @@ test('random event chance and all four forced opponents',()=>{
  for(const r of C.types){const n=chase(r.id);assert.equal(n.type.id,r.id);assert.ok(n.idx>5);assert.equal(n.remaining,r.budget);}
  const values=[0,.999];assert.equal(C.spawn(()=>values.shift()).type.id,'divine');
 });
-test('two empty cells offer one safe move, three offer two; blocked and locked offer none',()=>{
- assert.equal(C.sample(0,[{id:1,idx:3}]).capacity,1);assert.equal(C.sample(0,[{id:1,idx:4}]).capacity,2);
+test('every empty destination is a legal move; blocked and locked offer none',()=>{
+ assert.equal(C.sample(0,[{id:1,idx:2}]).capacity,1);assert.equal(C.sample(0,[{id:1,idx:3}]).capacity,2);assert.equal(C.sample(0,[{id:1,idx:4}]).capacity,3);
  assert.equal(C.sample(0,[{id:1,idx:0},{id:2,idx:4}]).capacity,0);
  assert.equal(C.sample(0,[{id:1,idx:4}],true).capacity,0);
 });
@@ -15,7 +15,7 @@ test('waiting wastes exactly the closing opportunities, repeated frames do not',
  const n=chase(),s=q=>C.sample(0,[{id:1,idx:q}]);
  assert.equal(C.observe(n,s(5)),0);for(let i=0;i<120;i++)assert.equal(C.observe(n,s(5)),0);
  for(const q of [4,3,2]){const used=C.observe(n,s(q));assert.equal(used,1);C.advance(n,0,0,used);}
- assert.equal(n.remaining,27);assert.equal(C.observe(n,s(1)),0);assert.equal(C.observe(n,s(0)),0);
+ assert.equal(n.remaining,27);assert.equal(C.observe(n,s(1)),1);assert.equal(C.observe(n,s(0)),0);
 });
 test('moving uses the same capacity once; next window and purple knockback rebase correctly',()=>{
  const n=chase();C.observe(n,C.sample(0,[{id:1,idx:4}]));

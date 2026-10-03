@@ -19,11 +19,13 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
   freeMove(songTime(),null);notes[0].idx--;NBWorkshop.tick(songTime());
   const at=player.idx;notes=[{id:601,idx:at,from:at,at:-9,pop:-9,purple:true,hp:1},{id:602,idx:at+1,from:at+1,at:-9,pop:-9,hp:1}];NBWorkshop.tick(songTime(),true);
   doAction('charge',nearestBeat(songTime()),songTime(),0,null);NBWorkshop.tick(songTime());
+  // Two advances into the last empty destination reproduced the v64 undercount.
+  for(let i=0;i<2;i++){notes=[{id:650+i,idx:player.idx+2,from:player.idx+2,at:-9,pop:-9,hp:1}];NBWorkshop.tick(songTime(),true);freeMove(songTime(),null);}
   notes=[];NBWorkshop.tick(songTime(),true);rushUnits=120;doRush(songTime(),null,false);
  });
  await page.waitForFunction(()=>!rushAnim);await page.evaluate(()=>{NBWorkshop.tick(songTime());endReason='song';end(true);finishResult(true);finishResultReveal();});
  const report=await page.evaluate(()=>finishedRun.measurement);
- assert.equal(report.taken,2);assert.equal(report.missed,1);assert.equal(report.normalSteps,2);assert.equal(report.purpleSteps,1);assert.equal(report.rushSteps,5);assert.equal(report.rushes,1);assert.equal(report.completed,true);assert.equal(report.appVersion,'v64');
+ assert.equal(report.taken,4);assert.equal(report.missed,1);assert.equal(report.normalSteps,4);assert.equal(report.purpleSteps,1);assert.equal(report.rushSteps,5);assert.equal(report.rushes,1);assert.equal(report.completed,true);assert.equal(report.schemaVersion,2);assert.equal(report.reconciled,true);assert.equal(report.taken+report.occupiedSteps,report.normalSteps);assert.equal(report.appVersion,'v65');
  assert.equal(await page.locator('#clearOv [data-measure-result]').isVisible(),true);
  await page.click('#clearOv [data-measure-result]');await page.screenshot({path:out+'/record-390.png'});
  assert.ok((await page.locator('#measureText').textContent()).includes('順位や、初級の難易度を決める評価ではありません'));

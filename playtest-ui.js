@@ -19,7 +19,7 @@ window.NBMeasure=(()=>{
   }
   function tick(t,rebase=false,bonus=0){
     if(!active())return;
-    NBPlaytest.observe(current,{player:rushAnim?playerVis(t):player.idx,snapshot:NBChase.sample(player.idx,notes,moveLocked,gIdx),time:t,rush:!!rushAnim,rebase,bonus});
+    NBPlaytest.observe(current,{player:rushAnim?playerVis(t):player.idx,snapshot:NBChase.sample(player.idx,notes,moveLocked,gIdx,GOAL_INDEX),time:t,rush:!!rushAnim,rebase,bonus,rate});
   }
   function finish(result={},interrupted=false){
     if(!active())return null;
@@ -36,10 +36,11 @@ window.NBMeasure=(()=>{
       `進むチャンス：${r.opportunities}マス ／ 活かした：${r.taken} ／ 逃した：${r.missed}`,
       `チャンスの活用率：${r.usagePercent===null?'算出できる記録なし':r.usagePercent+'%'}`,
       `前進：${r.normalSteps}マス（うち紫ノーツ ${r.purpleSteps}マス）`,
+      ...(r.schemaVersion>=2?[`うちノーツのあるマスへの前進：${r.occupiedSteps}マス（活用率から除外）`,`前進の集計照合：${r.reconciled?'一致':'差異あり'}`,`プレイ速度：×${r.speedMin.toFixed(1)}〜×${r.speedMax.toFixed(1)}`]:['旧方式の記録：v65以降の活用率とは直接比較できません。']),
       `必殺技：${r.rushes}回 ／ ${r.rushSteps}マス`,
       `連続で逃した最多：${r.maxConsecutiveMissed}マス ／ ワープ：${r.warps}回`,
       `判定：PERFECT ${r.judgments.PERFECT||0}・GREAT ${r.judgments.GREAT||0}・GOOD ${r.judgments.GOOD||0}・MISS ${r.judgments.MISS||0}`,
-      `最大コンボ：${r.maxCombo}`,`20チャンスごとの取りこぼし：${r.sections.map(s=>s.missed+'/'+s.opportunities).join('、')||'まだなし'}`,
+      `最大コンボ：${r.maxCombo}`,`20チャンスごとの取りこぼし：${r.sections.map(s=>s.missed+'/'+s.opportunities+(s.speedMin?'（×'+s.speedMin.toFixed(1)+'〜'+s.speedMax.toFixed(1)+'）':'')).join('、')||'まだなし'}`,
       r.interpretation].join('\n');
   }
   function show(report=records.at(-1)){

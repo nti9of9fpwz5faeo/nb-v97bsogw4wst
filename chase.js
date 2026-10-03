@@ -25,14 +25,15 @@
     const test=forced==='novice'&&settings?normalizeTest(settings):null;
     const actual=test?{...type,gap:test.gap}:type;
     return {type:actual,test,origin:start,idx:start+actual.gap,from:start+actual.gap,used:0,remaining:test?test.loss:type.budget,
-      missed:0,travelled:0,playerTravelled:0,lastPlayer:start,
+      missed:0,travelled:0,playerTravelled:0,lastPlayer:start,observedPlayer:start,observedRush:false,
       phase:forced?'chase':'armed',done:false,outcome:null,moveAt:-9,events:[],meter:null,expiresAt:null};
   }
-  function sample(player,notes,locked=false,source=player+2){
+  function sample(player,notes,locked=false,source=player+2,goal=Infinity){
     const sorted=notes.slice().sort((a,b)=>a.idx-b.idx),blocking=sorted.find(n=>n.idx<=player);
-    if(locked||blocking)return {key:blocking?.id??'locked',capacity:0,purple:!locked&&blocking?.purple?blocking.id:null};
+    if(locked||blocking||player>=goal)return {key:blocking?.id??'locked',capacity:0,blocked:!!locked||!!blocking,purple:!locked&&player<goal&&blocking?.purple?blocking.id:null};
     const next=sorted.find(n=>n.idx>player);
-    return {key:next?.id??'source',capacity:Math.max(0,(next?.idx??source)-player-2),purple:null};
+    // Every empty destination before the next note is traversable by freeMove.
+    return {key:next?.id??'source',capacity:Math.max(0,Math.min(goal-player,(next?.idx??source)-player-1)),blocked:false,purple:null};
   }
   function observe(n,snapshot,rebase=false){
     const old=n.meter;n.meter=snapshot;
@@ -43,14 +44,22 @@
     const purple=old.purple!=null&&old.purple!==snapshot.purple?1:0;
     return ordinary+purple;
   }
+  function account(n,snapshot,{moved=0,rebase=false,bonus=0,special=false}={}){
+    const closed=observe(n,snapshot,rebase||special)+(special?0:Math.max(0,bonus));
+    if(special)return {opportunities:0,taken:0,missed:0,occupied:0};
+    const steps=Math.max(0,moved),taken=snapshot.blocked?0:steps,occupied=steps-taken;
+    // Actual successful moves remain counted across boundary changes/rebases. Never charge them twice.
+    const missed=Math.max(0,closed-steps);
+    return {opportunities:taken+missed,taken,missed,occupied};
+  }
   function settle(n,outcome,t){n.done=true;n.outcome=outcome;n.finishedAt=t;return outcome;}
-  function advance(n,t,player,opportunities=0){
+  function advance(n,t,player,opportunities=0,accounting=null){
     if(!n||n.done||n.phase!=='chase')return null;
     if(n.retime){if(n.expiresAt!==null)n.expiresAt=t+n.graceRemaining;n.retime=false;}
     if(n.test){
       const moved=Math.max(0,player-n.lastPlayer);n.lastPlayer=player;n.playerTravelled+=moved;
       n.used+=Math.max(0,opportunities);
-      n.missed+=Math.max(0,opportunities-moved);n.remaining=Math.max(0,n.test.loss-n.missed);
+      n.missed+=accounting?.missed??Math.max(0,opportunities-moved);n.remaining=Math.max(0,n.test.loss-n.missed);
       // Crossing, including an ultimate, catches immediately without a hidden minimum chase length.
       if(player>=n.idx)return settle(n,'won',t);
       n.travelled=Math.min(n.test.distance,Math.floor(n.used*n.test.speed/100));
@@ -75,10 +84,10 @@
     return null;
   }
   function warp(n,length=35,t=0){
-    if(!n||n.done)return;n.idx-=length;n.from=n.idx;n.origin-=length;n.lastPlayer-=length;n.meter=null;n.events=[];n.moveAt=-9;
+    if(!n||n.done)return;n.idx-=length;n.from=n.idx;n.origin-=length;n.lastPlayer-=length;n.observedPlayer=0;n.observedRush=false;n.meter=null;n.events=[];n.moveAt=-9;
     // Song time may restart in endless mode. Preserve the final input window too.
     n.graceRemaining=n.expiresAt===null?0:Math.max(0,n.expiresAt-t);n.retime=true;
   }
-  const api={types,rarities:types,tuning,testDefaults,testLimits,normalizeTest,spawn,sample,observe,advance,warp};
+  const api={types,rarities:types,tuning,testDefaults,testLimits,normalizeTest,spawn,sample,observe,account,advance,warp};
   if(typeof module!=='undefined')module.exports=api;else root.NBChase=api;
 })(typeof window==='undefined'?globalThis:window);
