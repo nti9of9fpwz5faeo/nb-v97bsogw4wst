@@ -61,7 +61,7 @@ window.NBWorkshop = (() => {
   function beginRace(forced=null){
     if(!active()||player.idx!==0)return null;
     if(tile&&!tile.done)return tile;
-    tile=NBChase.spawn(Math.random,forced,forced?0:14);return tile;
+    tile=NBChase.spawn(Math.random,forced,forced?0:14,raceTestActive()?raceSettings.values:null);return tile;
   }
   function race(){return tile;}
   function judged(word, beat, t) {
@@ -88,6 +88,7 @@ window.NBWorkshop = (() => {
     const outcome=NBChase.advance(tile,t,pos,rushAnim?0:opportunities+bonus);
     if(!outcome)return;
     const won=outcome==='won',reward=tile.type.reward;
+    if(tile.test)recordRaceTest(tile);
     if(won){apply({tiles:1},{},reward);NBSound.play('diamond');}
     showRaceResult(won,reward,tile.type.color);
     if(won)fx.push({type:'milestone',idx:player.idx,t,d:.65,col:tile.type.color});
