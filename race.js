@@ -37,6 +37,7 @@ function showHunterArrival(n){
   if(!raceSettings.skip){raceResult={until:songTime()+1.8,text:n.type.name+'の忍者が出現！ 追いついてダイヤを奪え',color:n.type.color};uiTone(880,.08);}
 }
 function startRaceEvent(){
+  if(NBFlower.enabled()){clearRacePresentation();return false;}
   if(isTutorial()||state!=='play'||player.idx!==0)return false;
   clearRacePresentation();
   const previous=NBWorkshop.race();

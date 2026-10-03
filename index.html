@@ -301,7 +301,7 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=66.1">
+<link rel="stylesheet" href="workshop.css?v=67">
 </head>
 <body>
 <div id="app">
@@ -331,7 +331,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v66</span>
+  <span id="verBadge">バージョン v67</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -368,8 +368,9 @@
 <script src="menu.js?v=62"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
-<script src="workshop.js?v=66"></script>
-<script src="race.js?v=66"></script>
+<script src="workshop.js?v=67"></script>
+<script src="race.js?v=67"></script>
+<script src="flowers.js?v=67"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -740,7 +741,7 @@ function reset(){
   nextGap = 4; runLen = 1;
   lineK = 0; gIdx = gIndexFor(0); gMoveAt = -9; gFrom = gIdx;
   counts = { PERFECT: 0, GREAT: 0, GOOD: 0, MISS: 0 }; combo = 0; maxCombo = 0;
-  drawHud(); NBWorkshop.resetRun();
+  drawHud(); NBWorkshop.resetRun();NBFlower.reset();
 }
 let lineK = 0, gIdx = 0, gFrom = 0, gMoveAt = -9;
 function gIndexFor(k){ return Math.min(LINES[k] + G_AHEAD, EXIT_INDEX); }
@@ -1219,7 +1220,7 @@ function freeMove(t, rec, charge=false){
   if (player.idx >= GOAL_INDEX){ diagResult(rec, { status: 'invalid', reason: 'ゴール位置' }); return; }
   diagResult(rec, { status: 'moved', reason: '進む（判定なし）', playerFrom: player.idx, playerTo: player.idx + 1 });
   fx.push({ type: 'ghost', idx: player.idx, t, d: .13, flip: facesRight(player.idx) });
-  player.from = player.idx; player.idx += 1; player.at = t;
+  player.from = player.idx; player.idx += 1; player.at = t;NBFlower.moved();
   fx.push({ type: 'spark', idx: player.idx, t, d: .2 });
   charState = 'move'; charUntil = t + 0.18;
   if (scoreOn()){ runSteps++; addScore(movePrice, t, true); }
@@ -1395,7 +1396,7 @@ function drawRushAnim(t){
 }
 // 満タンで発動できるとき、キャラの横に小さく「OK」（点滅なし）
 function drawRushOk(t){
-  if (!rushOn() || rushRelease !== 'manual' || rushAnim || moveLocked || !rushReady()) return;
+  if (NBFlower.blocksRush() || !rushOn() || rushRelease !== 'manual' || rushAnim || moveLocked || !rushReady()) return;
   const p = cellXY(playerVis(t)), fs = Math.max(10, Math.round(cell * .24)), x = p.x + cell * .42, y = p.y - cell * .46;
   g.save(); g.font = `900 ${fs}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
   const w = g.measureText('OK').width + fs * .8, h = fs * 1.35;
@@ -1405,7 +1406,7 @@ function drawRushOk(t){
 // 必殺技の発動：目の前のブロックがその場で回り出し、溜めのあとに5マス突き抜ける
 function doRush(t, rec, auto){
   const cells = Math.min(RUSH_CELLS, GOAL_INDEX - player.idx);
-  if (cells <= 0 || moveLocked || !rushReady()) return false;
+  if (NBFlower.blocksRush() || cells <= 0 || moveLocked || !rushReady()) return false;
   const P = player.idx, to = P + cells;
   rushAnim = { from: P, to, t0: t, moveAt: t + RUSH_WINDUP_SEC, dur: cells * RUSH_CELL_SEC, blown: takeBlown(to), trail: P, moved: false };
   rushGuardUntil = rushAnim.moveAt + rushAnim.dur + RUSH_GUARD_SEC;
@@ -1428,6 +1429,7 @@ function doAction(type, n, t, diff, rec){
   acted = n;
   const word = judgeOf(diff), sub = Math.abs(diff) <= 0.045 ? '' : (diff < 0 ? 'FAST' : 'LATE');
   if (type === 'charge'){
+    const harvesting=NBFlower.at();
     const target = notes.filter(x => x.purple && x.idx <= player.idx).sort((a,b)=>a.idx-b.idx)[0];
     if (!target){ diagResult(rec, { status: 'moved', reason: '突進の対象がもういないので、普通に進む' }); freeMove(t, null); return; }
     notes.splice(notes.indexOf(target), 1);
@@ -1438,14 +1440,14 @@ function doAction(type, n, t, diff, rec){
     if(isTutorial())coachOnBreak(target,word,t,true);
     if (word === 'PERFECT') countPerfect(t);
     const elPts = (speedOn() || endlessScoreOn()) ? elBreak(word, sub) : null;
-    diagResult(rec, { status: 'judged', judge: word, charge: true, points: elPts, combo: speedOn() ? combo : null, beat: n, offsetMs: r2(diff * 1000), noteId: target.id, playerFrom: player.idx, playerTo: player.idx + 1 });
+    diagResult(rec, { status: 'judged', judge: word, charge: true, points: elPts, combo: speedOn() ? combo : null, beat: n, offsetMs: r2(diff * 1000), noteId: target.id, playerFrom: player.idx, playerTo: player.idx + (harvesting?0:1) });
     diagShow('突進 ' + word + '：' + msText(diff * 1000));
     // 目の前に隙間なく続くブロックを、まとめて1マス押し返す（突き破る）。進んだ先でぶつからない
-    const chain = []; for (let k = player.idx + 1; ; k++){ const nt = notes.find(x => x.idx === k); if (!nt) break; chain.push(nt); }
+    const chain = []; for (let k = player.idx + 1; !harvesting; k++){ const nt = notes.find(x => x.idx === k); if (!nt) break; chain.push(nt); }
     for (const nt of chain){ nt.from = nt.idx; nt.idx += 1; nt.at = t; }
     if (chain.length) fx.push({ type: 'stomp', idx: player.idx + 1, t, d: .2, strong: false });
     diagEv('knockback', { inputId: rec?.inputId ?? null, count: chain.length, noteIds: chain.map(x => x.id) });
-    freeMove(t, null, true); // 壊したマスの先へ1マス進む（前進の点・歩数もここで入る）
+    if(harvesting)NBWorkshop.tick(t,true);else freeMove(t, null, true); // 花の上では紫を壊すだけ。それ以外は1マス進む（前進の点・歩数もここで入る）
     charState = 'slash'; charUntil = t + 0.22;
     return;
   }
@@ -1506,6 +1508,7 @@ function input(type, e, device){
   if (ev.perf != null && ev.perf < resumePerf){ diagInputEnd(rec, { status: 'invalid', reason: 'ポーズ解除前に押された入力' }); if (type === 'break') diagShow('無効：ポーズ解除前の入力'); return; }
   if (rushAnim && type !== 'rush'){ diagInputEnd(rec, { status: 'invalid', reason: '必殺技の発動中' }); return; }
   if (type === 'rush'){
+    if(NBFlower.blocksRush())return;
     if (rushOn() && rushRelease === 'manual' && rushReady() && !moveLocked && !rushAnim){ diagInputEnd(rec, { status: 'immediate', reason: 'ため解放（判定なし）' }); doRush(tNow, rec, false); }
     else diagInputEnd(rec, { status: 'invalid', reason: 'ためが足りない（解放できない）' });
     return;
@@ -1513,6 +1516,11 @@ function input(type, e, device){
   if (type === 'move'){
     if (!chargeTarget()){ diagInputEnd(rec, { status: 'immediate', reason: '進むは判定なし・押した瞬間に実行' }); freeMove(tNow, rec); return; } // 進むは拍に関係なく、押した瞬間に動く
     type = 'charge'; if (rec) rec.type = 'charge'; // 紫ノーツへの突進：ブレイクと同じように拍で判定
+  }
+  // Harvest presses on empty/purple tiles must not consume the purple judgment beat.
+  if(type==='break'&&NBFlower.at()){
+    const near=nearestBeat(t),reach=near>=nextBeat&&notesWillMove()?near-nextBeat+1:0;
+    if(!notes.some(x=>!x.purple&&x.idx<=player.idx+reach))return;
   }
   const n = nearestBeat(t);
   const diff = t - beatTime(n);
@@ -1865,7 +1873,7 @@ function finishResult(clear){
 function end(clear){
   if(state!=='play')return;
   NBWorkshop.tick(songTime());
-  stopMoveScheduler();document.getElementById('pauseBtn').disabled=true;tutClearUI();
+  stopRushHold();stopMoveScheduler();document.getElementById('pauseBtn').disabled=true;tutClearUI();
   state=clear?'clear':'over';
   diagEv(clear?'clear':'game_over',{endReason,endReasonText:END_REASON[endReason]||null,endless:speedOn()?{score:elScore,recordSteps,moveSteps,maxCombo}:null,hp,counts:{...counts},maxCombo,distance:endlessScoreOn()?distance():null,warps:endlessScoreOn()?sectionNo-1:null,...diagCtx()});
   finishedRun=captureResult(clear);
@@ -2119,6 +2127,7 @@ function draw(t){
   const rDim=rushDimAmount(t);
   if(rDim>0){g.save();g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-atop';g.globalAlpha=.5*rDim;g.fillStyle=poisonHero()?'#12051f':'#050b18';g.fillRect(0,0,g.canvas.width,g.canvas.height);g.restore();}
   drawRushAnim(t);
+  NBFlower.draw(t);
   drawChar(t);
   if(isTutorial())drawCoachTarget(t);
   drawRushOk(t);
@@ -2205,7 +2214,7 @@ function drawPose(k, x, y){
 function drawChar(t){
   if (t > charUntil) charState = 'idle';
   const p = cellXY(playerVis(t));
-  if (rushOn() && rushUnits > 0){
+  if (!NBFlower.at() && rushOn() && rushUnits > 0){
     const fr = rushUnits / RUSH_FULL, ready = rushReady(), swell = Math.max(0, 1 - (performance.now() - rushGainAt) / 250);
     const R = cell * (.4 + .4 * fr + .12 * swell), rg = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, R);
     const col = ready ? '198,255,68' : '138,243,250';
@@ -2261,6 +2270,7 @@ function loop(){
       else{lastBeatLagMs=r2((t-bt)*1000);if(diagRun&&lastBeatLagMs>50)diagEv('beat_late',{beat:nextBeat,lagMs:lastBeatLagMs,frameDtMs});onBeat(nextBeat,bt);nextBeat++;}
     }
     NBWorkshop.tick(t);
+    NBFlower.tick();
     const lapped = checkLines(t);
     if (isTutorial())coachUpdate(t);
     if (state==='play' && !lapped && t > songBuf.duration / rate){
@@ -2277,7 +2287,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v66', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v67', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2448,10 +2458,11 @@ let holdTimer = null, holdStartedPerf = null;
 function startRushHold(device){
   stopRushHold();
   if (state!=='play'||!rushOn() || rushRelease !== 'manual'||isTutorial()&&coach?.phase!=='play') return;
+  if(NBFlower.begin())return;
   holdStartedPerf=performance.now();
   holdTimer = setTimeout(() => { holdTimer = null; holdStartedPerf=null; input('rush', { timeStamp: performance.now() }, device + '-hold'); }, RUSH_HOLD_MS);
 }
-function stopRushHold(){ clearTimeout(holdTimer); holdTimer = null; holdStartedPerf=null; }
+function stopRushHold(){ NBFlower.release();clearTimeout(holdTimer); holdTimer = null; holdStartedPerf=null; }
 function bindBtn(id, type){
   const el = document.getElementById(id);
   el.addEventListener('pointerdown', e => { e.preventDefault(); el.classList.add('press'); input(type, e, e.pointerType || 'unknown'); if (type === 'break') startRushHold(e.pointerType || 'touch'); });
@@ -2482,7 +2493,7 @@ function startMusicAt(rawPosition=0,lead=.12){
 // 1周まわった（または曲が終わった）ときに、速くして最初から
 // スコアモード：最後のラインに着いたらコースの頭から続ける。曲・拍・速さはそのまま
 function nextCourse(t){
-  NBWorkshop.nextCourse();
+  NBFlower.nextCourse();NBWorkshop.nextCourse();
   courseLap++; chooseCourse();
   player = { idx: 0, from: 0, at: t }; notes = []; effects = []; fx = []; pendingCheck = []; nextGap = 4; runLen = 1;
   lineK = 0; gIdx = gIndexFor(0); gFrom = gIdx; gMoveAt = -9;
@@ -2492,7 +2503,7 @@ function nextCourse(t){
   startRaceEvent();
 }
 function nextLap(t, songEnded){
-  NBWorkshop.nextCourse(); chooseCourse();
+  NBFlower.nextCourse();NBWorkshop.nextCourse(); chooseCourse();
   if(!songEnded){ lap++; rate = Math.min(SPEED_MAX, 1 + lap * SPEED_STEP); applyRate(); diagEv('speed_up', { rate, lap }); } // 足し算で加速（掛け算ではない）
   else { diagAttempt++; diagEv('song_restart', { reason: 'ゴール前に曲が終わった。この挑戦の集計は破棄', lap, attempt: diagAttempt }); }
   // 周回突破と速度アップを伝える（点のボーナスはなし）
@@ -2675,7 +2686,7 @@ document.getElementById('myPlay').addEventListener('click',()=>{
 
 // ===== 起動 =====
 NBWorkshop.init();
-NBMenu.init();initRaceControls();NBMeasure.init();
+NBMenu.init();initRaceControls();NBMeasure.init();NBFlower.init();
 (async () => {
   layout();
   ctx = new (window.AudioContext || window.webkitAudioContext)();

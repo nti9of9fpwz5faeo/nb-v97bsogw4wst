@@ -59,7 +59,7 @@ window.NBWorkshop = (() => {
     tick(songTime()); NBMeasure.warp();run.serial++; run.seen.clear(); if(tile&&!tile.done)NBChase.warp(tile,GOAL_INDEX,songTime());else tile=null; NBSound.play('warp');
   }
   function beginRace(forced=null){
-    if(!active()||player.idx!==0)return null;
+    if(NBFlower.enabled()||!active()||player.idx!==0)return null;
     if(tile&&!tile.done)return tile;
     tile=NBChase.spawn(Math.random,forced,forced?0:14,raceTestActive()?raceSettings.values:null);return tile;
   }
@@ -105,6 +105,7 @@ window.NBWorkshop = (() => {
   function finish(result) {
     if (!initialized) return;
     result.measurement=NBMeasure.finish(result);
+    if(NBFlower.enabled())result.flowers=NBFlower.snapshot();
     if(run&&!run.finished&&!isTutorial()){
       const xp= Math.floor(Math.min(2000,(run.hits*.5)+(result.mode==='distance'?result.score:result.moveSteps||0)));
       result.progression=ledger.awardXP(xp);run.gems+=result.progression.reward;
@@ -276,7 +277,7 @@ window.NBWorkshop = (() => {
     </div>`;
   }
   function decorateResult(result, ov) {
-    NBMeasure.decorate(result,ov);
+    NBMeasure.decorate(result,ov);NBFlower.decorate(result,ov);
     const steps = result.mode === 'distance' || result.mode === 'endless' && result.scoring === 'rush';
     const comparable = steps || result.endless || scoreOn();
     const prev = result.previousBest || 0, delta = result.score - prev;
@@ -297,7 +298,7 @@ window.NBWorkshop = (() => {
     const rewards = result.rewards || {total: 0, tiles: 0, missions: [], balance: ledger?.state.gems || 0};
     ov.querySelector('[data-result-gems]').textContent = '＋' + rewards.total;
     ov.querySelector('[data-result-balance]').textContent = fmt(rewards.balance);
-    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? [rewards.tiles?'忍者捕獲 ＋'+rewards.tiles:'',rewards.total>rewards.tiles?'ランクアップ ＋'+(rewards.total-rewards.tiles):''].filter(Boolean).join(' ／ ') : isTutorial() ? '本編でダイヤに挑戦！' : '忍者を捕まえてダイヤをGET';
+    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? [rewards.tiles?'忍者捕獲 ＋'+rewards.tiles:'',rewards.total>rewards.tiles?'ランクアップ ＋'+(rewards.total-rewards.tiles):''].filter(Boolean).join(' ／ ') : isTutorial() ? '本編でダイヤに挑戦！' : 'ミッション達成でダイヤをGET';
     const growth=ov.querySelector('[data-result-growth]');growth.innerHTML='';
     if(result.progression){const p=result.progression;growth.innerHTML=`<div class="growthLabel"><b>${p.rank>p.oldRank?'RANK UP　'+p.oldRank+' → '+p.rank:'RANK '+p.rank}</b><span data-xp-earned>＋0 XP</span></div><progress max="${p.need}" value="0" aria-label="次のランクへの進捗"></progress><small>${p.unlocked.length?'新しい曲を解放！':'次のランクまで '+(p.need-p.progress)+' XP'}</small>`;}
     const highlights=[];
