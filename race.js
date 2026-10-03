@@ -11,7 +11,7 @@ try{
     raceSettings.skip=!!saved.skip;raceSettings.full=!!saved.full;
   }
 }catch(_){}
-function raceTestActive(){return raceSettings.type==='novice-test';}
+function raceTestActive(){return !NBMeasure.pending()&&raceSettings.type==='novice-test';}
 function saveRaceSettings(){try{localStorage.setItem(RACE_TEST_KEY,JSON.stringify(raceSettings));return true;}catch(_){return false;}}
 function raceTestSummary(){
   const n=raceTestLast;if(!n)return 'まだ結果はありません';

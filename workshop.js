@@ -51,12 +51,12 @@ window.NBWorkshop = (() => {
     if (!initialized) return;
     ledger.flush(); clearToasts();
     run = {gems: 0, tileGems: 0, missions: [], rushes: 0, serial: 0, hits:0, stepValue:0, id:globalThis.crypto?.randomUUID?.() || String(Date.now())+Math.random(), seen: new Set(), finished: false};
-    tile=null; refreshWallet();
+    tile=null; NBMeasure.start();refreshWallet();
   }
-  function suspendRun() { if (ledger) ledger.flush(); run = null; tile = null; }
+  function suspendRun() { NBMeasure.interrupt();if (ledger) ledger.flush(); run = null; tile = null; }
   function nextCourse() {
     if (!active()) return;
-    tick(songTime()); run.serial++; run.seen.clear(); if(tile&&!tile.done)NBChase.warp(tile,GOAL_INDEX,songTime());else tile=null; NBSound.play('warp');
+    tick(songTime()); NBMeasure.warp();run.serial++; run.seen.clear(); if(tile&&!tile.done)NBChase.warp(tile,GOAL_INDEX,songTime());else tile=null; NBSound.play('warp');
   }
   function beginRace(forced=null){
     if(!active()||player.idx!==0)return null;
@@ -77,7 +77,9 @@ window.NBWorkshop = (() => {
   }
   function renderHunter() {} // No persistent panel competing with the notes.
   function tick(t,rebase=false,bonus=0){
-    if(!active()||!tile||tile.done)return;
+    if(!active())return;
+    NBMeasure.tick(t,rebase,bonus);
+    if(!tile||tile.done)return;
     if(tile.phase==='armed'){
       if(player.idx<14)return;
       tile.phase='chase';tile.meter=null;showHunterArrival(tile);
@@ -100,6 +102,7 @@ window.NBWorkshop = (() => {
   }
   function finish(result) {
     if (!initialized) return;
+    result.measurement=NBMeasure.finish(result);
     if(run&&!run.finished&&!isTutorial()){
       const xp= Math.floor(Math.min(2000,(run.hits*.5)+(result.mode==='distance'?result.score:result.moveSteps||0)));
       result.progression=ledger.awardXP(xp);run.gems+=result.progression.reward;
@@ -271,6 +274,7 @@ window.NBWorkshop = (() => {
     </div>`;
   }
   function decorateResult(result, ov) {
+    NBMeasure.decorate(result,ov);
     const steps = result.mode === 'distance' || result.mode === 'endless' && result.scoring === 'rush';
     const comparable = steps || result.endless || scoreOn();
     const prev = result.previousBest || 0, delta = result.score - prev;

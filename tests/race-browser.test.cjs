@@ -19,7 +19,7 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
    doAction('charge',nearestBeat(songTime()),songTime(),0,null);NBWorkshop.tick(songTime());
    return {afterMove,afterWait,afterPurple:n.remaining,moved:player.idx-at,pushed:notes[0].idx-at};
  });assert.deepEqual(safe,{afterMove:29,afterWait:26,afterPurple:25,moved:1,pushed:2});
- const blocked=await page.evaluate(()=>{const n=NBWorkshop.race(),remaining=n.remaining;notes=[{id:510,idx:player.idx,hit:true,hp:1}];NBWorkshop.tick(songTime(),true);for(let i=0;i<100;i++)NBWorkshop.tick(songTime());return n.remaining===remaining;});assert.ok(blocked);
+ const blocked=await page.evaluate(()=>{const n=NBWorkshop.race(),remaining=n.remaining;notes=[{id:510,idx:player.idx,from:player.idx,at:-9,pop:-9,hit:true,hp:1}];NBWorkshop.tick(songTime(),true);for(let i=0;i<100;i++)NBWorkshop.tick(songTime());return n.remaining===remaining;});assert.ok(blocked);
  // Logical destination is assigned ahead of the blade; capture follows its visual traversal.
  await page.evaluate(()=>{raceSettings.type='divine';raceSettings.full=true;startGame();nextBeat=100000;moveLocked=false;notes=[];doRush(songTime(),null,false);});
  await page.waitForFunction(()=>!rushAnim);assert.equal(await page.evaluate(()=>player.idx),5);assert.equal(await page.evaluate(()=>NBWorkshop.race().done),false);assert.equal(await page.evaluate(()=>NBWorkshop.race().remaining),24);
