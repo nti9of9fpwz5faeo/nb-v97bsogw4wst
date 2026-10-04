@@ -302,8 +302,8 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=84">
-<link rel="stylesheet" href="result-arcade.css?v=84">
+<link rel="stylesheet" href="workshop.css?v=85">
+<link rel="stylesheet" href="result-arcade.css?v=85">
 </head>
 <body>
 <div id="app">
@@ -333,7 +333,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">v84</span>
+  <span id="verBadge">v85</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -362,17 +362,17 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
-<script src="progression.js?v=84"></script>
-<script src="movement.js?v=84"></script>
-<script src="gems.js?v=84"></script>
-<script src="playtest.js?v=84"></script>
-<script src="playtest-ui.js?v=84"></script>
+<script src="progression.js?v=85"></script>
+<script src="movement.js?v=85"></script>
+<script src="gems.js?v=85"></script>
+<script src="playtest.js?v=85"></script>
+<script src="playtest-ui.js?v=85"></script>
 <script src="courses.js?v=56"></script>
-<script src="menu.js?v=84"></script>
+<script src="menu.js?v=85"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
-<script src="workshop.js?v=84"></script>
-<script src="mining.js?v=84"></script>
+<script src="workshop.js?v=85"></script>
+<script src="mining.js?v=85"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -385,6 +385,7 @@ const SONGS = [
   { name: 'Bass Arcade',         file: 'audio/bass_arcade.mp3', bpm: 134.4, offset: 0.085, level: 'むずかしい', hard: true, dense: true },
   { name: 'Frostbite Breakbeat', file: 'audio/frostbite.mp3', bpm: 129.9, offset: 0.21, level: 'クール', hard: true },
   { name: 'Metronomic Drive',    file: 'audio/metronomic_drive.mp3', bpm: 147.96, offset: 0.0842, level: 'ふつう', chart: 'charts/metronomic_beats.json' }, // 実際は約148BPM（197は測り間違い）。テンポがゆるやかに揺れるので拍データで追従
+  { name: 'Frozen Judgment',     file: 'audio/frozen_judgment.mp3', bpm: 150.012, offset: 0.0047, level: 'ふつう' }, // SUNO。音源を解析：150.012BPMで最後まで一定（強い拍350個のズレは中央2ms・最大35ms）。テンポが揺れないので拍データは不要
 ];
 let difficulty='normal';
 // Difficulty is fixed; old HARD preferences no longer affect gameplay.
@@ -2316,7 +2317,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v84', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v85', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
