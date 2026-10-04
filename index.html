@@ -301,8 +301,8 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=74">
-<link rel="stylesheet" href="result-arcade.css?v=74">
+<link rel="stylesheet" href="workshop.css?v=75">
+<link rel="stylesheet" href="result-arcade.css?v=75">
 </head>
 <body>
 <div id="app">
@@ -332,7 +332,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">v74</span>
+  <span id="verBadge">v75</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -361,17 +361,17 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
-<script src="progression.js?v=74"></script>
-<script src="movement.js?v=74"></script>
-<script src="gems.js?v=74"></script>
-<script src="playtest.js?v=74"></script>
-<script src="playtest-ui.js?v=74"></script>
+<script src="progression.js?v=75"></script>
+<script src="movement.js?v=75"></script>
+<script src="gems.js?v=75"></script>
+<script src="playtest.js?v=75"></script>
+<script src="playtest-ui.js?v=75"></script>
 <script src="courses.js?v=56"></script>
-<script src="menu.js?v=74"></script>
+<script src="menu.js?v=75"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
-<script src="workshop.js?v=74"></script>
-<script src="mining.js?v=74"></script>
+<script src="workshop.js?v=75"></script>
+<script src="mining.js?v=75"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -1016,6 +1016,18 @@ function drawJudgeFrame(t){
   if(isTutorial()||!['play','paused','resuming'].includes(state)||rushAnim)return;
   const p=cellXY(playerVis(t)),r=cell*.52,L=cell*.17;
   g.save();g.lineCap='round';g.lineJoin='round';
+  // 縮む輪っか：いちばん近いノーツが近づくほど小さくなり、枠にピタッと重なった瞬間がブレイクのタイミング（紫は「進む」で壊すので出さない）
+  const nt=notes.filter(x=>x.idx>=player.idx).sort((a,b)=>a.idx-b.idx)[0];
+  if(nt&&!nt.purple){
+    const b0=beatTime(nextBeat-1),b1=beatTime(nextBeat),f=notesWillMove()&&b1>b0?Math.min(1,Math.max(0,(t-b0)/(b1-b0))):0;
+    const left=nt.hit?Math.max(0,(beatTime((nt.hitBeat??nextBeat-1)+1)-t)/SPB):Math.max(0,nt.idx-player.idx-f);
+    if(left<2){
+      const h=r*(1+left*.55),a=Math.min(1,(2-left)/.6);
+      g.globalAlpha=a*.45;g.strokeStyle='#081221';g.lineWidth=Math.max(4,cell*.085);rr(g,p.x-h,p.y-h,h*2,h*2,cell*.1);g.stroke();
+      g.globalAlpha=a;g.strokeStyle='#fff6ad';g.lineWidth=Math.max(2,cell*.045);rr(g,p.x-h,p.y-h,h*2,h*2,cell*.1);g.stroke();
+      g.globalAlpha=1;
+    }
+  }
   for(const [col,w] of [['#081221',Math.max(5,cell*.12)],['#ffe768',Math.max(2.5,cell*.055)]]){
     g.strokeStyle=col;g.lineWidth=w;
     for(const sx of [-1,1])for(const sy of [-1,1]){g.beginPath();g.moveTo(p.x+sx*(r-L),p.y+sy*r);g.lineTo(p.x+sx*r,p.y+sy*r);g.lineTo(p.x+sx*r,p.y+sy*(r-L));g.stroke();}
@@ -2301,7 +2313,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v74', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v75', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;

@@ -6,7 +6,7 @@ const url=process.env.NB_PUBLIC_URL,server=url?null:http.createServer((req,res)=
  const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/tmp/chromium',proxy:url&&process.env.HTTPS_PROXY?{server:process.env.HTTPS_PROXY}:undefined,args:['--no-sandbox','--disable-dev-shm-usage','--autoplay-policy=no-user-gesture-required']});
  try{
   const page=await browser.newPage({ignoreHTTPSErrors:!!url,viewport:{width:390,height:844}}),errors=[];page.on('pageerror',e=>(errors.push(String(e)),console.error('PAGE',String(e))));
-  console.log('browser launched');await page.goto(url||'http://127.0.0.1:8140');console.log('page loaded');await page.waitForFunction(()=>state==='ready',{},{timeout:20000});console.log('ready');assert.equal(await page.evaluate(()=>APP_VERSION),'v74');
+  console.log('browser launched');await page.goto(url||'http://127.0.0.1:8140');console.log('page loaded');await page.waitForFunction(()=>state==='ready',{},{timeout:20000});console.log('ready');assert.equal(await page.evaluate(()=>APP_VERSION),'v75');
   await page.click('[data-nav="songs"]');await page.screenshot({path:out+'/songs.png'});
   const results=await page.evaluate(()=>{
    playMode='distance';endless=true;setSong(SONGS[3]);songBuf=ctx.createBuffer(1,ctx.sampleRate*120,ctx.sampleRate);startGame();stopMoveScheduler();stopSong();nextBeat=100000;moveLocked=false;notes=[];player={idx:3,from:3,at:-9};
