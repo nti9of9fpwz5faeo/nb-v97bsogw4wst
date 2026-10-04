@@ -2,10 +2,10 @@
 (function(root){
   'use strict';
   const types=Object.freeze([
-    Object.freeze({id:'novice',name:'初級',value:5,weight:.60,shine:.18}),
-    Object.freeze({id:'adept',name:'中級',value:15,weight:.28,shine:.25}),
-    Object.freeze({id:'master',name:'上級',value:40,weight:.11,shine:.34}),
-    Object.freeze({id:'divine',name:'神級',value:150,weight:.01,shine:.44})
+    Object.freeze({id:'novice',name:'初級',value:5,weight:.60,shine:.18,hits:4,color:'#d8f5ff'}),
+    Object.freeze({id:'adept',name:'中級',value:15,weight:.28,shine:.25,hits:6,color:'#43d6ff'}),
+    Object.freeze({id:'master',name:'上級',value:40,weight:.11,shine:.34,hits:8,color:'#ba7cff'}),
+    Object.freeze({id:'divine',name:'神級',value:150,weight:.01,shine:.44,hits:12,color:'#ffc45c'})
   ]);
   const chance=.08;
   function hash(value){let x=value>>>0;x^=x>>>16;x=Math.imul(x,0x7feb352d);x^=x>>>15;x=Math.imul(x,0x846ca68b);return (x^(x>>>16))>>>0;}

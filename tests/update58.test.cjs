@@ -25,7 +25,7 @@ test('ad adapter does not award for unconfigured, dismissed, failed, or wrong-ru
 const html=fs.readFileSync('index.html','utf8');
 test('off-beat MISS consumes target and loses exactly one life; empty presses do nothing',()=>{
  const start=html.indexOf('function input('),end=html.indexOf('// 判定で音を変える',start);
- const x={state:'play',isTutorial:()=>false,songTime:()=>1,eventPerfTime:()=>({perf:1000}),performance:{now:()=>1000},diagInput:()=>({inputId:1}),diagInputEnd(){},diagTarget(){},diagShow(){},resumePerf:0,rushAnim:null,nearestBeat:()=>2,beatTime:()=>.75,WINDOW:.13,nextBeat:3,notesWillMove:()=>true,notes:[{id:1,idx:0}],player:{idx:0},r2:v=>v,hitGuard:()=>false,damage:()=>{x.hp--;x.misses++},NBSound:{play(){}},speedOn:()=>false,msText:String,earlyInput:null,acted:-1,hp:5,misses:0};
+ const x={NBDiamond:{active:()=>false,is:()=>false},state:'play',isTutorial:()=>false,songTime:()=>1,eventPerfTime:()=>({perf:1000}),performance:{now:()=>1000},diagInput:()=>({inputId:1}),diagInputEnd(){},diagTarget(){},diagShow(){},resumePerf:0,rushAnim:null,nearestBeat:()=>2,beatTime:()=>.75,WINDOW:.13,nextBeat:3,notesWillMove:()=>true,notes:[{id:1,idx:0}],player:{idx:0},r2:v=>v,hitGuard:()=>false,damage:()=>{x.hp--;x.misses++},NBSound:{play(){}},speedOn:()=>false,msText:String,earlyInput:null,acted:-1,hp:5,misses:0};
  vm.createContext(x);vm.runInContext(html.slice(start,end),x);x.input('break',{},'test');assert.equal(x.hp,4);assert.equal(x.notes.length,0);assert.equal(x.misses,1);x.input('break',{},'test');assert.equal(x.hp,4);
 });
 test('resume countdown removes pause overlay, keeps gameplay stopped through five beats, then resumes once',async()=>{

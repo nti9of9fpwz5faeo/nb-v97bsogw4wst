@@ -48,14 +48,16 @@ window.NBWorkshop = (() => {
     if (change.reward || change.awarded.length || ledger.error) refreshWallet();
   }
   function resetRun() {
+    NBDiamond.reset();
     if (!initialized) return;
     ledger.flush(); clearToasts();
     run = {gems: 0, tileGems: 0, missions: [], rushes: 0, serial: 0, hits:0, stepValue:0, id:globalThis.crypto?.randomUUID?.() || String(Date.now())+Math.random(), seen: new Set(), finished: false};
     run.gemStyle=gemStyle;run.gemCounts=Object.fromEntries(NBBlockGems.types.map(type=>[type.id,0]));run.gemClaims=new Set();run.gemSoundAt=-Infinity;
     gemCourse=NBBlockGems.create(typeof spawnSeed==='number'?spawnSeed:0);drops=[];NBMeasure.start();refreshWallet();
   }
-  function suspendRun() { NBMeasure.interrupt();if (ledger) ledger.flush(); run = null; gemCourse = null; drops=[]; }
+  function suspendRun() { NBDiamond.reset(); NBMeasure.interrupt();if (ledger) ledger.flush(); run = null; gemCourse = null; drops=[]; }
   function nextCourse() {
+    NBDiamond.reset();
     if (!active()) return;
     tick(songTime()); NBMeasure.warp();run.serial++; run.seen.clear();drops=[];run.gemSoundAt=-Infinity;NBSound.play('warp');
   }
@@ -76,11 +78,11 @@ window.NBWorkshop = (() => {
     NBMeasure.tick(t,rebase,bonus);
   }
   function prepareNote(note){
-    if(initialized&&run&&!run.finished&&!isTutorial())NBBlockGems.assign(note,gemCourse);
+    if(initialized&&run&&!run.finished&&!isTutorial()){NBBlockGems.assign(note,gemCourse);NBDiamond.prepare(note);}
     return note;
   }
   function destroyed(note,t){
-    if(!active()||!note||run.gemClaims.has(note.id))return null;
+    if(!active()||!note||run.gemClaims.has(note.id)||NBDiamond.is(note)&&note.hp>0)return null;
     const type=NBBlockGems.claim(note);if(!type)return null;
     run.gemClaims.add(note.id);run.gemCounts[type.id]++;
     apply({tiles:1},{},type.value);
@@ -98,9 +100,7 @@ window.NBWorkshop = (() => {
     return true;
   }
   function initGemStyles(){
-    try{const value=localStorage.getItem(GEM_STYLE_KEY);if(['glow','hidden'].includes(value))gemStyle=value;}catch(_){}
-    $('songList').insertAdjacentHTML('beforebegin',`<section id="gemStylePicker" aria-labelledby="gemStyleTitle"><h2 id="gemStyleTitle">ブロックのダイヤ</h2><div class="gemStyleSwitch" role="group" aria-label="ダイヤの見え方"><button data-gem-style="glow">① ほのかに光る</button><button data-gem-style="hidden">② 壊すまで秘密</button></div><p>どちらも4種類。ブロックから、たまにダイヤ。</p><p id="gemStyleStatus" role="status"></p></section>`);
-    document.querySelectorAll('[data-gem-style]').forEach(button=>button.addEventListener('click',()=>setGemStyle(button.dataset.gemStyle)));syncGemStyle();
+    $('songList').insertAdjacentHTML('beforebegin',`<section id="gemStylePicker" aria-labelledby="gemStyleTitle"><h2 id="gemStyleTitle">ダイヤブロック</h2><p>見送っても安全。叩くと止まって採掘。</p><p>拍に合わせて割ると、ダイヤ獲得。</p></section>`);
   }
 
   function rush() {
@@ -141,13 +141,17 @@ window.NBWorkshop = (() => {
   }
   function drawGemDrops(t){
     if(!initialized||isTutorial())return;
-    drops=drops.filter(drop=>t>=drop.t&&t-drop.t<.55);
+    drops=drops.filter(drop=>t>=drop.t&&t-drop.t<1.2);
     for(const drop of drops){
-      const k=(t-drop.t)/.55,p=cellXY(drop.idx),size=cell*.34,art=IMG['gems/'+drop.type.id];
-      g.save();g.globalAlpha=1-k;g.translate(p.x,p.y-cell*(.18+(reduceMotion.matches?0:k*.3)));
-      if(art?.naturalWidth)g.drawImage(art,-size/2,-size/2,size,size);
-      else {g.fillStyle='#e1fcff';g.beginPath();g.moveTo(0,-size/2);g.lineTo(size/2,0);g.lineTo(0,size/2);g.lineTo(-size/2,0);g.closePath();g.fill();}
-      g.font=`800 ${Math.max(10,cell*.19)}px system-ui`;g.textAlign='left';g.textBaseline='middle';g.strokeStyle='#081221';g.lineWidth=3;g.strokeText('+'+drop.type.value,size*.6,0);g.fillStyle='#edfdff';g.fillText('+'+drop.type.value,size*.6,0);g.restore();
+      const k=(t-drop.t)/1.2,p=cellXY(drop.idx),size=cell*.6,art=IMG['gems/'+drop.type.id];
+      g.save();g.globalAlpha=Math.min(1,(1-k)*3);g.font=`800 ${Math.max(12,cell*.24)}px system-ui`;
+      const label='獲得 +'+drop.type.value,w=size+g.measureText(label).width+22,h=Math.max(size+10,32);
+      const x=Math.max(w/2+4,Math.min(boardW-w/2-4,p.x)),y=Math.max(h/2+4,p.y-cell*(1.05+(reduceMotion.matches?0:k*.25)));
+      g.translate(x,y);g.fillStyle='#102337';g.strokeStyle=drop.type.color;g.lineWidth=2;rr(g,-w/2,-h/2,w,h,9);g.fill();g.stroke();
+      const ix=-w/2+size/2+8;
+      if(art?.naturalWidth)g.drawImage(art,ix-size/2,-size/2,size,size);
+      else {g.fillStyle=drop.type.color;g.beginPath();g.moveTo(ix,-size/2);g.lineTo(ix+size/2,0);g.lineTo(ix,size/2);g.lineTo(ix-size/2,0);g.closePath();g.fill();}
+      g.textAlign='left';g.textBaseline='middle';g.fillStyle='#edfdff';g.fillText(label,ix+size/2+6,0);g.restore();
     }
   }
   function drawAtmosphere(t) {
@@ -307,7 +311,7 @@ window.NBWorkshop = (() => {
     ov.querySelector('[data-result-gems]').textContent = '＋' + rewards.total;
     ov.querySelector('[data-result-balance]').textContent = fmt(rewards.balance);
     ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? [rewards.tiles?'ブロックから獲得 ＋'+rewards.tiles:'',rewards.total>rewards.tiles?'ランクアップ ＋'+(rewards.total-rewards.tiles):''].filter(Boolean).join(' ／ ') : isTutorial() ? '本編ではブロックからダイヤが出ます' : 'ダイヤ入りのブロックを壊すと獲得できます';
-    const gemTypes=ov.querySelector('[data-result-gem-types]');gemTypes.textContent=(result.gemStyle==='hidden'?'壊すまで秘密':'ほのかに光る')+' ／ '+NBBlockGems.types.filter(type=>result.gemCounts?.[type.id]).map(type=>type.name+' ×'+result.gemCounts[type.id]).join('・');gemTypes.hidden=!Object.values(result.gemCounts||{}).some(Boolean);
+    const gemTypes=ov.querySelector('[data-result-gem-types]');gemTypes.textContent='ダイヤ採掘 ／ '+NBBlockGems.types.filter(type=>result.gemCounts?.[type.id]).map(type=>type.name+' ×'+result.gemCounts[type.id]).join('・');gemTypes.hidden=!Object.values(result.gemCounts||{}).some(Boolean);
     const growth=ov.querySelector('[data-result-growth]');growth.innerHTML='';
     const growthDetail=ov.querySelector('[data-result-growth-detail]');growthDetail.hidden=!result.progression;growthDetail.textContent=result.progression?`ランク ${result.progression.rank} ／ 次のランクまで ${result.progression.need-result.progression.progress} XP${result.progression.unlocked.length?' ／ 新しい曲を解放！':''}`:'';
     if(result.progression){const p=result.progression;growth.innerHTML=`<div class="growthLabel"><b>${p.rank>p.oldRank?'RANK UP　'+p.oldRank+' → '+p.rank:'RANK '+p.rank}</b><span data-xp-earned>＋0 XP</span></div><progress max="${p.need}" value="0" aria-label="次のランクへの進捗"></progress><small>${p.unlocked.length?'新しい曲を解放！':'次のランクまで '+(p.need-p.progress)+' XP'}</small>`;}

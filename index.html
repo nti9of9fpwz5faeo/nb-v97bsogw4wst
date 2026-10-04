@@ -301,8 +301,8 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=69">
-<link rel="stylesheet" href="result-arcade.css?v=69">
+<link rel="stylesheet" href="workshop.css?v=70">
+<link rel="stylesheet" href="result-arcade.css?v=70">
 </head>
 <body>
 <div id="app">
@@ -332,7 +332,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v69</span>
+  <span id="verBadge">バージョン v70</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -361,16 +361,17 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
-<script src="progression.js?v=69"></script>
-<script src="movement.js?v=69"></script>
-<script src="gems.js?v=69"></script>
-<script src="playtest.js?v=69"></script>
-<script src="playtest-ui.js?v=69"></script>
+<script src="progression.js?v=70"></script>
+<script src="movement.js?v=70"></script>
+<script src="gems.js?v=70"></script>
+<script src="playtest.js?v=70"></script>
+<script src="playtest-ui.js?v=70"></script>
 <script src="courses.js?v=56"></script>
-<script src="menu.js?v=69"></script>
+<script src="menu.js?v=70"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
-<script src="workshop.js?v=69"></script>
+<script src="workshop.js?v=70"></script>
+<script src="mining.js?v=70"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -1065,6 +1066,7 @@ document.getElementById('coachSongs').addEventListener('click',returnToSongs);
 
 function onBeat(n, t){
   NBWorkshop.tick(t);
+  if(NBDiamond.freezeBeat(n,t))return;
   // 赤いブロックが残っている間は全部その場で足踏み。ただし1拍だけ。
   const red = notes.find(nt => nt.hit);
   if (red && n > (red.hitBeat ?? n) + 1){     // 1拍待っても壊せてない → ダメージ
@@ -1105,9 +1107,11 @@ function onBeat(n, t){
 }
 
 function checkHit(t, reason, inputId, beat){
+  if(NBDiamond.locked())return;
   NBWorkshop.tick(t);
   for (const nt of [...notes]){
     if (nt.idx <= player.idx && !nt.hit){
+      if(NBDiamond.is(nt)){notes.splice(notes.indexOf(nt),1);continue;}
       if (hitGuard(t)){ blastNote(nt, t); diagEv('hit_guard', { noteId: nt.id, rush: rushGuard(t) }); continue; } // 解放中・着地直後は当たらずに吹き飛ばす
       notes.splice(notes.indexOf(nt), 1);
       if (beat != null) rememberHit(beat, nt); // 受付期限切れの被弾だけ（進んでぶつかった被弾は巻き戻さない）
@@ -1212,6 +1216,7 @@ function hideJudge(){
 }
 
 function freeMove(t, rec, charge=false){
+  if(NBDiamond.active()){diagResult(rec,{status:"invalid",reason:"ダイヤ採掘中"});return;}
   NBWorkshop.tick(t,charge);
   const stuck = notes.find(x => x.hit && x.idx <= player.idx);
   if (stuck){ texts.push({ s: 'もう1回ブレイク！', idx: player.idx, t, col: '#ff5a5a' }); diagResult(rec, { status: 'invalid', reason: '赤ノーツが残っていて進めない', noteId: stuck.id }); return; }
@@ -1256,7 +1261,7 @@ const HURT_GUARD_SEC = 0.6;
 let hurtGuardUntil = -9;
 function hitGuard(t){ return rushGuard(t) || (speedOn() && t < hurtGuardUntil); }
 function blastNote(nt, t){ if(rushGuard(t))NBWorkshop.destroyed(nt,t);const i = notes.indexOf(nt); if (i >= 0) notes.splice(i, 1); spawnShards(nt.idx, t, nt.purple ? 'purple' : (nt.hp || 1) > 1 ? 'hard' : 'pink'); }
-function takeBlown(to){ const b = notes.filter(x => x.idx <= to + 1); for (const nt of b) notes.splice(notes.indexOf(nt), 1); return b.map(nt => ({ id:nt.id,gem:nt.gem,idx: nt.idx, purple: !!nt.purple, hard: (nt.hp || 1) > 1, hit: !!nt.hit })); }
+function takeBlown(to){ const b = notes.filter(x => x.idx <= to + 1); for (const nt of b) notes.splice(notes.indexOf(nt), 1); return b.map(nt => ({ id:nt.id,gem:nt.gem,diamond:nt.diamond,hp:nt.hp,maxHp:nt.maxHp,idx: nt.idx, purple: !!nt.purple, hard: (nt.hp || 1) > 1, hit: !!nt.hit })); }
 // 画面上のキャラの位置（発動中は溜め→道を1マスずつ駆け抜ける）
 function playerVis(t){
   if (rushAnim){
@@ -1375,8 +1380,8 @@ function drawRushAnim(t){
     if (b.done) continue;
     if (A.moved && v >= b.idx - .3){ b.done = true; NBWorkshop.destroyed(b,t);spawnShards(b.idx, t, b.purple ? 'purple' : b.hit ? 'red' : b.hard ? 'hard' : 'pink'); if (heroFx[selectedHero]) addSlashMark(b.idx, t, 1.5, !facesRight(b.idx)); else fx.push({ type: 'stomp', idx: b.idx, t, d: .18, strong: false }); if (poisonHero()) POISON_SFX.slash(); else playSE('PERFECT'); continue; }
     const p = cellXY(b.idx), sz = cell * .93 * 1.25, spr = b.purple ? purpleCv : b.hit ? crackCv : b.hard ? hardCv : noteCv;
-    g.drawImage(spr, p.x - sz / 2, p.y - sz / 2, sz, sz);
-    g.save();g.translate(p.x,p.y);NBWorkshop.drawGemHint(b,cell*.93);g.restore();
+    if(NBDiamond.is(b)){g.save();g.translate(p.x,p.y);NBDiamond.drawBlock(b,cell*.93,t);g.restore();}
+    else g.drawImage(spr, p.x - sz / 2, p.y - sz / 2, sz, sz);
   }
   if (A.moved && t >= A.moveAt + A.dur){
     for (const b of A.blown) if (!b.done){ b.done = true; NBWorkshop.destroyed(b,t);spawnShards(b.idx, t, b.purple ? 'purple' : b.hard ? 'hard' : 'pink'); }
@@ -1396,7 +1401,7 @@ function drawRushAnim(t){
 }
 // 満タンで発動できるとき、キャラの横に小さく「OK」（点滅なし）
 function drawRushOk(t){
-  if (!rushOn() || rushRelease !== 'manual' || rushAnim || moveLocked || !rushReady()) return;
+  if (NBDiamond.active() || !rushOn() || rushRelease !== 'manual' || rushAnim || moveLocked || !rushReady()) return;
   const p = cellXY(playerVis(t)), fs = Math.max(10, Math.round(cell * .24)), x = p.x + cell * .42, y = p.y - cell * .46;
   g.save(); g.font = `900 ${fs}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
   const w = g.measureText('OK').width + fs * .8, h = fs * 1.35;
@@ -1405,6 +1410,7 @@ function drawRushOk(t){
 }
 // 必殺技の発動：目の前のブロックがその場で回り出し、溜めのあとに5マス突き抜ける
 function doRush(t, rec, auto){
+  if(NBDiamond.locked())return false;
   const cells = Math.min(RUSH_CELLS, GOAL_INDEX - player.idx);
   if (cells <= 0 || moveLocked || !rushReady()) return false;
   const P = player.idx, to = P + cells;
@@ -1425,6 +1431,7 @@ function chargeTarget(){
   return notes.find(x => x.purple && (x.idx <= player.idx || (x.idx === player.idx + 1 && notesWillMove()))) || null;
 }
 function doAction(type, n, t, diff, rec){
+  if(NBDiamond.active()&&type!=="break")return;
   NBWorkshop.tick(t);
   acted = n;
   const word = judgeOf(diff), sub = Math.abs(diff) <= 0.045 ? '' : (diff < 0 ? 'FAST' : 'LATE');
@@ -1465,6 +1472,7 @@ function doAction(type, n, t, diff, rec){
     const target = notes.filter(x => x.idx <= player.idx && !x.purple).sort((a,b)=>a.idx-b.idx)[0]; // 紫はブレイクでは壊せない（突進のみ）
     if (!target){ diagResult(rec, { status: 'invalid', reason: '対象ノーツなし（紫はブレイクでは壊せない）', beat: n, offsetMs: r2(diff * 1000), lockBefore: moveLocked }); diagShow('無効：対象ノーツなし'); }
     if (target){
+      if(NBDiamond.is(target)){NBDiamond.strike(target,n,t,diff,rec);return;}
       const hpBefore = target.hp || 1, lockBefore = moveLocked;
       fx.push({ type: 'cut', idx: player.idx, t, d: .16 });
       flashBtn('bBreak');
@@ -1499,6 +1507,7 @@ let earlyInput = null;
 function input(type, e, device){
   const handlerPerf = performance.now();
   if (state !== 'play') return;
+  if(NBDiamond.active()&&type!=="break")return;
   if(isTutorial()&&coach&&coach.phase!=='play')return; // 実演は短い単位。実践中の入力制限は加えない
   const tNow = songTime(), ev = eventPerfTime(e, handlerPerf);
   const delayMs = ev.perf != null ? Math.max(0, handlerPerf - ev.perf) : null;
@@ -1527,6 +1536,7 @@ function input(type, e, device){
       return;
     }
     const target=notes.find(x=>(type==='charge'?x.purple:!x.purple)&&x.idx<=player.idx+reach);
+    if(NBDiamond.is(target)||NBDiamond.active()){diagInputEnd(rec,{status:'invalid',reason:'ダイヤは拍に合わせてブレイク',lifeLoss:false});return;}
     if(hitGuard(tNow)){diagInputEnd(rec,{status:'invalid',reason:'被弾直後の保護中'});return;}
     // Consume the failed target so its deadline cannot charge the same miss twice.
     if(target)notes.splice(notes.indexOf(target),1);
@@ -1817,7 +1827,7 @@ function placeJudge(t){
   const p=cellXY(playerVis(t));
   const x=a.left-b.left+p.x,y=a.top-b.top+p.y,w=el.offsetWidth,h=el.offsetHeight;
   const left=Math.max(4,Math.min(b.width-w-4,x-w/2));
-  let top=y-cell*.64-h; // 小さい判定は、歩数の文字より上に
+  let top=NBDiamond.active()?y+cell*.7:y-cell*.64-h; // 小さい判定は、歩数の文字より上に
   if(top<4)top=y+cell*.65;
   top=Math.max(4,Math.min(b.height-h-4,top));
   if(isTutorial()&&coach){
@@ -1865,6 +1875,7 @@ function finishResult(clear){
 }
 function end(clear){
   if(state!=='play')return;
+  NBDiamond.reset();
   NBWorkshop.tick(songTime());
   stopRushHold();stopMoveScheduler();document.getElementById('pauseBtn').disabled=true;tutClearUI();
   state=clear?'clear':'over';
@@ -2014,6 +2025,7 @@ function impactOffset(t){
 }
 // 次の拍でノーツが前へ進むか（onBeatと同じ条件で先読み。表示だけに使う）
 function notesWillMove(){
+  if(NBDiamond.locked())return false;
   if(nextBeat<INTRO_BEATS||!notes||!notes.length)return false;
   const n=nextBeat,red=notes.find(nt=>nt.hit);
   const redGone=!!red&&n>(red.hitBeat??n)+1;
@@ -2091,9 +2103,9 @@ function draw(t){
     g.save();g.translate(p.x,p.y);
     if(!reduceMotion.matches&&rk<1)g.rotate(ang);
     const pulse=reduceMotion.matches?0:beatPulse(t)*.025;g.scale(1+pulse,1+pulse);
-    const spr=nt.purple?purpleCv:nt.hit?crackCv:((nt.hp||1)>1?hardCv:noteCv);
-    g.drawImage(spr,-sz/2,-sz/2,sz,sz);
-    NBWorkshop.drawGemHint(nt,body);g.restore();
+    if(NBDiamond.is(nt)){if(nt.idx>player.idx)NBDiamond.drawBlock(nt,body,t);}
+    else {const spr=nt.purple?purpleCv:nt.hit?crackCv:((nt.hp||1)>1?hardCv:noteCv);g.drawImage(spr,-sz/2,-sz/2,sz,sz);}
+    g.restore();
   }
 
   effects=effects.filter(e=>t-e.t<.32);
@@ -2117,8 +2129,9 @@ function draw(t){
   const rDim=rushDimAmount(t);
   if(rDim>0){g.save();g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-atop';g.globalAlpha=.5*rDim;g.fillStyle=poisonHero()?'#12051f':'#050b18';g.fillRect(0,0,g.canvas.width,g.canvas.height);g.restore();}
   drawRushAnim(t);
-  NBWorkshop.drawGemDrops(t); // Reveal diamonds only when their block is destroyed.
   drawChar(t);
+  NBDiamond.drawFront(t);
+  NBWorkshop.drawGemDrops(t); // Always above the character; show the actual award.
   if(isTutorial())drawCoachTarget(t);
   drawRushOk(t);
   updateSpot(t);
@@ -2226,6 +2239,7 @@ function drawChar(t){
 // ===== ループ =====
 // ラインに着いたか調べる。エンドレスで周回したら true
 function checkLines(t){
+  if(NBDiamond.locked())return false;
   if (!(state==='play' && player.idx >= LINES[lineK] && hp > 0)) return false;
   if (lineK === LINES.length - 1 && rushGuard(t)) return false; // 必殺技の駆け抜け・着地が終わってからワープ
   if(isTutorial()&&lineK===LINES.length-1){nextCourse(t);coach.nextSpawn=nextBeat+2;return true;}
@@ -2275,7 +2289,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v69', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v70', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2445,7 +2459,7 @@ const RUSH_HOLD_MS = 350; // ブレイクをこの長さ押し続けると、た
 let holdTimer = null, holdStartedPerf = null;
 function startRushHold(device){
   stopRushHold();
-  if (state!=='play'||!rushOn() || rushRelease !== 'manual'||isTutorial()&&coach?.phase!=='play') return;
+  if (NBDiamond.active()||state!=='play'||!rushOn() || rushRelease !== 'manual'||isTutorial()&&coach?.phase!=='play') return;
   holdStartedPerf=performance.now();
   holdTimer = setTimeout(() => { holdTimer = null; holdStartedPerf=null; input('rush', { timeStamp: performance.now() }, device + '-hold'); }, RUSH_HOLD_MS);
 }

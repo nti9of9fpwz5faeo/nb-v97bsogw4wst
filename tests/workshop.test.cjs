@@ -4,9 +4,9 @@ function game(){
  function node(id){if(!nodes.has(id))nodes.set(id,{textContent:'',hidden:false,dataset:{},classList:{add(){},remove(){},toggle(){}},insertAdjacentHTML(){},addEventListener(){},querySelectorAll(){return []}});return nodes.get(id);}
  const document={getElementById:node,querySelectorAll:()=>[],body:node('body'),addEventListener(){}};
  const x={console,document,localStorage:{getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v)},Math:Object.assign(Object.create(Math),{random:()=>.1}),setTimeout:fn=>(timers.push(fn),timers.length),clearTimeout(){},state:'play',song:{file:'audio/song.mp3'},isTutorial:()=>false,player:{idx:0},playerVis:()=>x.player.idx,SPB:.5,RUSH_CELLS:5,GOAL_INDEX:35,notes:[],gIdx:8,showHunterArrival(){},songTime:()=>x.time,time:0,raceBeat:t=>t*2,moveLocked:false,rushAnim:null,showRaceResult(){},combo:0,fx:[],texts:[],NBSound:{play(){}},addEventListener(){}};
- x.NBMeasure={start(){},interrupt(){},warp(){},tick(){},finish(){return null}};x.window=x;x.globalThis=x;vm.createContext(x);for(const file of ['progression.js','gems.js','workshop.js'])vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'..',file),'utf8'),x);x.NBWorkshop.init();x.NBWorkshop.resetRun();return {x,save:()=>{x.NBWorkshop.flush();return x.NBProgression.create(x.localStorage).state}};
+ x.NBMeasure={start(){},interrupt(){},warp(){},tick(){},finish(){return null}};x.window=x;x.globalThis=x;vm.createContext(x);for(const file of ['progression.js','gems.js','mining.js','workshop.js'])vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'..',file),'utf8'),x);x.NBWorkshop.init();x.NBWorkshop.resetRun();return {x,save:()=>{x.NBWorkshop.flush();return x.NBProgression.create(x.localStorage).state}};
 }
-const gem=(id,type='novice')=>({id,idx:7,hp:1,gem:{type,claimed:false}});
+const gem=(id,type='novice')=>({id,idx:7,hp:0,diamond:true,gem:{type,claimed:false}});
 test('walking no longer awards; destroying blocks awards each tier once and preserves XP settlement',()=>{
  const {x,save}=game();x.player.idx=35;x.NBWorkshop.tick(1);assert.equal(save().gems,0);
  for(let n=0;n<10;n++)x.NBWorkshop.judged('PERFECT',n,0);x.NBWorkshop.judged('PERFECT',9,0);assert.equal(save().stats.hits,10);
