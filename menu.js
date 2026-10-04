@@ -37,7 +37,7 @@ window.NBMenu=(()=>{
     $('difficultyPicker')?.remove();$('modeDesc').hidden=true;$('modePicker').remove();$('rushPicker').hidden=true;
     $('homeModes').innerHTML='<button class="homeMissionEntry" id="homeMissions"><span class="missionEntryIcon">✓</span><span><strong>ミッション</strong><small data-mission-home>今日の目標をチェック</small></span><b data-mission-count hidden></b><span>›</span></button>';
     $('homeMissions').onclick=()=>show('missions');
-    document.querySelector('.menuHeader').append($('playerRank'));
+    $('menuTitle').after($('verBadge'));document.querySelector('.menuHeader').append($('playerRank'));
     $('playerRank').onclick=()=>NBWorkshop.openRank();
     NBWorkshop.refreshWallet();
     $('specialCatalog').innerHTML=NBWorkshop.specialStageMarkup();

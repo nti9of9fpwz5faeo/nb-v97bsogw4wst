@@ -88,3 +88,4 @@
 .gemStyleSwitch button{padding:9px 4px;min-height:44px;border:1px solid #adccd9;border-radius:10px;background:transparent;color:#3c6070;font:750 12px/1.4 system-ui;touch-action:manipulation}
 .gemStyleSwitch button[aria-pressed=true]{background:#126596;color:#fff;border-color:#126596}
 .resultScreen .gemResultTypes{font:500 12px/1.6 system-ui;color:#b4c9d9;text-align:left}
+#startOv .menuHeader #menuTitle{flex:none}#startOv .menuHeader #verBadge{display:inline-block;flex:none;align-self:center;margin:0 auto 0 0;padding:3px 10px;font-size:12px;opacity:1}
