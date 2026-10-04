@@ -7,7 +7,7 @@ window.NBDiamond = (() => {
   const locked = () => !!target || nextBeat < resumeBeat;
   function reset(){target=null;resumeBeat=-1;chips=[];bursts=[];}
   const isActive = note => target===note;
-  const reachable = note => is(note)&&note.idx===player.idx+1;
+  const reachable = note => is(note)&&note.idx<=player.idx;
   function prepare(note){
     let tier=NBBlockGems.info(note);
     if(!tier||moveLocked){note.gem=null;return note;}
@@ -31,7 +31,7 @@ window.NBDiamond = (() => {
     if(state!=='play'||!reachable(note)||note.hp<=0||note.mineBeat===n||Math.abs(diff)>WINDOW)return false;
     if(target&&target!==note)return false;
     if(!target){
-      target=note;stopRushHold();pendingCheck=[];recentHits=[];
+      target=note;note.idx=player.idx;stopRushHold();pendingCheck=[];recentHits=[];
       player.from=player.idx;player.at=t;
       for(const other of notes){other.from=other.idx;other.at=t;other.spin=t;}
       diagEv('mining_start',{noteId:note.id,type:note.gem.type,beat:n});

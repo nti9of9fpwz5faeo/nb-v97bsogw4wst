@@ -301,8 +301,8 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=71">
-<link rel="stylesheet" href="result-arcade.css?v=71">
+<link rel="stylesheet" href="workshop.css?v=72">
+<link rel="stylesheet" href="result-arcade.css?v=72">
 </head>
 <body>
 <div id="app">
@@ -332,7 +332,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v71</span>
+  <span id="verBadge">バージョン v72</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -361,17 +361,17 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
-<script src="progression.js?v=71"></script>
-<script src="movement.js?v=71"></script>
-<script src="gems.js?v=71"></script>
-<script src="playtest.js?v=71"></script>
-<script src="playtest-ui.js?v=71"></script>
+<script src="progression.js?v=72"></script>
+<script src="movement.js?v=72"></script>
+<script src="gems.js?v=72"></script>
+<script src="playtest.js?v=72"></script>
+<script src="playtest-ui.js?v=72"></script>
 <script src="courses.js?v=56"></script>
-<script src="menu.js?v=71"></script>
+<script src="menu.js?v=72"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
-<script src="workshop.js?v=71"></script>
-<script src="mining.js?v=71"></script>
+<script src="workshop.js?v=72"></script>
+<script src="mining.js?v=72"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -1469,7 +1469,7 @@ function doAction(type, n, t, diff, rec){
   } else {
     charState = 'slash'; charUntil = t + 0.22;
     // 1タップで壊せるのは一番近い1個だけ
-    const target = notes.filter(x => (NBDiamond.is(x)?NBDiamond.reachable(x):x.idx <= player.idx) && !x.purple).sort((a,b)=>a.idx-b.idx)[0]; // 紫はブレイクでは壊せない（突進のみ）
+    const target = notes.filter(x => x.idx <= player.idx && !x.purple).sort((a,b)=>a.idx-b.idx)[0]; // 紫はブレイクでは壊せない（突進のみ）
     if (!target){ diagResult(rec, { status: 'invalid', reason: '対象ノーツなし（紫はブレイクでは壊せない）', beat: n, offsetMs: r2(diff * 1000), lockBefore: moveLocked }); diagShow('無効：対象ノーツなし'); }
     if (target){
       if(NBDiamond.is(target)){NBDiamond.strike(target,n,t,diff,rec);return;}
@@ -2289,7 +2289,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v71', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v72', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;

@@ -100,7 +100,7 @@ window.NBWorkshop = (() => {
     return true;
   }
   function initGemStyles(){
-    $('songList').insertAdjacentHTML('beforebegin',`<section id="gemStylePicker" aria-labelledby="gemStyleTitle"><h2 id="gemStyleTitle">ダイヤブロック</h2><p>見送っても安全。叩くと止まって採掘。</p><p>目の前で4回ブレイク。ヒビを広げて、ダイヤ獲得。</p></section>`);
+    $('songList').insertAdjacentHTML('beforebegin',`<section id="gemStylePicker" aria-labelledby="gemStyleTitle"><h2 id="gemStyleTitle">ダイヤブロック</h2><p>見送っても安全。叩くと止まって採掘。</p><p>いつものタイミングでブレイク。そのマスで合計4回叩くとダイヤ獲得。</p></section>`);
   }
 
   function rush() {
