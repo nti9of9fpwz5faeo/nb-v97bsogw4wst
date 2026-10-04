@@ -86,7 +86,7 @@ window.NBWorkshop = (() => {
     const type=NBBlockGems.claim(note);if(!type)return null;
     run.gemClaims.add(note.id);run.gemCounts[type.id]++;
     apply({tiles:1},{},type.value);
-    drops.push({type,idx:note.idx,t});if(drops.length>8)drops.shift();
+    drops.push({type,idx:note.idx,t,mined:NBDiamond.is(note)});if(drops.length>8)drops.shift();
     if(t-run.gemSoundAt>=.09){NBSound.play('diamond');run.gemSoundAt=t;}
     return type;
   }
@@ -100,7 +100,7 @@ window.NBWorkshop = (() => {
     return true;
   }
   function initGemStyles(){
-    $('songList').insertAdjacentHTML('beforebegin',`<section id="gemStylePicker" aria-labelledby="gemStyleTitle"><h2 id="gemStyleTitle">ダイヤブロック</h2><p>見送っても安全。叩くと止まって採掘。</p><p>拍に合わせて割ると、ダイヤ獲得。</p></section>`);
+    $('songList').insertAdjacentHTML('beforebegin',`<section id="gemStylePicker" aria-labelledby="gemStyleTitle"><h2 id="gemStyleTitle">ダイヤブロック</h2><p>見送っても安全。叩くと止まって採掘。</p><p>目の前で4回ブレイク。ヒビを広げて、ダイヤ獲得。</p></section>`);
   }
 
   function rush() {
@@ -149,7 +149,8 @@ window.NBWorkshop = (() => {
       const x=Math.max(w/2+4,Math.min(boardW-w/2-4,p.x)),y=Math.max(h/2+4,p.y-cell*(1.05+(reduceMotion.matches?0:k*.25)));
       g.translate(x,y);g.fillStyle='#102337';g.strokeStyle=drop.type.color;g.lineWidth=2;rr(g,-w/2,-h/2,w,h,9);g.fill();g.stroke();
       const ix=-w/2+size/2+8;
-      if(art?.naturalWidth)g.drawImage(art,ix-size/2,-size/2,size,size);
+      if(drop.mined){g.fillStyle='#e4fbff';g.font=`900 ${Math.max(14,size*.65)}px system-ui`;g.textAlign='center';g.textBaseline='middle';g.fillText('✓',ix,0);g.font=`800 ${Math.max(12,cell*.24)}px system-ui`;}
+      else if(art?.naturalWidth)g.drawImage(art,ix-size/2,-size/2,size,size);
       else {g.fillStyle=drop.type.color;g.beginPath();g.moveTo(ix,-size/2);g.lineTo(ix+size/2,0);g.lineTo(ix,size/2);g.lineTo(ix-size/2,0);g.closePath();g.fill();}
       g.textAlign='left';g.textBaseline='middle';g.fillStyle='#edfdff';g.fillText(label,ix+size/2+6,0);g.restore();
     }
