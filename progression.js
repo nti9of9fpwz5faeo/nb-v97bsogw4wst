@@ -24,7 +24,7 @@
   ];
   const songs = [
     {id:'audio/shatter_forward.mp3',price:0}, {id:'audio/song.mp3',price:0},
-    {id:'audio/metronomic_drive.mp3',price:0}, {id:'audio/frozen_judgment.mp3',price:0}, {id:'audio/neon_rush.mp3',price:80,rank:3},
+    {id:'audio/metronomic_drive.mp3',price:0}, {id:'audio/frozen_judgment.mp3',price:0}, {id:'audio/sombra_en_movimiento.mp3',price:0}, {id:'audio/neon_rush.mp3',price:80,rank:3},
     {id:'audio/frostbite.mp3',price:100,rank:6}, {id:'audio/stutter.mp3',price:120},
     {id:'audio/bass_arcade.mp3',price:140}, {id:'audio/tutorial.mp3',price:0}
   ];

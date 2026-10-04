@@ -33,7 +33,7 @@ window.NBMenu=(()=>{
     document.querySelectorAll('[data-song-mode]').forEach(b=>b.onclick=()=>{playMode=b.dataset.songMode;endless=true;updateModeUI();try{localStorage.setItem('neon-blade-mode',playMode);}catch(_){}syncMode();});syncMode();
     NBWorkshop.initGemStyles();$('page-songs').append($('gemStylePicker'));
     ['songList','myFile','myPanel','loadTxt'].forEach(id=>$('page-songs').append($(id)));
-    ['timingSettings','soundSettings','diagSettings'].forEach(id=>$('page-settings').append($(id)));
+    ['timingSettings','soundSettings','diagHistorySettings','diagSettings'].forEach(id=>$('page-settings').append($(id)));
     $('difficultyPicker')?.remove();$('modeDesc').hidden=true;$('modePicker').remove();$('rushPicker').hidden=true;
     $('homeModes').innerHTML='<button class="homeMissionEntry" id="homeMissions"><span class="missionEntryIcon">✓</span><span><strong>ミッション</strong><small data-mission-home>今日の目標をチェック</small></span><b data-mission-count hidden></b><span>›</span></button>';
     $('homeMissions').onclick=()=>show('missions');

@@ -54,6 +54,16 @@
   .diagBtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
   .diagPanel .ovBtn{width:100%;min-width:0;margin:0;padding:10px 4px;font-size:14px}
   #diagClose{margin-top:8px}
+  #diagHistorySettings{width:min(360px,100%);font-size:13px;margin-top:6px}
+  #diagHistorySettings summary{padding:7px;cursor:pointer}
+  #historyOpen{font-size:14px;padding:10px;width:100%;margin:4px 0}
+  #historyOv{z-index:110;overflow-y:auto;touch-action:pan-y;justify-content:safe center}
+  #historyList{max-height:220px;overflow-y:auto;display:grid;gap:6px;margin:10px 0}
+  #historyList button{border:1px solid #8af3fa;border-radius:8px;background:#132b4d;color:#fff;padding:10px;text-align:left;overflow-wrap:anywhere}
+  #historyList button[aria-pressed="true"]{border:2px solid #dcff43;background:#224265}
+  #historyList small{display:block;color:#b4cde9;margin-top:4px}
+  #historyOv .ovBtn{font:700 14px system-ui;letter-spacing:0;white-space:nowrap}
+  #historyBody{overflow-wrap:anywhere} #historyMsg{color:#dcff43;min-height:20px} #historyClose{margin-top:8px}
   #diagMsg{min-height:18px;text-align:center;color:#c6ff44;margin:6px 0 0}
   .diagOpenBtn{margin-top:8px;width:100%}
   .endReason{margin:5px 0 0;font-size:13px;font-weight:900;color:#ffd0f4;-webkit-text-stroke:3px #081221;paint-order:stroke fill}
@@ -333,7 +343,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">v85</span>
+  <span id="verBadge">v86</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -343,7 +353,8 @@
   <div id="myPanel" class="hide"><div id="myName"></div><div id="myBpmRow"><span>BPM</span><button id="myDown" aria-label="BPMを下げる">−</button><b id="myBpm">--</b><button id="myUp" aria-label="BPMを上げる">＋</button></div><button id="myHalf">半分の速さにする</button><p id="myNote">曲はこの端末の中だけで使います</p><button id="myPlay">この曲で遊ぶ</button></div>
 
   <details id="timingSettings"><summary>タイミング調整</summary><label for="timingRange">動きのタイミング <b id="timingValue">0 ms</b></label><input id="timingRange" type="range" min="-250" max="250" step="5" value="0"><p>動きが音より早い → ＋へ<br>動きが音より遅い → −へ</p><button id="timingReset">0に戻す</button></details>
-  <details id="soundSettings"><summary>音と拍のガイド</summary><label class="diagRow" for="ringToggle"><span>タイミングの輪っか</span><input id="ringToggle" type="checkbox"></label><label class="diagRow" for="guideToggle"><span>拍のガイド音</span><input id="guideToggle" type="checkbox"></label><label class="diagRow" for="volSong"><span>曲</span><input id="volSong" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volGuide"><span>ガイド</span><input id="volGuide" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volSe"><span>効果音</span><input id="volSe" type="range" min="0" max="100" step="5"></label><div class="diagRow"><span>Neon Rushの拍補正</span><span class="corrBtns"><button data-corr="0">0ms</button><button data-corr="-30">−30ms</button></span></div><p>ガイド音をオンにすると、ブロックの移動音の代わりに拍ごとに短い音が鳴ります。拍補正は次のプレイから反映されます。</p><p><a href="check.html" style="color:#c6ff44;font-weight:800">曲のテンポのズレをチェックする</a></p></details>
+  <details id="soundSettings"><summary>音と拍のガイド</summary><label class="diagRow" for="ringToggle"><span>タイミングの輪っか</span><input id="ringToggle" type="checkbox"></label><label class="diagRow" for="guideToggle"><span>拍のガイド音</span><input id="guideToggle" type="checkbox"></label><label class="diagRow" for="volSong"><span>曲</span><input id="volSong" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volGuide"><span>ガイド</span><input id="volGuide" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volSe"><span>効果音</span><input id="volSe" type="range" min="0" max="100" step="5"></label><div class="diagRow"><span>Neon Rushの拍補正</span><span class="corrBtns"><button data-corr="0">0ms</button><button data-corr="-30">−30ms</button></span></div><label class="diagRow" for="sombraCorrection"><span>Sombra en Movimientoの拍補正</span><span><input id="sombraCorrection" type="number" min="-200" max="200" step="1" value="0" inputmode="numeric" style="width:76px;height:36px;color:#081221;background:#fff"> ms</span></label><p>プラスで拍を遅く、マイナスで早くします。BPMは150のままです。</p><p>ガイド音をオンにすると、ブロックの移動音の代わりに拍ごとに短い音が鳴ります。拍補正は次のプレイから反映されます。</p><p><a href="check.html" style="color:#c6ff44;font-weight:800">曲のテンポのズレをチェックする</a></p></details>
+  <details id="diagHistorySettings"><summary>診断の記録</summary><p>診断モードのオン・オフにかかわらず、プレイ終了時に直近20回の記録をこの端末に自動保存します。</p><button type="button" id="historyOpen" class="ovBtn sub">記録の一覧を見る</button></details>
   <details id="diagSettings"><summary>判定診断モード</summary><label class="diagRow" for="diagToggle"><span>診断モード</span><input id="diagToggle" type="checkbox"></label><label class="diagRow" for="diagOutput"><span>音の出力</span><select id="diagOutput"><option value="unknown">不明</option><option value="speaker">スピーカー</option><option value="wired">有線イヤホン</option><option value="bluetooth">Bluetooth</option></select></label><p>オンにすると、ブレイクのズレを画面の下に小さく表示し、記録を残します。</p><button id="diagOpen">前回の記録を見る</button></details>
   <p>まずは迫るノーツをブレイク。<br>すき間を見つけて、進もう。</p>
 </div>
@@ -362,13 +373,16 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
-<script src="progression.js?v=85"></script>
+<div class="overlay hide" id="historyOv" role="dialog" aria-modal="true" aria-labelledby="historyTitle"><div class="diagPanel"><h2 id="historyTitle">診断の記録</h2><div id="historyList" aria-label="保存されたプレイ"></div><div id="historyBody"></div><div class="diagBtns"><button class="ovBtn" id="historySave" disabled>JSONを保存</button><button class="ovBtn sub" id="historyCopy" disabled>JSONをコピー</button></div><p id="historyMsg" role="status"></p><button class="ovBtn sub" id="historyClose">閉じる</button></div></div>
+<script src="progression.js?v=86"></script>
 <script src="movement.js?v=85"></script>
 <script src="gems.js?v=85"></script>
 <script src="playtest.js?v=85"></script>
 <script src="playtest-ui.js?v=85"></script>
 <script src="courses.js?v=56"></script>
-<script src="menu.js?v=85"></script>
+<script src="menu.js?v=86"></script>
+<script src="timing-history.js?v=86"></script>
+<script src="timing-history-ui.js?v=86"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
 <script src="workshop.js?v=85"></script>
@@ -385,6 +399,7 @@ const SONGS = [
   { name: 'Bass Arcade',         file: 'audio/bass_arcade.mp3', bpm: 134.4, offset: 0.085, level: 'むずかしい', hard: true, dense: true },
   { name: 'Frostbite Breakbeat', file: 'audio/frostbite.mp3', bpm: 129.9, offset: 0.21, level: 'クール', hard: true },
   { name: 'Metronomic Drive',    file: 'audio/metronomic_drive.mp3', bpm: 147.96, offset: 0.0842, level: 'ふつう', chart: 'charts/metronomic_beats.json' }, // 実際は約148BPM（197は測り間違い）。テンポがゆるやかに揺れるので拍データで追従
+  { name: 'Sombra en Movimiento', file: 'audio/sombra_en_movimiento.mp3', bpm: 150, offset: 0.385, level: 'ふつう', chart: 'charts/sombra_en_movimiento.json' }, // 150 BPM固定。拍だけを定義し、ノーツ生成は既存の共通処理を使う。
   { name: 'Frozen Judgment',     file: 'audio/frozen_judgment.mp3', bpm: 150.012, offset: 0.0047, level: 'ふつう' }, // SUNO。音源を解析：150.012BPMで最後まで一定（強い拍350個のズレは中央2ms・最大35ms）。テンポが揺れないので拍データは不要
 ];
 let difficulty='normal';
@@ -802,8 +817,11 @@ function nearestBeat(t){
 // 譜面の値：0＝なし、1＝通常、2＝青（2回で壊れる）。その難易度の譜面がなければNORMALを使う
 // ===== 曲別の拍補正（その曲の拍位置そのものを直す）=====
 // 判定・ノーツの動き・拍の表示・ガイド音は、すべて beatTime()／nearestBeat() を通るので、ここで1回だけ足す
-const SONG_BEAT_CORR = { 'charts/neon_rush.json': { key: 'neon_rush', options: [0, -30], def: -30 } }; // ms。元の譜面データはそのまま
-function songCorrSetting(chart){ const c = SONG_BEAT_CORR[chart]; if (!c) return 0; try{ const v = Number(localStorage.getItem('neon-blade-songcorr:' + c.key)); if (c.options.includes(v) && localStorage.getItem('neon-blade-songcorr:' + c.key) !== null) return v; }catch(e){} return c.def; }
+const SONG_BEAT_CORR = {
+  'charts/neon_rush.json': { key: 'neon_rush', options: [0, -30], def: -30 },
+  'charts/sombra_en_movimiento.json': { key: 'sombra_en_movimiento', min: -200, max: 200, def: 0 }
+}; // ms。元の譜面データはそのまま
+function songCorrSetting(chart){ const c = SONG_BEAT_CORR[chart]; if (!c) return 0; try{ const v = Number(localStorage.getItem('neon-blade-songcorr:' + c.key)); if (Number.isFinite(v) && (c.options ? c.options.includes(v) : Number.isInteger(v) && v >= c.min && v <= c.max) && localStorage.getItem('neon-blade-songcorr:' + c.key) !== null) return v; }catch(e){} return c.def; }
 let runSongCorrMs = 0; // プレイ開始時に確定（途中では変えない）
 function chartNotes(){return !!activeChart?.spawn;} // ノーツ配置まで決まっている譜面か（拍だけの譜面は false）
 function chartVal(n){const s=activeChart?.spawn;return (s?.[runDifficulty]??s?.normal)?.[n]||0;}
@@ -997,11 +1015,12 @@ function coachFinish(){
   document.getElementById('pauseBtn').disabled=true;
   document.querySelectorAll('#controls button').forEach(b=>b.disabled=true);
   document.getElementById('coachDoneOv').classList.remove('hide');progFill.style.width='100%';
-  diagEv('tutorial_complete',{counts:{...counts},lifeLoss:false});diagSave();
+  diagEv('tutorial_complete',{counts:{...counts},lifeLoss:false});timingHistoryFinish('tutorial_complete');diagSave();
   [523,659,784].forEach((f,i)=>uiTone(f,.12,i*.1));
 }
 function tutLoopMusic(){
   if(rushAnim)return;
+  diagEv('audio_restart',{reason:'練習曲の再開'});
   const old=songTime();
   notes=[];effects=[];fx=[];texts=[];pendingCheck=[];earlyInput=null;recentHits=[];nextBeat=0;acted=-1;
   if(coach){
@@ -1907,6 +1926,7 @@ function end(clear){
   state=clear?'clear':'over';
   diagEv(clear?'clear':'game_over',{endReason,endReasonText:END_REASON[endReason]||null,endless:speedOn()?{score:elScore,recordSteps,moveSteps,maxCombo}:null,hp,counts:{...counts},maxCombo,distance:endlessScoreOn()?distance():null,warps:endlessScoreOn()?sectionNo-1:null,...diagCtx()});
   finishedRun=captureResult(clear);
+  timingHistoryFinish(clear?'clear':'game_over');
   diagSave();
   document.querySelectorAll('#controls button').forEach(b=>{b.disabled=true;b.classList.remove('press');});
   if(!clear){resultTimer=setTimeout(()=>finishResult(false),180);return;}
@@ -2316,8 +2336,8 @@ function loop(){
 }
 
 // ===== 判定診断モード =====
-// 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v85', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+// 詳細モードは従来どおり任意。軽量の判定履歴は、表示を増やさず全プレイで記録する。
+const APP_VERSION = 'v86', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2353,7 +2373,25 @@ function clockInfo(now){
   return c;
 }
 function diagCtx(){ const c = { rate, bpm: r2(BPM), lap: lap + 1, attempt: diagAttempt, lapBeat: nextBeat, chartVersion: activeChart?.chartVersion ?? null, mode: playMode }; if (speedOn()){ c.score = elScore; c.moveSteps = moveSteps; c.recordSteps = recordSteps; c.combo = combo; c.mult = comboMult(combo); } if (endlessScoreOn() && player){ c.section = sectionNo; c.distance = distance(); c.sectionPerfect = secPerfect; c.warpNeed = WARP_PERFECT; c.warpReady = warpReady; c.atTerminal = atTerminal(); } return c; }
+let timingHistoryRun=null, timingHistoryWrites=Promise.resolve();
+const timingHistoryPending=new Map();
+function timingHistoryPersist(report){
+  if(!report)return;
+  timingHistoryPending.set(report.id,report);
+  timingHistoryWrites=timingHistoryWrites.then(()=>NBTimingHistory.save(report)).then(()=>{
+    if(timingHistoryPending.get(report.id)===report)timingHistoryPending.delete(report.id);
+  }).catch(()=>{}); // 保存エラーは設定の記録画面で知らせ、JSONを書き出せるよう保持する。
+}
+function timingHistoryFinish(reason){
+  timingHistoryPersist(NBTimingHistory.finish(timingHistoryRun,{endedAt:new Date().toISOString(),endReason:reason,
+    completed:true,finalRate:rate,finalBpm:r2(BPM),gameCounts:{...counts}}));
+}
 function diagStart(){
+  timingHistoryRun=NBTimingHistory.create({id:crypto.randomUUID(),createdAt:new Date().toISOString(),appVersion:APP_VERSION,
+    song:{name:song.name,file:song.file,chart:song.chart||null,chartVersion:activeChart?.chartVersion||null},
+    mode:playMode,initialRate:rate,baseBpm:song.bpm,initialBpm:r2(BPM),firstBeatSeconds:activeChart?.beats?.[0]??song.offset,
+    songCorrectionMs:runSongCorrMs,timingMs,audioOutput:diagOutput,detailedMode:diagOn});
+  diagSeq=0;
   diagAttempt = 1; diagLastDraw = null; resumePerf = -Infinity; lastBeatLagMs = null;
   if (!diagOn){ diagRun = null; return; }
   diagSeq = 0;
@@ -2368,19 +2406,24 @@ function diagStart(){
   diagEv('start', { ...diagCtx() });
 }
 function diagEv(type, data){
-  if (!diagRun) return null;
-  const ev = { seq: ++diagSeq, type, perf: r2(performance.now()), songT: state === 'ready' || state === 'loading' ? null : r4(songTime()), ...data };
+  if (!diagRun && (!timingHistoryRun || timingHistoryRun.done)) return null;
+  const sourceTime=state==='ready'||state==='loading'?null:songTime();
+  const ev = { seq: ++diagSeq, type, perf: r2(performance.now()), songT:r4(sourceTime), rate, bpm:r2(BPM),
+    sourceSongTimeSec:sourceTime===null?null:r4((sourceTime+timingMs/1000)*rate), ...data };
+  NBTimingHistory.observe(timingHistoryRun,ev);
+  if(!diagRun)return ev;
   const E = diagRun.events;
   if (E.length >= DIAG_MAX_EVENTS){ E.splice(0, DIAG_DROP_CHUNK); diagRun.droppedEvents += DIAG_DROP_CHUNK; diagRun.droppedNote = `件数上限（${DIAG_MAX_EVENTS}件）を超えたため、古い記録を${diagRun.droppedEvents}件削除`; }
   E.push(ev); return ev;
 }
 function diagInput(type, e, device, ev, handlerPerf, delayMs, tNow, t){
-  if (!diagRun) return null;
+  if (!diagRun) return diagEv('input',{inputId:'in'+(diagSeq+1),action:type==='break'?'ブレイク':type==='rush'?'必殺技':'進む',
+    device,songTimeUsed:r4(t),sourceSongTimeSec:r4((t+timingMs/1000)*rate),...diagCtx()});
   const vp = playerVis(t), pre = notesWillMove(), nb = beatTime(nextBeat);
   const near = [...notes].sort((a, b) => a.idx - b.idx).slice(0, 3).map(nt => { const V = noteView(nt, t, pre, nb, vp); return { id: nt.id, logicalIdx: nt.idx, from: nt.from, hp: nt.hp || 1, red: !!nt.hit, moveStart: r4(V.at), moveEnd: r4(V.at + MOVE_ANIM), estimatedDrawnIdx: r4(V.vis) }; });
   return diagEv('input', { inputId: 'in' + (diagSeq + 1), action: type === 'break' ? 'ブレイク' : '進む', device: device === 'keyboard' ? 'キーボード' : device === 'touch' ? 'タッチ' : device === 'mouse' ? 'マウス' : device === 'pen' ? 'ペン' : device,
     eventTimeStamp: typeof e?.timeStamp === 'number' ? e.timeStamp : null, eventPerf: r2(ev.perf), eventTimeNote: ev.reason ?? ev.basis ?? null, handlerPerf: r2(handlerPerf), queueDelayMs: r2(delayMs),
-    songTimeAtHandler: r4(tNow), songTimeUsed: r4(t), clock: clockInfo(handlerPerf), timingMs,
+    songTimeAtHandler: r4(tNow), songTimeUsed: r4(t), sourceSongTimeSec:r4((t+timingMs/1000)*rate), clock: clockInfo(handlerPerf), timingMs,
     mode: playMode, difficulty: runDifficulty, chart: !!activeChart, song: song.name, ...diagCtx(), lockState: moveLocked, playerIdx: player.idx,
     display: { noteSpeed, frameDtMs, beatLagMs: lastBeatLagMs, lastDrawn: diagLastDraw ? { ...diagLastDraw, note: '入力前に最後に実際に描いた位置' } : null, estimatedAtInput: { playerIdx: r4(vp), notes: near, note: '押した時刻に描いていたはずの推定位置' } } });
 }
@@ -2388,11 +2431,12 @@ function diagTarget(rec, n, t, diff){
   if (!rec) return;
   const bt = beatTime(n);
   rec.target = { beat: n, beatTime: r4(bt), beatTimeRaw: activeChart?.beats?.[n] != null ? r4(activeChart.beats[n] / rate) : null, songCorrMs: runSongCorrMs, guideScheduleCtxTime: r4(songStart + bt), guideExpectedAtSongTime: r4(bt - timingMs / 1000), guideSound: useGuide() ? 'guide' : 'move', prevBeatTime: r4(beatTime(n - 1)), nextBeatTime: r4(beatTime(n + 1)), offsetMs: r2(diff * 1000), sign: 'マイナス＝早い、プラス＝遅い', windowsMs: { perfect: 45, great: 90, accept: r2(WINDOW * 1000) } };
+  NBTimingHistory.update(timingHistoryRun,rec);
 }
-function diagInputEnd(rec, o){ if (rec) Object.assign(rec, o); }
+function diagInputEnd(rec, o){ if (rec){ Object.assign(rec, o); NBTimingHistory.update(timingHistoryRun,rec); } }
 function diagResult(rec, o){
   if (!rec) return;
-  diagEv('input_result', { inputId: rec.inputId, action: rec.action, ...diagCtx(), ...o });
+  diagEv('input_result', { inputId: rec.inputId, action: rec.action, offsetMs:rec.target?.offsetMs??null, ...diagCtx(), ...o });
 }
 function diagShow(text){
   if (!diagOn || !diagRun) return;
@@ -2470,7 +2514,10 @@ document.querySelectorAll('[data-diag]').forEach(b => b.addEventListener('click'
   tg.checked = diagOn; out.value = OUTPUT_LABEL[diagOutput] ? diagOutput : 'unknown';
   tg.addEventListener('change', () => { diagOn = tg.checked; try{ localStorage.setItem('neon-blade-diag', diagOn ? '1' : '0'); }catch(e){} });
   out.addEventListener('change', () => { diagOutput = out.value; try{ localStorage.setItem('neon-blade-diag-output', diagOutput); }catch(e){} }); }
-window.addEventListener('pagehide', () => { if (diagRun && state !== 'ready') diagSave(); });
+window.addEventListener('pagehide', () => {
+  if (diagRun && state !== 'ready') diagSave();
+  if(timingHistoryRun&&!timingHistoryRun.done)timingHistoryPersist(NBTimingHistory.snapshot(timingHistoryRun,{endedAt:new Date().toISOString(),endReason:'interrupted',completed:false,finalRate:rate,finalBpm:r2(BPM),gameCounts:{...counts}}));
+});
 { const rt = document.getElementById('ringToggle'); rt.checked = ringOn;
   rt.addEventListener('change', () => { ringOn = rt.checked; try{ localStorage.setItem('neon-blade-ring', ringOn ? '1' : '0'); }catch(e){} }); }
 { const gt = document.getElementById('guideToggle'); gt.checked = guideOn;
@@ -2483,6 +2530,15 @@ window.addEventListener('pagehide', () => { if (diagRun && state !== 'ready') di
   const paint = () => { const v = songCorrSetting('charts/neon_rush.json'); btns.forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.corr) === v))); };
   btns.forEach(b => b.addEventListener('click', () => { try{ localStorage.setItem('neon-blade-songcorr:' + corr.key, b.dataset.corr); }catch(e){} paint(); }));
   paint(); }
+{ const el=document.getElementById('sombraCorrection'),chart='charts/sombra_en_movimiento.json';
+  el.value=songCorrSetting(chart);
+  el.addEventListener('change',()=>{
+    if(state!=='ready'){el.value=songCorrSetting(chart);return;}
+    const c=SONG_BEAT_CORR[chart],v=Number(el.value);
+    if(!Number.isInteger(v)||v<c.min||v>c.max){el.value=songCorrSetting(chart);return;}
+    try{localStorage.setItem('neon-blade-songcorr:'+c.key,String(v));}catch(e){el.value=songCorrSetting(chart);}
+  });
+}
 
 // ===== 操作 =====
 const RUSH_HOLD_MS = 350; // ブレイクをこの長さ押し続けると、ため解放
@@ -2551,6 +2607,7 @@ function nextLap(t, songEnded){
   texts.push({ s: 'LAP ' + (lap + 1), idx: 0, t: songTime(), col: '#ffe941', big: true });
 }
 function startGame(){
+  timingHistoryFinish('retry');
   if(NBMeasure.active()||(['clear','over'].includes(state)&&finishedRun?.measurement))NBMeasure.arm();
   NBWorkshop.stopSongPreview();NBSound.stop(); NBMenu.playing();
   document.querySelectorAll('.overlay').forEach(o=>o.classList.add('hide'));
@@ -2607,7 +2664,7 @@ async function resumeGame(){
 function returnToSongs(){
   NBWorkshop.suspendRun();
   NBWorkshop.flush(); NBWorkshop.clearToasts(); NBWorkshop.renderSongs();
-  if(state==='play'||state==='paused'||state==='resuming'){diagEv('quit',{});diagSave();}
+  if(state==='play'||state==='paused'||state==='resuming'){diagEv('quit',{});timingHistoryFinish('quit');diagSave();}
   cancelResume();cancelResultReveal();stopMoveScheduler();stopSong();stopRushHold();
   clearTimeout(resultTimer);resultTimer=null;victoryAt=-1;
   for(const v of victoryVoices){try{v.stop();}catch(e){}}victoryVoices.clear();
@@ -2723,6 +2780,7 @@ document.getElementById('myPlay').addEventListener('click',()=>{
 // ===== 起動 =====
 NBWorkshop.init();
 NBMenu.init();NBMeasure.init();
+NBTimingHistoryUI.init({pending:()=>[...timingHistoryPending.values()],flush:()=>timingHistoryWrites});
 (async () => {
   layout();
   ctx = new (window.AudioContext || window.webkitAudioContext)();
