@@ -302,8 +302,8 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=83">
-<link rel="stylesheet" href="result-arcade.css?v=83">
+<link rel="stylesheet" href="workshop.css?v=84">
+<link rel="stylesheet" href="result-arcade.css?v=84">
 </head>
 <body>
 <div id="app">
@@ -333,7 +333,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">v83</span>
+  <span id="verBadge">v84</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -343,7 +343,7 @@
   <div id="myPanel" class="hide"><div id="myName"></div><div id="myBpmRow"><span>BPM</span><button id="myDown" aria-label="BPMを下げる">−</button><b id="myBpm">--</b><button id="myUp" aria-label="BPMを上げる">＋</button></div><button id="myHalf">半分の速さにする</button><p id="myNote">曲はこの端末の中だけで使います</p><button id="myPlay">この曲で遊ぶ</button></div>
 
   <details id="timingSettings"><summary>タイミング調整</summary><label for="timingRange">動きのタイミング <b id="timingValue">0 ms</b></label><input id="timingRange" type="range" min="-250" max="250" step="5" value="0"><p>動きが音より早い → ＋へ<br>動きが音より遅い → −へ</p><button id="timingReset">0に戻す</button></details>
-  <details id="soundSettings"><summary>音と拍のガイド</summary><label class="diagRow" for="guideToggle"><span>拍のガイド音</span><input id="guideToggle" type="checkbox"></label><label class="diagRow" for="volSong"><span>曲</span><input id="volSong" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volGuide"><span>ガイド</span><input id="volGuide" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volSe"><span>効果音</span><input id="volSe" type="range" min="0" max="100" step="5"></label><div class="diagRow"><span>Neon Rushの拍補正</span><span class="corrBtns"><button data-corr="0">0ms</button><button data-corr="-30">−30ms</button></span></div><p>ガイド音をオンにすると、ブロックの移動音の代わりに拍ごとに短い音が鳴ります。拍補正は次のプレイから反映されます。</p><p><a href="check.html" style="color:#c6ff44;font-weight:800">曲のテンポのズレをチェックする</a></p></details>
+  <details id="soundSettings"><summary>音と拍のガイド</summary><label class="diagRow" for="ringToggle"><span>タイミングの輪っか</span><input id="ringToggle" type="checkbox"></label><label class="diagRow" for="guideToggle"><span>拍のガイド音</span><input id="guideToggle" type="checkbox"></label><label class="diagRow" for="volSong"><span>曲</span><input id="volSong" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volGuide"><span>ガイド</span><input id="volGuide" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volSe"><span>効果音</span><input id="volSe" type="range" min="0" max="100" step="5"></label><div class="diagRow"><span>Neon Rushの拍補正</span><span class="corrBtns"><button data-corr="0">0ms</button><button data-corr="-30">−30ms</button></span></div><p>ガイド音をオンにすると、ブロックの移動音の代わりに拍ごとに短い音が鳴ります。拍補正は次のプレイから反映されます。</p><p><a href="check.html" style="color:#c6ff44;font-weight:800">曲のテンポのズレをチェックする</a></p></details>
   <details id="diagSettings"><summary>判定診断モード</summary><label class="diagRow" for="diagToggle"><span>診断モード</span><input id="diagToggle" type="checkbox"></label><label class="diagRow" for="diagOutput"><span>音の出力</span><select id="diagOutput"><option value="unknown">不明</option><option value="speaker">スピーカー</option><option value="wired">有線イヤホン</option><option value="bluetooth">Bluetooth</option></select></label><p>オンにすると、ブレイクのズレを画面の下に小さく表示し、記録を残します。</p><button id="diagOpen">前回の記録を見る</button></details>
   <p>まずは迫るノーツをブレイク。<br>すき間を見つけて、進もう。</p>
 </div>
@@ -362,17 +362,17 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
-<script src="progression.js?v=83"></script>
-<script src="movement.js?v=83"></script>
-<script src="gems.js?v=83"></script>
-<script src="playtest.js?v=83"></script>
-<script src="playtest-ui.js?v=83"></script>
+<script src="progression.js?v=84"></script>
+<script src="movement.js?v=84"></script>
+<script src="gems.js?v=84"></script>
+<script src="playtest.js?v=84"></script>
+<script src="playtest-ui.js?v=84"></script>
 <script src="courses.js?v=56"></script>
-<script src="menu.js?v=83"></script>
+<script src="menu.js?v=84"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
-<script src="workshop.js?v=83"></script>
-<script src="mining.js?v=83"></script>
+<script src="workshop.js?v=84"></script>
+<script src="mining.js?v=84"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -1023,7 +1023,10 @@ function nextNoteInfo(t){
 }
 // 縮む輪っか：いちばん近いノーツが2拍以内に来ると現れ、自分のマスのふちにピタッと重なった瞬間が押すタイミング
 // 輪っかの色は、そのノーツと同じ色（ピンク・青・赤・紫）
+let ringOn=true; // 補助の輪っか。設定でつけはずしできる（はじめはオン）
+try{ringOn=localStorage.getItem('neon-blade-ring')!=='0';}catch(e){}
 function drawApproachRing(t){
+  if(!ringOn)return;
   const info=nextNoteInfo(t);
   if(!info||info.left>=2)return;
   const {nt,left}=info,col=nt.purple?'#8a3dff':nt.hit?'#ff2f2f':(nt.hp||1)>1?'#19b6ff':'#ff19b8';
@@ -2313,7 +2316,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v83', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v84', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2467,6 +2470,8 @@ document.querySelectorAll('[data-diag]').forEach(b => b.addEventListener('click'
   tg.addEventListener('change', () => { diagOn = tg.checked; try{ localStorage.setItem('neon-blade-diag', diagOn ? '1' : '0'); }catch(e){} });
   out.addEventListener('change', () => { diagOutput = out.value; try{ localStorage.setItem('neon-blade-diag-output', diagOutput); }catch(e){} }); }
 window.addEventListener('pagehide', () => { if (diagRun && state !== 'ready') diagSave(); });
+{ const rt = document.getElementById('ringToggle'); rt.checked = ringOn;
+  rt.addEventListener('change', () => { ringOn = rt.checked; try{ localStorage.setItem('neon-blade-ring', ringOn ? '1' : '0'); }catch(e){} }); }
 { const gt = document.getElementById('guideToggle'); gt.checked = guideOn;
   gt.addEventListener('change', () => { guideOn = gt.checked; try{ localStorage.setItem('neon-blade-guide', guideOn ? '1' : '0'); }catch(e){} });
   for (const [id, k] of [['volSong', 'song'], ['volGuide', 'guide'], ['volSe', 'se']]){
