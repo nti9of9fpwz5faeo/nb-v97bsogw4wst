@@ -11,17 +11,18 @@
   function observe(run,e){
     if(!run||run.done)return;
     if(e.type==='input'){
-      const input={inputId:e.inputId,action:e.action,device:e.device,pass:run.pass,lap:e.lap,attempt:e.attempt,
+      const input={inputId:e.inputId,action:e.action,device:e.device,pass:e.songCycle??run.pass,lap:e.lap,attempt:e.attempt,
         songTimeSec:e.sourceSongTimeSec,judgmentTimeSec:e.songTimeUsed,rate:e.rate,bpm:e.bpm,
         songCorrectionMs:run.meta.songCorrectionMs,timingMs:run.meta.timingMs,offsetMs:null,judge:null,status:'pending',beat:null};
       run.inputs.push(input);run.byId.set(e.inputId,input);
     }else if(e.type==='input_result')update(run,e);
     else if(e.type==='damage'&&!e.causeInputId){
-      run.misses.push({seq:e.seq,pass:run.pass,songTimeSec:e.sourceSongTimeSec,rate:e.rate,bpm:e.bpm,judge:'MISS',offsetMs:null,reason:e.reason||'被弾',reverted:false});
+      run.misses.push({seq:e.seq,pass:e.songCycle??run.pass,songTimeSec:e.sourceSongTimeSec,rate:e.rate,bpm:e.bpm,judge:'MISS',offsetMs:null,reason:e.reason||'被弾',reverted:false});
     }else if(e.type==='damage_reverted'){
       const miss=run.misses.find(m=>m.seq===e.damageSeq);if(miss)miss.reverted=true;
-    }else if(['speed_up','song_restart','audio_restart'].includes(e.type)){
-      run.pass++;run.transitions.push({type:e.type,pass:run.pass,rate:e.rate,bpm:e.bpm});
+    }else if(['speed_up','song_loop','course_continue','song_restart','audio_restart'].includes(e.type)){
+      if(e.type!=='speed_up'&&e.type!=='course_continue')run.pass++;
+      run.transitions.push({type:e.type,pass:run.pass,rate:e.rate,bpm:e.bpm,fromRate:e.fromRate,gameTimeSec:e.gameTimeSec??e.songT,sourceSongTimeSec:e.sourceSongTimeSec,audioContextTime:e.audioContextTime,course:e.course,cycle:e.cycle});
     }
   }
   function update(run,e){
@@ -57,7 +58,7 @@
     const rates=[...new Set([run.meta.initialRate,...inputs.map(i=>i.rate),...run.transitions.map(t=>t.rate)].filter(finite))];
     return {schemaVersion:1,kind:'neon-blade-timing-history',...run.meta,...details,id:run.id,playbackRates:rates,
       summary:summarize(inputs,misses),by30Seconds,inputs,misses,transitions:clone(run.transitions),
-      interpretation:'ズレは実際の判定時計のms。負＝FAST、正＝SLOW。平均・中央値・FAST/SLOWは判定のある入力（入力MISSを含む）が対象。被弾など入力のないMISSはズレをnullにし、平均から除外。曲の秒数は入力発生時の音源位置（手動補正を戻し、再生速度を掛けた値）。30秒集計は音源の再開ごとに分ける。'};
+      interpretation:'ズレは実際の判定時計のms。負＝FAST、正＝SLOW。平均・中央値・FAST/SLOWは判定のある入力（入力MISSを含む）が対象。被弾など入力のないMISSはズレをnullにし、平均から除外。曲の秒数は入力発生時の音源位置（速度変更の履歴を反映して手動補正を戻した位置）。30秒集計は音源の再開ごとに分ける。'};
   }
   function finish(run,details={}){if(!run||run.done)return null;const report=snapshot(run,details);run.done=true;return report;}
   let dbPromise=null;

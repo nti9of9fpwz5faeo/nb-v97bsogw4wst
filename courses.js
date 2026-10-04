@@ -1,4 +1,4 @@
-/* Every layout has 35 playable steps + 4 source cells; rows never reverse. */
+/* Five layouts: default 35 steps; endless 50 steps. Both keep four source cells. */
 (function(root){
   const patterns=[
     {name:'ジグザグ',xs:[7,0,5,2,7,0,2]},
@@ -7,12 +7,22 @@
     {name:'スイッチバック',xs:[7,0,4,1,7,2,6]},
     {name:'ワイドウェーブ',xs:[7,3,7,0,6,0,2]}
   ];
-  function build(id){
+  function build(id,endless=false){
     const xs=patterns[id].xs,out=[{c:xs[0],r:0}];
     for(let i=1;i<xs.length;i++){
       let {c,r}=out[out.length-1];const dir=Math.sign(xs[i]-c);
       while(c!==xs[i]){c+=dir;out.push({c,r});}
       if(i<xs.length-1){out.push({c,r:r+1},{c,r:r+2});}
+    }
+    if(endless){
+      // Continue below the original course: 50 moves, then four source cells.
+      let {c,r}=out[out.length-1];
+      while(out.length<55){
+        r++;out.push({c,r});if(out.length>=55)break;
+        r++;out.push({c,r});
+        const target=c<4?7:0,dir=Math.sign(target-c);
+        while(c!==target&&out.length<55){c+=dir;out.push({c,r});}
+      }
     }
     return out;
   }

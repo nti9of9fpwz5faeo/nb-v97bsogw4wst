@@ -9,7 +9,7 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
   const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.stack||String(e)));
   await page.route('**/*',r=>new URL(r.request().url()).origin===origin?r.continue():r.abort());
   await page.goto(origin);await page.waitForFunction(()=>state==='ready');
-  assert.equal(await page.locator('#verBadge').textContent(),'v86');
+  assert.equal(await page.locator('#verBadge').textContent(),'v87');
   await page.click('[data-nav="settings"]');await page.locator('#soundSettings summary').click();
   await page.fill('#sombraCorrection','17');await page.locator('#sombraCorrection').press('Tab');
   assert.equal(await page.evaluate(()=>songCorrSetting('charts/sombra_en_movimiento.json')),17);

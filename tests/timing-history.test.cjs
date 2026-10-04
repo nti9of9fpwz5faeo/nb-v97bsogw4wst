@@ -10,7 +10,7 @@ test('queued input uses press time; MISS, null inputs, reverted damage and 30s b
  input(r,'c',40);H.update(r,{inputId:'c',status:'invalid',offsetMs:-90});
  H.observe(r,{type:'damage',seq:4,sourceSongTimeSec:40});H.observe(r,{type:'damage_reverted',damageSeq:4});
  H.observe(r,{type:'damage',seq:5,sourceSongTimeSec:50});
- H.observe(r,{type:'speed_up',rate:1.1,bpm:165});input(r,'d',1);H.update(r,{inputId:'d',status:'judged',judge:'GREAT',offsetMs:-60});
+ H.observe(r,{type:'speed_up',rate:1.1,bpm:165});assert.equal(r.pass,1);H.observe(r,{type:'song_loop',rate:1.1,bpm:165});input(r,'d',1);H.update(r,{inputId:'d',status:'judged',judge:'GREAT',offsetMs:-60});
  const out=H.finish(r,{endReason:'quit'});
  assert.deepEqual(out.summary.counts,{PERFECT:1,GREAT:1,GOOD:0,MISS:2});
  assert.equal(out.summary.meanMs,26.67);assert.equal(out.summary.medianMs,-20);assert.equal(out.summary.FAST,2);assert.equal(out.summary.SLOW,1);

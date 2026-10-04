@@ -19,7 +19,7 @@ window.NBMeasure=(()=>{
   }
   function tick(t,rebase=false,bonus=0){
     if(!active())return;
-    NBPlaytest.observe(current,{player:rushAnim?playerVis(t):player.idx,snapshot:NBMovement.sample(player.idx,notes,moveLocked,gIdx,GOAL_INDEX),time:t,rush:!!rushAnim,rebase,bonus,rate});
+    NBPlaytest.observe(current,{player:rushAnim&&!(speedOn()&&player.idx>=GOAL_INDEX)?playerVis(t):player.idx,snapshot:NBMovement.sample(player.idx,notes,moveLocked,gIdx,GOAL_INDEX),time:t,rush:!!rushAnim,rebase,bonus,rate});
   }
   function finish(result={},interrupted=false){
     if(!active())return null;
@@ -38,7 +38,7 @@ window.NBMeasure=(()=>{
       `前進：${r.normalSteps}マス（うち紫ノーツ ${r.purpleSteps}マス）`,
       ...(r.schemaVersion>=2?[`うちノーツのあるマスへの前進：${r.occupiedSteps}マス（活用率から除外）`,`前進の集計照合：${r.reconciled?'一致':'差異あり'}`,`プレイ速度：×${r.speedMin.toFixed(1)}〜×${r.speedMax.toFixed(1)}`]:['旧方式の記録：v65以降の活用率とは直接比較できません。']),
       `必殺技：${r.rushes}回 ／ ${r.rushSteps}マス`,
-      `連続で逃した最多：${r.maxConsecutiveMissed}マス ／ ワープ：${r.warps}回`,
+      `連続で逃した最多：${r.maxConsecutiveMissed}マス ／ ${r.mode==='endless'?'コース突破':'ワープ'}：${r.courses??r.warps}回`,
       ...(r.hunters?.length?['ハンター：'+r.hunters.map(h=>`${h.name} ${h.outcome==='won'?'捕獲':'逃走'}（逃した${h.missed}マス・追跡${h.used}チャンス）`).join('、')]:[]),
       `判定：PERFECT ${r.judgments.PERFECT||0}・GREAT ${r.judgments.GREAT||0}・GOOD ${r.judgments.GOOD||0}・MISS ${r.judgments.MISS||0}`,
       `最大コンボ：${r.maxCombo}`,`20チャンスごとの取りこぼし：${r.sections.map(s=>s.missed+'/'+s.opportunities+(s.speedMin?'（×'+s.speedMin.toFixed(1)+'〜'+s.speedMax.toFixed(1)+'）':'')).join('、')||'まだなし'}`,
@@ -89,5 +89,5 @@ window.NBMeasure=(()=>{
     $('measureOv').addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();$('measureOv').classList.add('hide');}});refresh();
   }
 
-  return {active,pending,arm,start,tick,finish,interrupt,init,decorate,show,summary,warp:()=>NBPlaytest.warp(current),purple:()=>NBPlaytest.purple(current)};
+  return {active,pending,arm,start,tick,finish,interrupt,init,decorate,show,summary,transition:e=>NBPlaytest.transition(current,e),warp:()=>NBPlaytest.warp(current),purple:()=>NBPlaytest.purple(current)};
 })();

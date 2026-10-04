@@ -56,10 +56,10 @@ window.NBWorkshop = (() => {
     gemCourse=NBBlockGems.create(typeof spawnSeed==='number'?spawnSeed:0);drops=[];NBMeasure.start();refreshWallet();
   }
   function suspendRun() { NBDiamond.reset(); NBMeasure.interrupt();if (ledger) ledger.flush(); run = null; gemCourse = null; drops=[]; }
-  function nextCourse() {
+  function nextCourse({silent=false}={}) {
     NBDiamond.reset();
     if (!active()) return;
-    tick(songTime()); NBMeasure.warp();run.serial++; run.seen.clear();drops=[];run.gemSoundAt=-Infinity;NBSound.play('warp');
+    tick(songTime()); NBMeasure.warp();run.serial++; run.seen.clear();drops=[];run.gemSoundAt=-Infinity;if(!silent)NBSound.play('warp');
   }
 
   function judged(word, beat, t) {
@@ -305,7 +305,7 @@ window.NBWorkshop = (() => {
     const next = result.newBest||!prev ? (steps?Math.max(Math.floor(result.best/50)*50+50,50):result.best+1) : prev+1;
     const track=ov.querySelector('[data-result-track]');track.dataset.target=String(Math.min(100,result.score/Math.max(1,next)*100));track.style.width='0%';
     ov.querySelector('[data-result-next]').textContent = steps ? `次の目標 ${fmt(next)}歩` : comparable && prev ? `BEST　${fmt(result.best)}${result.unit || ''}` : '次の一回で、もっと先へ。';
-    if (steps) ov.querySelector('.scoreHelp p').textContent = '記録はコンボ倍率込みのSTEPS。20コンボで1マス＝2 STEPS、50コンボで3 STEPS。必殺技で進んだマスにも倍率がかかります。PERFECT・GREATでコンボ継続、GOOD・MISSでリセット。ブレイクで力をため、満タンで必殺技。ワープごとに速度＋0.1（最大2.2倍）。ライフ切れ、またはワープ前に曲が終わると終了です。';
+    if (steps) ov.querySelector('.scoreHelp p').textContent = '記録はコンボ倍率込みのSTEPS。20コンボで1マス＝2 STEPS、50コンボで3 STEPS。必殺技で進んだマスにも倍率がかかります。PERFECT・GREATでコンボ継続、GOOD・MISSでリセット。ブレイクで力をため、満タンで必殺技。50マス進むたびに速度＋0.1（最大2.2倍）。曲は最後まで流れると繰り返し、ライフ切れで終了です。';
     else if (scoreOn()) ov.querySelector('.scoreHelp p').textContent = '進むたびに直前のブレイク判定に応じて加点。ブレイクそのものでも加点されます。曲が終わるまでにスコアを伸ばそう。';
     else if (!result.endless) ov.querySelector('.scoreHelp p').textContent = '判定精度 × 到達率 × 1,000,000点。自己ベストはクリアした記録を曲・難易度ごとに保存します。';
     if(result.mode==='distance')ov.querySelector('.scoreHelp p').textContent='曲を最後まで聴く間に進んだマス数がSTEPSになります。ワープは条件なし、曲はそのまま続きます。満タンの必殺技はブレイク長押しで発動。ライフがなくなれば終了です。';

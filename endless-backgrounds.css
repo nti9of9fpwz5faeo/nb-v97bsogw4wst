@@ -1,0 +1,4 @@
+/* Six resolution-independent scenes. The selected paid theme supplies the colors. */
+#app[data-endless-stage]{background:linear-gradient(var(--stage-angle,155deg),var(--sky1),var(--sky2));}
+#app[data-endless-stage]:before{opacity:.6;background:radial-gradient(circle at var(--ring-x,0%) var(--ring-y,19%),transparent 0 72px,#bafaff44 73px 84px,transparent 85px 102px,#bafaff16 103px 106px,transparent 107px),radial-gradient(circle at var(--ring2-x,105%) var(--ring2-y,68%),transparent 0 88px,#d6fbff35 89px 100px,transparent 101px);}
+#app[data-endless-stage]:after{opacity:.45;background:radial-gradient(circle,#d9ffff77 1px,transparent 2px) 23px 41px/83px 119px,linear-gradient(var(--band-angle,135deg),transparent 30%,#c3ffff20 30% 36%,transparent 36% 80%,#dcffff1a 80% 88%,transparent 88%);background-size:83px 119px,var(--band-size,360px) 430px;}
