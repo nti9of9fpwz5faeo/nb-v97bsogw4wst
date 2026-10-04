@@ -77,8 +77,11 @@ window.NBWorkshop = (() => {
     if(!active())return;
     NBMeasure.tick(t,rebase,bonus);
   }
+  // ダイヤブロックは「じゃま・挙動が読みづらい」ため出さない（v80）。仕組みは残してあり、setDiamondBlocks(true)で戻せる
+  let diamondBlocks=false;
+  function setDiamondBlocks(on){diamondBlocks=!!on;const el=$('gemStylePicker');if(el)el.hidden=!diamondBlocks;}
   function prepareNote(note){
-    if(initialized&&run&&!run.finished&&!isTutorial()){NBBlockGems.assign(note,gemCourse);NBDiamond.prepare(note);}
+    if(diamondBlocks&&initialized&&run&&!run.finished&&!isTutorial()){NBBlockGems.assign(note,gemCourse);NBDiamond.prepare(note);}
     return note;
   }
   function destroyed(note,t){
@@ -100,7 +103,7 @@ window.NBWorkshop = (() => {
     return true;
   }
   function initGemStyles(){
-    $('songList').insertAdjacentHTML('beforebegin',`<section id="gemStylePicker" aria-labelledby="gemStyleTitle"><h2 id="gemStyleTitle">ダイヤブロック</h2><p>見送っても安全。叩くと止まって採掘。</p><p>いつものタイミングでブレイク。そのマスで合計4回叩くとダイヤ獲得。</p></section>`);
+    $('songList').insertAdjacentHTML('beforebegin',`<section id="gemStylePicker" aria-labelledby="gemStyleTitle"${diamondBlocks?'':' hidden'}><h2 id="gemStyleTitle">ダイヤブロック</h2><p>見送っても安全。叩くと止まって採掘。</p><p>いつものタイミングでブレイク。そのマスで合計4回叩くとダイヤ獲得。</p></section>`);
   }
 
   function rush() {
@@ -424,5 +427,5 @@ window.NBWorkshop = (() => {
   }
   function ownedHero(id){return ledger.state.heroes.includes(id);}
   function flush() { if (ledger) { ledger.flush(); refreshWallet(); } }
-  return {refreshWallet,openRank,shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, palette, drawAtmosphere, style,setGemStyle,initGemStyles,prepareNote,destroyed,drawGemHint,drawGemDrops,resultMarkup, decorateResult, animateResult, finishReveal, paintScore, flush, clearToasts};
+  return {setDiamondBlocks,refreshWallet,openRank,shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, palette, drawAtmosphere, style,setGemStyle,initGemStyles,prepareNote,destroyed,drawGemHint,drawGemDrops,resultMarkup, decorateResult, animateResult, finishReveal, paintScore, flush, clearToasts};
 })();

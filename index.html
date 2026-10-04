@@ -301,8 +301,8 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=79">
-<link rel="stylesheet" href="result-arcade.css?v=79">
+<link rel="stylesheet" href="workshop.css?v=80">
+<link rel="stylesheet" href="result-arcade.css?v=80">
 </head>
 <body>
 <div id="app">
@@ -332,7 +332,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">v79</span>
+  <span id="verBadge">v80</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -361,17 +361,17 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
-<script src="progression.js?v=79"></script>
-<script src="movement.js?v=79"></script>
-<script src="gems.js?v=79"></script>
-<script src="playtest.js?v=79"></script>
-<script src="playtest-ui.js?v=79"></script>
+<script src="progression.js?v=80"></script>
+<script src="movement.js?v=80"></script>
+<script src="gems.js?v=80"></script>
+<script src="playtest.js?v=80"></script>
+<script src="playtest-ui.js?v=80"></script>
 <script src="courses.js?v=56"></script>
-<script src="menu.js?v=79"></script>
+<script src="menu.js?v=80"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
-<script src="workshop.js?v=79"></script>
-<script src="mining.js?v=79"></script>
+<script src="workshop.js?v=80"></script>
+<script src="mining.js?v=80"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -533,7 +533,7 @@ const CHARACTERS=[
   {id:'volt',name:'ボルト',tag:'雷の刃を持つ小さな剣士',accent:'#ffe63d',dark:'#008edb',atlas:'img/characters/volt.webp',poses:[{ax:.67,foot:.93,bodyH:.82},{ax:.61,foot:.93,bodyH:.78},{ax:.68,foot:.84,bodyH:.76},{ax:.63,foot:.86,bodyH:.76}]},
   {id:'prism',name:'プリズム',tag:'澄んだ結晶の刃を持つ剣士',accent:'#83ffe4',dark:'#00a6a5',atlas:'img/characters/prism.webp',poses:[{ax:.66,foot:.93,bodyH:.78},{ax:.61,foot:.93,bodyH:.78},{ax:.67,foot:.81,bodyH:.74},{ax:.64,foot:.82,bodyH:.73}]},
   {id:'veno',name:'ヴェノ',tag:'毒の剣を使いこなす剣士',accent:'#a8ff2e',dark:'#5a1f96',atlas:'img/characters/veno.webp',poses:[{ax:.61,foot:.893,bodyH:.57},{ax:.56,foot:.893,bodyH:.57},{ax:.60,foot:.893,bodyH:.57},{ax:.62,foot:.893,bodyH:.57}],
-   special:{atlas:'img/characters/veno-special.webp',poses:[{ax:.50,foot:.893,bodyH:.57},{ax:.50,foot:.893,bodyH:.57}]},slashFx:'img/characters/veno-slash.webp',ready:{img:'img/characters/veno-ready.webp',ax:.46,foot:.855,bodyH:.64},poison:true},
+   special:{atlas:'img/characters/veno-special.webp',poses:[{ax:.50,foot:.893,bodyH:.57},{ax:.50,foot:.893,bodyH:.57}]},slashFx:'img/characters/veno-slash.webp',ready:{img:'img/characters/veno-ready2.webp',ax:.43,foot:.811,bodyH:.64},poison:true},
   {id:'echo',name:'エコー',tag:'音の刃を響かせる剣士',accent:'#ff57d6',dark:'#a91ced',atlas:'img/characters/echo.webp',poses:[{ax:.65,foot:.91,bodyH:.75},{ax:.60,foot:.91,bodyH:.75},{ax:.66,foot:.84,bodyH:.71},{ax:.63,foot:.85,bodyH:.70}]}
 ];
 const HERO_STORAGE='neon-blade-character';
@@ -2212,7 +2212,7 @@ const POSE = {
   slash:  { ax: 0.645, foot: 0.995, bodyH: 0.923 },
   damage: { ax: 0.670, foot: 0.997, bodyH: 0.996 },
 };
-const READY_POSE_ON = false; // 構えの絵の切り替え。新しい絵（真横に斬る構え）が来るまでお休み
+const READY_POSE_ON = true; // 構えの絵の切り替え（絵があるキャラだけ。今はヴェノ：刀を腰の後ろに引く構え）
 const CHAR_H = 0.98;   // 体の高さ（マス比）
 const glowChar = { idle: true };
 function drawPose(k, x, y){
@@ -2318,7 +2318,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v79', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v80', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
