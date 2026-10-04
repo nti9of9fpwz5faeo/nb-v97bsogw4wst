@@ -270,6 +270,7 @@
   #myNote{font-size:11px;color:#a9d8ff;margin:6px 0 8px}
   #myPlay{width:100%;padding:11px;border:3px solid #071423;border-radius:10px;background:#c6ff44;color:#081221;font-size:15px;font-weight:900}
   #myPlay:disabled{opacity:.5}
+  #myHalf{margin-top:8px;padding:7px 14px;border:2px solid #081221;border-radius:8px;background:#1348b9;color:#fff;font-size:13px;font-weight:800}
   #timingSettings{width:min(360px,100%);flex:none;font-size:12px;margin-top:10px;text-align:center}
   #timingSettings summary{padding:7px;cursor:pointer}#timingSettings label{display:flex;justify-content:space-between;padding:8px 0}#timingRange{width:100%;touch-action:pan-x;accent-color:#c6ff44}#timingSettings p{font-size:11px}#timingReset{border:2px solid #081221;border-radius:8px;padding:5px 15px;background:#1348b9;color:#fff}
   .resultPending{visibility:hidden;opacity:0}
@@ -301,8 +302,8 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=82">
-<link rel="stylesheet" href="result-arcade.css?v=82">
+<link rel="stylesheet" href="workshop.css?v=83">
+<link rel="stylesheet" href="result-arcade.css?v=83">
 </head>
 <body>
 <div id="app">
@@ -332,14 +333,14 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">v82</span>
+  <span id="verBadge">v83</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
   <div id="modePicker" role="group" aria-label="モード"><button class="modeBtn" data-mode="distance" aria-pressed="false">1曲チャレンジ</button><button class="modeBtn" data-mode="endless" aria-pressed="false">エンドレス</button></div><p id="modeDesc"></p><div id="rushPicker" class="hide" role="group" aria-label="ための解放"><span>ための解放</span><button class="modeBtn" data-rush="manual">自分で</button></div>
   <div id="songList"></div>
   <input id="myFile" type="file" accept="audio/*" hidden>
-  <div id="myPanel" class="hide"><div id="myName"></div><div id="myBpmRow"><span>BPM</span><button id="myDown" aria-label="BPMを下げる">−</button><b id="myBpm">--</b><button id="myUp" aria-label="BPMを上げる">＋</button></div><p id="myNote">曲はこの端末の中だけで使います</p><button id="myPlay">この曲で遊ぶ</button></div>
+  <div id="myPanel" class="hide"><div id="myName"></div><div id="myBpmRow"><span>BPM</span><button id="myDown" aria-label="BPMを下げる">−</button><b id="myBpm">--</b><button id="myUp" aria-label="BPMを上げる">＋</button></div><button id="myHalf">半分の速さにする</button><p id="myNote">曲はこの端末の中だけで使います</p><button id="myPlay">この曲で遊ぶ</button></div>
 
   <details id="timingSettings"><summary>タイミング調整</summary><label for="timingRange">動きのタイミング <b id="timingValue">0 ms</b></label><input id="timingRange" type="range" min="-250" max="250" step="5" value="0"><p>動きが音より早い → ＋へ<br>動きが音より遅い → −へ</p><button id="timingReset">0に戻す</button></details>
   <details id="soundSettings"><summary>音と拍のガイド</summary><label class="diagRow" for="guideToggle"><span>拍のガイド音</span><input id="guideToggle" type="checkbox"></label><label class="diagRow" for="volSong"><span>曲</span><input id="volSong" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volGuide"><span>ガイド</span><input id="volGuide" type="range" min="0" max="100" step="5"></label><label class="diagRow" for="volSe"><span>効果音</span><input id="volSe" type="range" min="0" max="100" step="5"></label><div class="diagRow"><span>Neon Rushの拍補正</span><span class="corrBtns"><button data-corr="0">0ms</button><button data-corr="-30">−30ms</button></span></div><p>ガイド音をオンにすると、ブロックの移動音の代わりに拍ごとに短い音が鳴ります。拍補正は次のプレイから反映されます。</p><p><a href="check.html" style="color:#c6ff44;font-weight:800">曲のテンポのズレをチェックする</a></p></details>
@@ -361,17 +362,17 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
-<script src="progression.js?v=82"></script>
-<script src="movement.js?v=82"></script>
-<script src="gems.js?v=82"></script>
-<script src="playtest.js?v=82"></script>
-<script src="playtest-ui.js?v=82"></script>
+<script src="progression.js?v=83"></script>
+<script src="movement.js?v=83"></script>
+<script src="gems.js?v=83"></script>
+<script src="playtest.js?v=83"></script>
+<script src="playtest-ui.js?v=83"></script>
 <script src="courses.js?v=56"></script>
-<script src="menu.js?v=82"></script>
+<script src="menu.js?v=83"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
-<script src="workshop.js?v=82"></script>
-<script src="mining.js?v=82"></script>
+<script src="workshop.js?v=83"></script>
+<script src="mining.js?v=83"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -2312,7 +2313,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v82', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v83', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2683,6 +2684,14 @@ const myFile=document.getElementById('myFile'),myPanel=document.getElementById('
 function showMyBpm(){myBpmEl.textContent=mySong.bpm.toFixed(1);}
 function nudgeMyBpm(dv){if(!mySong)return;mySong.bpm=Math.max(60,Math.min(240,Math.round((mySong.bpm+dv)*10)/10));
   const P=60/mySong.bpm;mySong.offset=((mySong.baseOffset%P)+P)%P;showMyBpm();}
+const myHalfEl=document.getElementById('myHalf');
+function showMyHalf(){myHalfEl.textContent=mySong&&mySong.half?'もとの速さにもどす':'半分の速さにする';}
+myHalfEl.addEventListener('click',()=>{
+  if(!mySong)return;
+  if(!mySong.half&&mySong.bpm/2<60){document.getElementById('loadTxt').textContent='これ以上おそくできません';return;}
+  mySong.bpm=Math.round((mySong.half?mySong.bpm*2:mySong.bpm/2)*10)/10;mySong.half=!mySong.half;
+  const P=60/mySong.bpm;mySong.offset=((mySong.baseOffset%P)+P)%P;showMyBpm();showMyHalf();
+});
 document.getElementById('myDown').addEventListener('click',()=>nudgeMyBpm(-.5));
 document.getElementById('myUp').addEventListener('click',()=>nudgeMyBpm(.5));
 myFile.addEventListener('change',async()=>{
@@ -2696,7 +2705,7 @@ myFile.addEventListener('change',async()=>{
     const r=detectBeat(buf);
     const name=f.name.replace(/\.[^.]+$/,'');
     mySong={name,file:'local:'+f.name,bpm:r.bpm,offset:r.offset,baseOffset:r.offset,level:'自分の曲',local:true,buf};
-    document.getElementById('myName').textContent=name;showMyBpm();myPanel.classList.remove('hide');
+    document.getElementById('myName').textContent=name;showMyBpm();showMyHalf();myPanel.classList.remove('hide');
     lt.textContent='BPMがずれてたら −＋ で直してね';
   }catch(e){lt.textContent='この曲は読みこめませんでした。別の曲をえらんでください。';}
 });
