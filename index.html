@@ -301,8 +301,8 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=77">
-<link rel="stylesheet" href="result-arcade.css?v=77">
+<link rel="stylesheet" href="workshop.css?v=78">
+<link rel="stylesheet" href="result-arcade.css?v=78">
 </head>
 <body>
 <div id="app">
@@ -332,7 +332,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">v77</span>
+  <span id="verBadge">v78</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -361,17 +361,17 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
-<script src="progression.js?v=77"></script>
-<script src="movement.js?v=77"></script>
-<script src="gems.js?v=77"></script>
-<script src="playtest.js?v=77"></script>
-<script src="playtest-ui.js?v=77"></script>
+<script src="progression.js?v=78"></script>
+<script src="movement.js?v=78"></script>
+<script src="gems.js?v=78"></script>
+<script src="playtest.js?v=78"></script>
+<script src="playtest-ui.js?v=78"></script>
 <script src="courses.js?v=56"></script>
-<script src="menu.js?v=77"></script>
+<script src="menu.js?v=78"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
-<script src="workshop.js?v=77"></script>
-<script src="mining.js?v=77"></script>
+<script src="workshop.js?v=78"></script>
+<script src="mining.js?v=78"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -533,7 +533,7 @@ const CHARACTERS=[
   {id:'volt',name:'ボルト',tag:'雷の刃を持つ小さな剣士',accent:'#ffe63d',dark:'#008edb',atlas:'img/characters/volt.webp',poses:[{ax:.67,foot:.93,bodyH:.82},{ax:.61,foot:.93,bodyH:.78},{ax:.68,foot:.84,bodyH:.76},{ax:.63,foot:.86,bodyH:.76}]},
   {id:'prism',name:'プリズム',tag:'澄んだ結晶の刃を持つ剣士',accent:'#83ffe4',dark:'#00a6a5',atlas:'img/characters/prism.webp',poses:[{ax:.66,foot:.93,bodyH:.78},{ax:.61,foot:.93,bodyH:.78},{ax:.67,foot:.81,bodyH:.74},{ax:.64,foot:.82,bodyH:.73}]},
   {id:'veno',name:'ヴェノ',tag:'毒の剣を使いこなす剣士',accent:'#a8ff2e',dark:'#5a1f96',atlas:'img/characters/veno.webp',poses:[{ax:.61,foot:.893,bodyH:.57},{ax:.56,foot:.893,bodyH:.57},{ax:.60,foot:.893,bodyH:.57},{ax:.62,foot:.893,bodyH:.57}],
-   special:{atlas:'img/characters/veno-special.webp',poses:[{ax:.50,foot:.893,bodyH:.57},{ax:.50,foot:.893,bodyH:.57}]},slashFx:'img/characters/veno-slash.webp',poison:true},
+   special:{atlas:'img/characters/veno-special.webp',poses:[{ax:.50,foot:.893,bodyH:.57},{ax:.50,foot:.893,bodyH:.57}]},slashFx:'img/characters/veno-slash.webp',ready:{img:'img/characters/veno-ready.webp',ax:.46,foot:.855,bodyH:.64},poison:true},
   {id:'echo',name:'エコー',tag:'音の刃を響かせる剣士',accent:'#ff57d6',dark:'#a91ced',atlas:'img/characters/echo.webp',poses:[{ax:.65,foot:.91,bodyH:.75},{ax:.60,foot:.91,bodyH:.75},{ax:.66,foot:.84,bodyH:.71},{ax:.63,foot:.85,bodyH:.70}]}
 ];
 const HERO_STORAGE='neon-blade-character';
@@ -553,10 +553,11 @@ function loadHero(h){
   });
 }
 // 必殺技の2ポーズ（溜め・一閃）と斬撃エフェクトの画像（あるキャラだけ）
-const heroSpecial={},heroFx={};
+const heroSpecial={},heroFx={},heroReady={}; // heroReady＝構えの専用絵（あるキャラだけ）
 function loadHeroExtras(h){
   if(h.special&&!heroSpecial[h.id]){const im=new Image();im.onload=()=>{heroSpecial[h.id]=im;};im.src=h.special.atlas;}
   if(h.slashFx&&!heroFx[h.id]){const im=new Image();im.onload=()=>{heroFx[h.id]=im;};im.src=h.slashFx;}
+  if(h.ready&&!heroReady[h.id]){const im=new Image();im.onload=()=>{heroReady[h.id]=im;};im.src=h.ready.img;}
 }
 function heroHasSpecial(id=selectedHero){return !!heroSpecial[id];}
 function heroFrame(id,pose='idle'){
@@ -2203,6 +2204,11 @@ const POSE = {
 const CHAR_H = 0.98;   // 体の高さ（マス比）
 const glowChar = { idle: true };
 function drawPose(k, x, y){
+  if(k==='ready'){ // 構え（専用絵があるキャラだけ）
+    const im=heroReady[selectedHero],P=heroInfo().ready;
+    if(im&&P){const h=cell*CHAR_H/P.bodyH,w=h*im.naturalWidth/im.naturalHeight;g.drawImage(im,x-w*P.ax,y+cell*.47-h*P.foot,w,h);return;}
+    k='idle';
+  }
   if(k==='charge'||k==='ultimate'){ // 必殺技のポーズ（専用画像があるキャラだけ）
     const im=heroSpecial[selectedHero],sp=heroInfo().special;
     if(im&&sp){const n=k==='charge'?0:1,P=sp.poses[n],fw=im.naturalWidth/2,fh=im.naturalHeight,h=cell*CHAR_H/P.bodyH,w=h*fw/fh;
@@ -2241,14 +2247,8 @@ function drawChar(t){
   if (faceRight) g.scale(-1, 1);
   if (charState === 'damage' && Math.floor(t * 20) % 2) g.globalAlpha = .45;
   g.shadowColor='#061225';g.shadowBlur=2;
-  // 構え：ノーツが1マス手前まで来たら、キャラがグッと沈んで白く光る。一番深く構えた瞬間がブレイクのタイミング
-  const left=pose==='idle'?nextNoteLeft(t):null;
-  if(left!=null&&left<1){
-    const k=1-left,e=Math.pow(k,1.5);
-    if(!reduceMotion.matches){g.translate(cell*.06*e,cell*.47);g.scale(1+.08*e,1-.1*e);g.translate(0,-cell*.47);}
-    g.shadowColor=`rgba(255,255,255,${Math.min(1,.35+.65*k).toFixed(3)})`;g.shadowBlur=cell*.4*k;
-    drawPose(pose,0,0); // 光を重ねてはっきり見せる
-  }
+  // 構え：ノーツが1マス手前まで来たら、専用の構えの絵に切り替える（絵があるキャラだけ。今はヴェノ）。構えたら次の拍でブレイク
+  if(pose==='idle'&&heroReady[selectedHero]){const left=nextNoteLeft(t);if(left!=null&&left<1)pose='ready';}
   drawPose(pose, 0, 0);
   g.restore();
 }
@@ -2306,7 +2306,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v77', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v78', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
