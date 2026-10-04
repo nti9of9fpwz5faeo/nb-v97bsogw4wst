@@ -301,8 +301,8 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=68">
-<link rel="stylesheet" href="result-arcade.css?v=68">
+<link rel="stylesheet" href="workshop.css?v=69">
+<link rel="stylesheet" href="result-arcade.css?v=69">
 </head>
 <body>
 <div id="app">
@@ -332,7 +332,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">バージョン v68</span>
+  <span id="verBadge">バージョン v69</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -361,16 +361,16 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
-<script src="progression.js?v=68"></script>
-<script src="movement.js?v=68"></script>
-<script src="gems.js?v=68"></script>
-<script src="playtest.js?v=68"></script>
-<script src="playtest-ui.js?v=68"></script>
+<script src="progression.js?v=69"></script>
+<script src="movement.js?v=69"></script>
+<script src="gems.js?v=69"></script>
+<script src="playtest.js?v=69"></script>
+<script src="playtest-ui.js?v=69"></script>
 <script src="courses.js?v=56"></script>
-<script src="menu.js?v=62"></script>
+<script src="menu.js?v=69"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
-<script src="workshop.js?v=68"></script>
+<script src="workshop.js?v=69"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -523,7 +523,7 @@ const EXIT_INDEX = path.length - 1;
 
 // ===== 画像 =====
 const IMG = {};
-const imgList = ['char_idle.png','char_move.png','char_slash.png','char_damage.png','gems/novice.webp'];
+const imgList = ['char_idle.png','char_move.png','char_slash.png','char_damage.png','gems/novice.webp','gems/adept.webp','gems/master.webp','gems/divine.webp'];
 function loadImg(n){return new Promise(res=>{const i=new Image();i.onload=()=>res();i.onerror=()=>res();i.src='img/'+n;IMG[n.split('.')[0]]=i;});}
 
 // 見た目だけの選択。HP・移動・判定にはキャラ別の変更を加えない。
@@ -750,7 +750,7 @@ function fillGap(from, to, t){
   let last = Math.max(-99, ...notes.map(x => x.idx));
   let i = Math.max(from, last + pickGap());
   while (i <= to){
-    notes.push({ id: noteId++, idx: i, from: i, at: t, pop: t + (i - from) * 0.03, hp: rollHp(i - last) });
+    notes.push(NBWorkshop.prepareNote({ id: noteId++, idx: i, from: i, at: t, pop: t + (i - from) * 0.03, hp: rollHp(i - last) }));
     last = i; i += pickGap();
   }
 }
@@ -814,7 +814,7 @@ function chartFill(n,t){
   const {from,to}=pendingExtension;pendingExtension=null;
   for(let i=Math.max(player.idx+1,from-1);i<to;i++){
     if(chartSpawns(n-(to-i))&&!notes.some(nt=>nt.idx===i))
-      notes.push({id:noteId++,idx:i,from:i,at:t,pop:t,hp:chartHp(n-(to-i),gapBefore(i))});
+      notes.push(NBWorkshop.prepareNote({id:noteId++,idx:i,from:i,at:t,pop:t,hp:chartHp(n-(to-i),gapBefore(i))}));
   }
 }
 
@@ -948,7 +948,7 @@ function coachSpawn(n,t,frozen){
   if(at<=player.idx||notes.some(nt=>Math.abs(nt.idx-at)<3))return;
   const blue=kind==='blue'||kind==='free'&&coach.spawned%3===2;
   const purple=kind==='purple'||kind==='free'&&coach.spawned%4===3;
-  notes.push({id:noteId++,idx:at,from:at,at:t,pop:t,hp:purple?1:blue?2:1,purple});
+  notes.push(NBWorkshop.prepareNote({id:noteId++,idx:at,from:at,at:t,pop:t,hp:purple?1:blue?2:1,purple}));
   coach.spawned++;coach.nextSpawn=n+(kind==='free'?4:6);
 }
 function coachBeat(n,t){
@@ -1089,7 +1089,7 @@ function onBeat(n, t){
     if (chartNotes() ? chartSpawns(n)&&lastIdx<gIdx : gIdx - lastIdx >= nextGap){
       const pr = isTutorial() ? 0 : (song?.purple ?? PURPLE_RATE), fixedPurple = chartNotes() && activeChart?.fixedTypes;
       const purple = !moveLocked && pr > 0 && (fixedPurple ? chartPurple(n, pr) : rand() < pr); // 紫＝突進ノーツ（周の最初の1個にはしない）
-      notes.push({ id: noteId++, idx: gIdx, from: gIdx, at: t, pop: t, hp: purple ? 1 : chartNotes() ? chartHp(n, gIdx - lastIdx) : rollHp(gIdx - lastIdx), purple });
+      notes.push(NBWorkshop.prepareNote({ id: noteId++, idx: gIdx, from: gIdx, at: t, pop: t, hp: purple ? 1 : chartNotes() ? chartHp(n, gIdx - lastIdx) : rollHp(gIdx - lastIdx), purple }));
       if(!chartNotes())nextGap = pickGap(); // 紫も連続ブロックに混ざる（突進で後ろを押し返すので空けない）
     }
   }
@@ -1255,8 +1255,8 @@ function rushGuard(t){ return !!rushAnim || t < rushGuardUntil; }
 const HURT_GUARD_SEC = 0.6;
 let hurtGuardUntil = -9;
 function hitGuard(t){ return rushGuard(t) || (speedOn() && t < hurtGuardUntil); }
-function blastNote(nt, t){ const i = notes.indexOf(nt); if (i >= 0) notes.splice(i, 1); spawnShards(nt.idx, t, nt.purple ? 'purple' : (nt.hp || 1) > 1 ? 'hard' : 'pink'); }
-function takeBlown(to){ const b = notes.filter(x => x.idx <= to + 1); for (const nt of b) notes.splice(notes.indexOf(nt), 1); return b.map(nt => ({ idx: nt.idx, purple: !!nt.purple, hard: (nt.hp || 1) > 1, hit: !!nt.hit })); }
+function blastNote(nt, t){ if(rushGuard(t))NBWorkshop.destroyed(nt,t);const i = notes.indexOf(nt); if (i >= 0) notes.splice(i, 1); spawnShards(nt.idx, t, nt.purple ? 'purple' : (nt.hp || 1) > 1 ? 'hard' : 'pink'); }
+function takeBlown(to){ const b = notes.filter(x => x.idx <= to + 1); for (const nt of b) notes.splice(notes.indexOf(nt), 1); return b.map(nt => ({ id:nt.id,gem:nt.gem,idx: nt.idx, purple: !!nt.purple, hard: (nt.hp || 1) > 1, hit: !!nt.hit })); }
 // 画面上のキャラの位置（発動中は溜め→道を1マスずつ駆け抜ける）
 function playerVis(t){
   if (rushAnim){
@@ -1373,12 +1373,13 @@ function drawRushAnim(t){
   // ブロック：その場で止まり、キャラが届いた瞬間に大きく砕ける（回転はさせない）
   for (const b of A.blown){
     if (b.done) continue;
-    if (A.moved && v >= b.idx - .3){ b.done = true; spawnShards(b.idx, t, b.purple ? 'purple' : b.hit ? 'red' : b.hard ? 'hard' : 'pink'); if (heroFx[selectedHero]) addSlashMark(b.idx, t, 1.5, !facesRight(b.idx)); else fx.push({ type: 'stomp', idx: b.idx, t, d: .18, strong: false }); if (poisonHero()) POISON_SFX.slash(); else playSE('PERFECT'); continue; }
+    if (A.moved && v >= b.idx - .3){ b.done = true; NBWorkshop.destroyed(b,t);spawnShards(b.idx, t, b.purple ? 'purple' : b.hit ? 'red' : b.hard ? 'hard' : 'pink'); if (heroFx[selectedHero]) addSlashMark(b.idx, t, 1.5, !facesRight(b.idx)); else fx.push({ type: 'stomp', idx: b.idx, t, d: .18, strong: false }); if (poisonHero()) POISON_SFX.slash(); else playSE('PERFECT'); continue; }
     const p = cellXY(b.idx), sz = cell * .93 * 1.25, spr = b.purple ? purpleCv : b.hit ? crackCv : b.hard ? hardCv : noteCv;
     g.drawImage(spr, p.x - sz / 2, p.y - sz / 2, sz, sz);
+    g.save();g.translate(p.x,p.y);NBWorkshop.drawGemHint(b,cell*.93);g.restore();
   }
   if (A.moved && t >= A.moveAt + A.dur){
-    for (const b of A.blown) if (!b.done){ b.done = true; spawnShards(b.idx, t, b.purple ? 'purple' : b.hard ? 'hard' : 'pink'); }
+    for (const b of A.blown) if (!b.done){ b.done = true; NBWorkshop.destroyed(b,t);spawnShards(b.idx, t, b.purple ? 'purple' : b.hard ? 'hard' : 'pink'); }
     // 駆け抜けている間も後ろのブロックは近づいてくるので、着地の瞬間に足元のは吹き飛ばし、先のブロックはまとめて押し返す
     for (const nt of notes.filter(x => x.idx <= A.to)) blastNote(nt, t);
     const ahead = notes.filter(x => x.idx > A.to), near = ahead.length ? Math.min(...ahead.map(x => x.idx)) : Infinity;
@@ -1431,7 +1432,7 @@ function doAction(type, n, t, diff, rec){
     const target = notes.filter(x => x.purple && x.idx <= player.idx).sort((a,b)=>a.idx-b.idx)[0];
     if (!target){ diagResult(rec, { status: 'moved', reason: '突進の対象がもういないので、普通に進む' }); freeMove(t, null); return; }
     notes.splice(notes.indexOf(target), 1);
-    effects.push({ idx: target.idx, t, purple: true });
+    NBWorkshop.destroyed(target,t);effects.push({ idx: target.idx, t, purple: true });
     playSE(word); flashBtn('bMove');
     showJudge(word, sub);
     NBWorkshop.judged(word,n,t);
@@ -1473,7 +1474,7 @@ function doAction(type, n, t, diff, rec){
         playSE(word); // 判定どおりの音（青ノーツだからといってGOODの音にしない）
       } else {
         notes.splice(notes.indexOf(target), 1);
-        effects.push({ idx: target.idx, t });
+        NBWorkshop.destroyed(target,t);effects.push({ idx: target.idx, t });
         if (moveLocked){ moveLocked = false; setLockUI(false); }
         playSE(word);
       }
@@ -2092,7 +2093,7 @@ function draw(t){
     const pulse=reduceMotion.matches?0:beatPulse(t)*.025;g.scale(1+pulse,1+pulse);
     const spr=nt.purple?purpleCv:nt.hit?crackCv:((nt.hp||1)>1?hardCv:noteCv);
     g.drawImage(spr,-sz/2,-sz/2,sz,sz);
-    g.restore();
+    NBWorkshop.drawGemHint(nt,body);g.restore();
   }
 
   effects=effects.filter(e=>t-e.t<.32);
@@ -2116,7 +2117,7 @@ function draw(t){
   const rDim=rushDimAmount(t);
   if(rDim>0){g.save();g.setTransform(1,0,0,1,0,0);g.globalCompositeOperation='source-atop';g.globalAlpha=.5*rDim;g.fillStyle=poisonHero()?'#12051f':'#050b18';g.fillRect(0,0,g.canvas.width,g.canvas.height);g.restore();}
   drawRushAnim(t);
-  NBWorkshop.drawTile(t); // Static diamonds stay separate from note centers.
+  NBWorkshop.drawGemDrops(t); // Reveal diamonds only when their block is destroyed.
   drawChar(t);
   if(isTutorial())drawCoachTarget(t);
   drawRushOk(t);
@@ -2274,7 +2275,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v68', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v69', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;

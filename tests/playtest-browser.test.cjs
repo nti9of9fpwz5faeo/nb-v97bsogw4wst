@@ -24,7 +24,7 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
  });
  await page.waitForFunction(()=>!rushAnim);await page.evaluate(()=>{NBWorkshop.tick(songTime());endReason='song';end(true);finishResult(true);finishResultReveal();});
  const report=await page.evaluate(()=>finishedRun.measurement);
- assert.equal(report.taken,4);assert.equal(report.missed,1);assert.equal(report.normalSteps,4);assert.equal(report.purpleSteps,1);assert.equal(report.rushSteps,5);assert.equal(report.rushes,1);assert.equal(report.completed,true);assert.equal(report.schemaVersion,2);assert.equal(report.reconciled,true);assert.equal(report.taken+report.occupiedSteps,report.normalSteps);assert.equal(report.appVersion,'v68');
+ assert.equal(report.taken,4);assert.equal(report.missed,1);assert.equal(report.normalSteps,4);assert.equal(report.purpleSteps,1);assert.equal(report.rushSteps,5);assert.equal(report.rushes,1);assert.equal(report.completed,true);assert.equal(report.schemaVersion,2);assert.equal(report.reconciled,true);assert.equal(report.taken+report.occupiedSteps,report.normalSteps);assert.equal(report.appVersion,'v69');
  assert.equal(await page.locator('#clearOv [data-measure-result]').count(),1);
  await page.locator('#clearOv .resultDetails > summary').click();await page.click('#clearOv [data-measure-result]');await page.screenshot({path:out+'/record-390.png'});
  assert.ok((await page.locator('#measureText').textContent()).includes('順位や、初級の難易度を決める評価ではありません'));

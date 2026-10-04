@@ -31,6 +31,7 @@ window.NBMenu=(()=>{
     $('page-songs').insertAdjacentHTML('beforeend','<div class="songModeSwitch" role="group" aria-label="遊び方"><button data-song-mode="distance">♫ 1曲チャレンジ</button><button data-song-mode="endless">∞ エンドレス</button></div><p class="songStartHint">曲をタップしてスタート</p>');
     const syncMode=()=>document.querySelectorAll('[data-song-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.songMode===playMode)));
     document.querySelectorAll('[data-song-mode]').forEach(b=>b.onclick=()=>{playMode=b.dataset.songMode;endless=true;updateModeUI();try{localStorage.setItem('neon-blade-mode',playMode);}catch(_){}syncMode();});syncMode();
+    NBWorkshop.initGemStyles();$('page-songs').append($('gemStylePicker'));
     ['songList','myFile','myPanel','loadTxt'].forEach(id=>$('page-songs').append($(id)));
     ['timingSettings','soundSettings','diagSettings'].forEach(id=>$('page-settings').append($(id)));
     $('difficultyPicker')?.remove();$('modeDesc').hidden=true;$('modePicker').remove();$('rushPicker').hidden=true;

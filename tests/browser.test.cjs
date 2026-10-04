@@ -17,6 +17,7 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
  const assert=require('node:assert/strict');
  const actual=await page.evaluate(()=>{
    const random=Math.random;Math.random=()=>.1;state='play';NBWorkshop.resetRun();Math.random=random;
+   for(let n=0;n<3;n++)NBWorkshop.destroyed({id:500000+n,idx:7,gem:{type:'novice',claimed:false}},songTime());
    player.idx=0;player.from=0;player.at=-10;NBWorkshop.tick(songTime());
    player.idx=15;player.from=15;moveLocked=false;NBWorkshop.tick(songTime());
    player.idx=23;player.from=23;NBWorkshop.tick(songTime());
@@ -25,8 +26,8 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
    NBWorkshop.tick(songTime());NBWorkshop.judged('PERFECT',3,songTime());NBWorkshop.flush();
    const second=JSON.parse(localStorage.getItem(NBProgression.KEY));state='paused';return {first,second};
  });
- assert.equal(actual.first.stats.tiles,3);assert.equal(actual.first.stats.hits,4);assert.equal(actual.first.gems,3);assert.deepEqual(actual.first,actual.second);
- console.log('tile passage, reward once and beat dedup verified');
+ assert.equal(actual.first.stats.tiles,3);assert.equal(actual.first.stats.hits,4);assert.equal(actual.first.gems,15);assert.deepEqual(actual.first,actual.second);
+ console.log('block diamonds, reward once and beat dedup verified');
  // Render, skip and render again must never pay again; retry must clear the run summary only.
  await page.evaluate(()=>{state='play';recordSteps=151;moveSteps=70;combo=20;maxCombo=20;NBWorkshop.steps(recordSteps);hp=0;endReason='hp';end(false);finishResult(false);finishResultReveal();});
  const before=await page.evaluate(()=>localStorage.getItem(NBProgression.KEY));

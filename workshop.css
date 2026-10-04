@@ -79,3 +79,12 @@
 .resultScreen .resultHero{margin-bottom:10px}
 @media(max-height:610px){.resultScreen .resultHero{margin-bottom:8px}}
 .resultScreen .growthLabel [data-xp-earned]{font-size:clamp(17px,5vw,23px);white-space:nowrap}
+
+/* v69: compare block-diamond styles before choosing a song. */
+#gemStylePicker{padding:13px 14px;margin:0 0 16px;border:1px solid #bddde7;border-radius:16px;background:#e9f7fa;text-align:left;color:#214856}
+#gemStylePicker h2{font:750 14px/1.4 system-ui;color:#214856;text-shadow:none;margin:0 0 10px}
+#gemStylePicker p{font:500 11px/1.6 system-ui!important;color:#456b78!important;text-shadow:none!important;margin:7px 0 0!important}
+#gemStylePicker #gemStyleStatus:empty{display:none}.gemStyleSwitch{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.gemStyleSwitch button{padding:9px 4px;min-height:44px;border:1px solid #adccd9;border-radius:10px;background:transparent;color:#3c6070;font:750 12px/1.4 system-ui;touch-action:manipulation}
+.gemStyleSwitch button[aria-pressed=true]{background:#126596;color:#fff;border-color:#126596}
+.resultScreen .gemResultTypes{font:500 12px/1.6 system-ui;color:#b4c9d9;text-align:left}

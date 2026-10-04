@@ -1,9 +1,9 @@
-/* v51: result presentation, local missions, optional gem tiles and course colors. */
+/* Results, progression and optional diamonds embedded in breakable blocks. */
 window.NBWorkshop = (() => {
   'use strict';
   const GEM = '<img class="gemIcon" src="img/gems/novice.webp" alt="">';
   let previewSource=null, previewToken=0, previewButton=null;
-  let ledger, run, pickups, initialized = false, toastTimer, toastGap, toastQueue = [], returnFocus, missionTab='daily', missionSong=null;
+  let ledger, run, gemCourse, drops = [], gemStyle = 'glow', initialized = false, toastTimer, toastGap, toastQueue = [], returnFocus, missionTab='daily', missionSong=null;
   const $ = id => document.getElementById(id);
   const fmt = n => n.toLocaleString('en-US');
   const escape = text => String(text).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -51,12 +51,13 @@ window.NBWorkshop = (() => {
     if (!initialized) return;
     ledger.flush(); clearToasts();
     run = {gems: 0, tileGems: 0, missions: [], rushes: 0, serial: 0, hits:0, stepValue:0, id:globalThis.crypto?.randomUUID?.() || String(Date.now())+Math.random(), seen: new Set(), finished: false};
-    pickups=NBPickup.create(GOAL_INDEX); NBMeasure.start();refreshWallet();
+    run.gemStyle=gemStyle;run.gemCounts=Object.fromEntries(NBBlockGems.types.map(type=>[type.id,0]));run.gemClaims=new Set();run.gemSoundAt=-Infinity;
+    gemCourse=NBBlockGems.create(typeof spawnSeed==='number'?spawnSeed:0);drops=[];NBMeasure.start();refreshWallet();
   }
-  function suspendRun() { NBMeasure.interrupt();if (ledger) ledger.flush(); run = null; pickups = null; }
+  function suspendRun() { NBMeasure.interrupt();if (ledger) ledger.flush(); run = null; gemCourse = null; drops=[]; }
   function nextCourse() {
     if (!active()) return;
-    tick(songTime()); NBMeasure.warp();run.serial++; run.seen.clear();pickups=NBPickup.create(GOAL_INDEX);NBSound.play('warp');
+    tick(songTime()); NBMeasure.warp();run.serial++; run.seen.clear();drops=[];run.gemSoundAt=-Infinity;NBSound.play('warp');
   }
 
   function judged(word, beat, t) {
@@ -73,11 +74,33 @@ window.NBWorkshop = (() => {
   function tick(t,rebase=false,bonus=0){
     if(!active())return;
     NBMeasure.tick(t,rebase,bonus);
-    const found=NBPickup.collect(pickups,rushAnim?playerVis(t):player.idx);
-    if(!found.length)return;
-    const reward=found.reduce((sum,tile)=>sum+tile.value,0);
-    apply({tiles:found.length},{},reward);NBSound.play('diamond');
-    texts.push({s:'◆ ＋'+reward,idx:player.idx,t,col:'#83eeff'});
+  }
+  function prepareNote(note){
+    if(initialized&&run&&!run.finished&&!isTutorial())NBBlockGems.assign(note,gemCourse);
+    return note;
+  }
+  function destroyed(note,t){
+    if(!active()||!note||run.gemClaims.has(note.id))return null;
+    const type=NBBlockGems.claim(note);if(!type)return null;
+    run.gemClaims.add(note.id);run.gemCounts[type.id]++;
+    apply({tiles:1},{},type.value);
+    drops.push({type,idx:note.idx,t});if(drops.length>8)drops.shift();
+    if(t-run.gemSoundAt>=.09){NBSound.play('diamond');run.gemSoundAt=t;}
+    return type;
+  }
+  const GEM_STYLE_KEY='neon-blade-block-diamond-style-v1';
+  function style(){return gemStyle;}
+  function syncGemStyle(){document.querySelectorAll('[data-gem-style]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.gemStyle===gemStyle)));}
+  function setGemStyle(value){
+    if(!['glow','hidden'].includes(value)||state!=='ready')return false;
+    gemStyle=value;syncGemStyle();
+    try{localStorage.setItem(GEM_STYLE_KEY,value);$('gemStyleStatus').textContent='';}catch(_){$('gemStyleStatus').textContent='この端末では設定を保存できません';}
+    return true;
+  }
+  function initGemStyles(){
+    try{const value=localStorage.getItem(GEM_STYLE_KEY);if(['glow','hidden'].includes(value))gemStyle=value;}catch(_){}
+    $('songList').insertAdjacentHTML('beforebegin',`<section id="gemStylePicker" aria-labelledby="gemStyleTitle"><h2 id="gemStyleTitle">ブロックのダイヤ</h2><div class="gemStyleSwitch" role="group" aria-label="ダイヤの見え方"><button data-gem-style="glow">① ほのかに光る</button><button data-gem-style="hidden">② 壊すまで秘密</button></div><p>どちらも4種類。ブロックから、たまにダイヤ。</p><p id="gemStyleStatus" role="status"></p></section>`);
+    document.querySelectorAll('[data-gem-style]').forEach(button=>button.addEventListener('click',()=>setGemStyle(button.dataset.gemStyle)));syncGemStyle();
   }
 
   function rush() {
@@ -86,6 +109,7 @@ window.NBWorkshop = (() => {
   }
   function finish(result) {
     if (!initialized) return;
+    result.gemStyle=run?.gemStyle||gemStyle;result.gemCounts={...(run?.gemCounts||{})};
     result.measurement=NBMeasure.finish(result);
     if(run&&!run.finished&&!isTutorial()){
       const xp= Math.floor(Math.min(2000,(run.hits*.5)+(result.mode==='distance'?result.score:result.moveSteps||0)));
@@ -105,18 +129,25 @@ window.NBWorkshop = (() => {
     const p = theme.colors;
     return p;
   }
-  function drawTile(t,preview=false) {
-    if(!initialized||!run||isTutorial()||!pickups)return;
-    const art=IMG['gems/novice'];
-    for(const tile of pickups.tiles){
-      if(tile.collected||!preview&&tile.idx>revealEnd)continue;
-      const p=cellXY(tile.idx);if(p.y < -cell || p.y>boardH+cell)continue;
-      const side=path[tile.idx].c>=6?-1:1,size=cell*.48;
-      g.save();g.translate(p.x+side*cell*.27,p.y+cell*.13);
-      g.fillStyle='#06325666';g.beginPath();g.ellipse(0,size*.42,size*.4,size*.12,0,0,Math.PI*2);g.fill();
+  function drawGemHint(note,size){
+    const shine=NBBlockGems.shine(note,run?.gemStyle||gemStyle);
+    if(!shine||isTutorial())return;
+    // Neutral white light inside the block: no diamond icon, tier color, halo or flashing.
+    g.save();g.globalAlpha*=shine;g.strokeStyle='#ffffff';g.fillStyle='#ffffff';g.lineWidth=Math.max(1,size*.028);
+    g.beginPath();g.moveTo(-size*.36,-size*.12);g.lineTo(-size*.36,-size*.36);g.lineTo(-size*.12,-size*.36);g.stroke();
+    g.globalAlpha*=.7;g.lineWidth=Math.max(1,size*.016);g.beginPath();g.moveTo(size*.14,size*.36);g.lineTo(size*.36,size*.36);g.lineTo(size*.36,size*.14);g.stroke();
+    g.globalAlpha=shine;const x=size*.24,y=-size*.25,r=size*.065;
+    g.beginPath();g.moveTo(x-r,y);g.lineTo(x+r,y);g.moveTo(x,y-r);g.lineTo(x,y+r);g.stroke();g.restore();
+  }
+  function drawGemDrops(t){
+    if(!initialized||isTutorial())return;
+    drops=drops.filter(drop=>t>=drop.t&&t-drop.t<.55);
+    for(const drop of drops){
+      const k=(t-drop.t)/.55,p=cellXY(drop.idx),size=cell*.34,art=IMG['gems/'+drop.type.id];
+      g.save();g.globalAlpha=1-k;g.translate(p.x,p.y-cell*(.18+(reduceMotion.matches?0:k*.3)));
       if(art?.naturalWidth)g.drawImage(art,-size/2,-size/2,size,size);
-      else {g.fillStyle='#78efff';g.strokeStyle='#d4fbff';g.lineWidth=1.5;g.beginPath();g.moveTo(0,-size/2);g.lineTo(size/2,-size*.12);g.lineTo(0,size/2);g.lineTo(-size/2,-size*.12);g.closePath();g.fill();g.stroke();}
-      g.restore();
+      else {g.fillStyle='#e1fcff';g.beginPath();g.moveTo(0,-size/2);g.lineTo(size/2,0);g.lineTo(0,size/2);g.lineTo(-size/2,0);g.closePath();g.fill();}
+      g.font=`800 ${Math.max(10,cell*.19)}px system-ui`;g.textAlign='left';g.textBaseline='middle';g.strokeStyle='#081221';g.lineWidth=3;g.strokeText('+'+drop.type.value,size*.6,0);g.fillStyle='#edfdff';g.fillText('+'+drop.type.value,size*.6,0);g.restore();
     }
   }
   function drawAtmosphere(t) {
@@ -225,7 +256,7 @@ window.NBWorkshop = (() => {
     $('verBadge').insertAdjacentHTML('afterend','<button id="playerRank" class="playerRank" aria-label="ランクと解放予定を見る"></button>');
 
     $('verBadge').insertAdjacentHTML('afterend', `<div class="collectionBar"><button id="missionsOpen">ミッション <span class="missionDot"></span></button><button id="themesOpen">${GEM}<b data-wallet>0</b><span>解放 ↗</span></button></div><p class="saveNote" data-save-note hidden></p>`);
-    $('fieldWrap').insertAdjacentHTML('beforeend', '<div id="gemCue" hidden></div>');
+
     document.body.insertAdjacentHTML('beforeend', `<div id="missionToast" role="status" aria-live="polite"></div><div id="collectionOv" class="overlay hide" role="dialog" aria-modal="true" aria-labelledby="collectionHeading"><div class="collectionPanel"><header><button id="collectionClose" aria-label="ホームへ戻る">‹</button><h2 id="collectionHeading"></h2><span class="wallet">${GEM}<b data-wallet>0</b></span></header><p id="collectionIntro"></p><div id="collectionBody"></div><p id="collectionStatus" role="status"></p><p class="saveNote" data-save-note hidden></p></div></div>`);
     $('missionsOpen').addEventListener('click', () => openPanel('missions'));
     $('themesOpen').addEventListener('click', () => openPanel('shop'));
@@ -246,7 +277,7 @@ window.NBWorkshop = (() => {
       <div class="resultActions"><button class="ovBtn" data-retry>もう一度 <span aria-hidden="true">↻</span></button><button class="ovBtn sub" data-select>曲を選ぶ</button></div>
       <button class="resultSkip" data-result-skip>演出をスキップ</button>
       <details class="resultDetails"><summary>プレイの詳細</summary><div class="resultStats"><div class="resultStat"><small>判定精度</small><b data-result-accuracy></b></div><div class="resultStat"><small>最大コンボ</small><b data-result-combo></b></div></div><dl class="judgmentList">${[['PERFECT','#a4f7ff'],['GREAT','#93dbff'],['GOOD','#d2eab5'],['MISS','#ffadb6']].map(([k,col])=>`<div class="judgmentRow" data-judgment="${k}" style="--tone:${col}"><dt>${k}</dt><dd><span>0</span><small>回</small></dd></div>`).join('')}</dl><div class="resultFoot"><span class="resultBadge" data-result-badge></span><span data-result-foot></span></div>
-      <p class="resultGrowthDetail" data-result-growth-detail></p><p class="rewardBreakdown" data-result-reward-detail></p><div class="rewardWallet">所持ダイヤ <b data-result-balance>0</b></div><div class="rewardMissionList" data-result-missions></div>
+      <p class="resultGrowthDetail" data-result-growth-detail></p><p class="rewardBreakdown" data-result-reward-detail></p><p class="gemResultTypes" data-result-gem-types></p><div class="rewardWallet">所持ダイヤ <b data-result-balance>0</b></div><div class="rewardMissionList" data-result-missions></div>
       <button class="resultClaim" data-result-claim hidden></button><p class="resultClaimStatus" data-claim-status role="status"></p>
       <button class="doubleReward" data-double-reward disabled>▶ 広告でダイヤ2倍</button><p class="adStatus" data-ad-status role="status"></p>
       <button class="ovBtn sub diagOpenBtn" data-diag hidden>判定診断を見る</button><details class="scoreHelp"><summary>記録のしくみ</summary><p></p></details></details>
@@ -275,7 +306,8 @@ window.NBWorkshop = (() => {
     const rewards = result.rewards || {total: 0, tiles: 0, missions: [], balance: ledger?.state.gems || 0};
     ov.querySelector('[data-result-gems]').textContent = '＋' + rewards.total;
     ov.querySelector('[data-result-balance]').textContent = fmt(rewards.balance);
-    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? [rewards.tiles?'通過で獲得 ＋'+rewards.tiles:'',rewards.total>rewards.tiles?'ランクアップ ＋'+(rewards.total-rewards.tiles):''].filter(Boolean).join(' ／ ') : isTutorial() ? '本編ではマスのダイヤを拾えます' : 'マスのダイヤは通過すると拾えます';
+    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? [rewards.tiles?'ブロックから獲得 ＋'+rewards.tiles:'',rewards.total>rewards.tiles?'ランクアップ ＋'+(rewards.total-rewards.tiles):''].filter(Boolean).join(' ／ ') : isTutorial() ? '本編ではブロックからダイヤが出ます' : 'ダイヤ入りのブロックを壊すと獲得できます';
+    const gemTypes=ov.querySelector('[data-result-gem-types]');gemTypes.textContent=(result.gemStyle==='hidden'?'壊すまで秘密':'ほのかに光る')+' ／ '+NBBlockGems.types.filter(type=>result.gemCounts?.[type.id]).map(type=>type.name+' ×'+result.gemCounts[type.id]).join('・');gemTypes.hidden=!Object.values(result.gemCounts||{}).some(Boolean);
     const growth=ov.querySelector('[data-result-growth]');growth.innerHTML='';
     const growthDetail=ov.querySelector('[data-result-growth-detail]');growthDetail.hidden=!result.progression;growthDetail.textContent=result.progression?`ランク ${result.progression.rank} ／ 次のランクまで ${result.progression.need-result.progression.progress} XP${result.progression.unlocked.length?' ／ 新しい曲を解放！':''}`:'';
     if(result.progression){const p=result.progression;growth.innerHTML=`<div class="growthLabel"><b>${p.rank>p.oldRank?'RANK UP　'+p.oldRank+' → '+p.rank:'RANK '+p.rank}</b><span data-xp-earned>＋0 XP</span></div><progress max="${p.need}" value="0" aria-label="次のランクへの進捗"></progress><small>${p.unlocked.length?'新しい曲を解放！':'次のランクまで '+(p.need-p.progress)+' XP'}</small>`;}
@@ -387,5 +419,5 @@ window.NBWorkshop = (() => {
   }
   function ownedHero(id){return ledger.state.heroes.includes(id);}
   function flush() { if (ledger) { ledger.flush(); refreshWallet(); } }
-  return {refreshWallet,openRank,shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, palette, drawTile, drawAtmosphere, resultMarkup, decorateResult, animateResult, finishReveal, paintScore, flush, clearToasts};
+  return {refreshWallet,openRank,shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, palette, drawAtmosphere, style,setGemStyle,initGemStyles,prepareNote,destroyed,drawGemHint,drawGemDrops,resultMarkup, decorateResult, animateResult, finishReveal, paintScore, flush, clearToasts};
 })();
