@@ -301,8 +301,8 @@
 
 
 </style>
-<link rel="stylesheet" href="workshop.css?v=80">
-<link rel="stylesheet" href="result-arcade.css?v=80">
+<link rel="stylesheet" href="workshop.css?v=81">
+<link rel="stylesheet" href="result-arcade.css?v=81">
 </head>
 <body>
 <div id="app">
@@ -332,7 +332,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">v80</span>
+  <span id="verBadge">v81</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -361,17 +361,17 @@
 <div class="overlay hide" id="clearOv"><div class="resultMark">◇</div><h2 class="resultTitle">CLEAR</h2><div class="result" id="clearTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 <div class="overlay hide" id="overOv"><div class="resultMark">⌁</div><h2 class="resultTitle">GAME OVER</h2><div class="result" id="overTxt"></div><button class="ovBtn" data-retry>もう一回</button><button class="ovBtn sub" data-select>曲えらび</button></div>
 
-<script src="progression.js?v=80"></script>
-<script src="movement.js?v=80"></script>
-<script src="gems.js?v=80"></script>
-<script src="playtest.js?v=80"></script>
-<script src="playtest-ui.js?v=80"></script>
+<script src="progression.js?v=81"></script>
+<script src="movement.js?v=81"></script>
+<script src="gems.js?v=81"></script>
+<script src="playtest.js?v=81"></script>
+<script src="playtest-ui.js?v=81"></script>
 <script src="courses.js?v=56"></script>
-<script src="menu.js?v=80"></script>
+<script src="menu.js?v=81"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
-<script src="workshop.js?v=80"></script>
-<script src="mining.js?v=80"></script>
+<script src="workshop.js?v=81"></script>
+<script src="mining.js?v=81"></script>
 <script>
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
@@ -533,7 +533,7 @@ const CHARACTERS=[
   {id:'volt',name:'ボルト',tag:'雷の刃を持つ小さな剣士',accent:'#ffe63d',dark:'#008edb',atlas:'img/characters/volt.webp',poses:[{ax:.67,foot:.93,bodyH:.82},{ax:.61,foot:.93,bodyH:.78},{ax:.68,foot:.84,bodyH:.76},{ax:.63,foot:.86,bodyH:.76}]},
   {id:'prism',name:'プリズム',tag:'澄んだ結晶の刃を持つ剣士',accent:'#83ffe4',dark:'#00a6a5',atlas:'img/characters/prism.webp',poses:[{ax:.66,foot:.93,bodyH:.78},{ax:.61,foot:.93,bodyH:.78},{ax:.67,foot:.81,bodyH:.74},{ax:.64,foot:.82,bodyH:.73}]},
   {id:'veno',name:'ヴェノ',tag:'毒の剣を使いこなす剣士',accent:'#a8ff2e',dark:'#5a1f96',atlas:'img/characters/veno.webp',poses:[{ax:.61,foot:.893,bodyH:.57},{ax:.56,foot:.893,bodyH:.57},{ax:.60,foot:.893,bodyH:.57},{ax:.62,foot:.893,bodyH:.57}],
-   special:{atlas:'img/characters/veno-special.webp',poses:[{ax:.50,foot:.893,bodyH:.57},{ax:.50,foot:.893,bodyH:.57}]},slashFx:'img/characters/veno-slash.webp',ready:{img:'img/characters/veno-ready2.webp',ax:.43,foot:.811,bodyH:.64},poison:true},
+   special:{atlas:'img/characters/veno-special.webp',poses:[{ax:.50,foot:.893,bodyH:.57},{ax:.50,foot:.893,bodyH:.57}]},slashFx:'img/characters/veno-slash.webp',poison:true},
   {id:'echo',name:'エコー',tag:'音の刃を響かせる剣士',accent:'#ff57d6',dark:'#a91ced',atlas:'img/characters/echo.webp',poses:[{ax:.65,foot:.91,bodyH:.75},{ax:.60,foot:.91,bodyH:.75},{ax:.66,foot:.84,bodyH:.71},{ax:.63,foot:.85,bodyH:.70}]}
 ];
 const HERO_STORAGE='neon-blade-character';
@@ -553,11 +553,10 @@ function loadHero(h){
   });
 }
 // 必殺技の2ポーズ（溜め・一閃）と斬撃エフェクトの画像（あるキャラだけ）
-const heroSpecial={},heroFx={},heroReady={}; // heroReady＝構えの専用絵（あるキャラだけ）
+const heroSpecial={},heroFx={};
 function loadHeroExtras(h){
   if(h.special&&!heroSpecial[h.id]){const im=new Image();im.onload=()=>{heroSpecial[h.id]=im;};im.src=h.special.atlas;}
   if(h.slashFx&&!heroFx[h.id]){const im=new Image();im.onload=()=>{heroFx[h.id]=im;};im.src=h.slashFx;}
-  if(h.ready&&!heroReady[h.id]){const im=new Image();im.onload=()=>{heroReady[h.id]=im;};im.src=h.ready.img;}
 }
 function heroHasSpecial(id=selectedHero){return !!heroSpecial[id];}
 function heroFrame(id,pose='idle'){
@@ -1012,11 +1011,11 @@ function tutLoopMusic(){
   cameraAt-=old;rushFade=null;rushGuardUntil=-9;hurtGuardUntil=-9;rushPoseUntil=-9;shards=[];slashMarks=[];mists=[];
   hideJudge();stopMoveScheduler();startMusicAt();startMoveScheduler();coachUI();
 }
-// 次に自分のマスへ来るノーツまで、あと何拍か（0＝今届いた）。来ないとき・紫（「進む」で壊す）のときは null
+// 次に自分のマスへ来るノーツまで、あと何拍か（0＝今届いた）。来ないときは null。紫（「進む」で壊す）も届く拍は同じなので含める
 function nextNoteLeft(t){
   if(isTutorial()||!['play','paused','resuming'].includes(state)||rushAnim)return null;
   const nt=notes.filter(x=>x.idx>=player.idx).sort((a,b)=>a.idx-b.idx)[0];
-  if(!nt||nt.purple)return null;
+  if(!nt)return null;
   const b0=beatTime(nextBeat-1),b1=beatTime(nextBeat),f=notesWillMove()&&b1>b0?Math.min(1,Math.max(0,(t-b0)/(b1-b0))):0;
   return nt.hit?Math.max(0,(beatTime((nt.hitBeat??nextBeat-1)+1)-t)/SPB):Math.max(0,nt.idx-player.idx-f);
 }
@@ -2212,15 +2211,9 @@ const POSE = {
   slash:  { ax: 0.645, foot: 0.995, bodyH: 0.923 },
   damage: { ax: 0.670, foot: 0.997, bodyH: 0.996 },
 };
-const READY_POSE_ON = true; // 構えの絵の切り替え（絵があるキャラだけ。今はヴェノ：刀を腰の後ろに引く構え）
 const CHAR_H = 0.98;   // 体の高さ（マス比）
 const glowChar = { idle: true };
 function drawPose(k, x, y){
-  if(k==='ready'){ // 構え（専用絵があるキャラだけ）
-    const im=heroReady[selectedHero],P=heroInfo().ready;
-    if(im&&P){const h=cell*CHAR_H/P.bodyH,w=h*im.naturalWidth/im.naturalHeight;g.drawImage(im,x-w*P.ax,y+cell*.47-h*P.foot,w,h);return;}
-    k='idle';
-  }
   if(k==='charge'||k==='ultimate'){ // 必殺技のポーズ（専用画像があるキャラだけ）
     const im=heroSpecial[selectedHero],sp=heroInfo().special;
     if(im&&sp){const n=k==='charge'?0:1,P=sp.poses[n],fw=im.naturalWidth/2,fh=im.naturalHeight,h=cell*CHAR_H/P.bodyH,w=h*fw/fh;
@@ -2259,8 +2252,6 @@ function drawChar(t){
   if (faceRight) g.scale(-1, 1);
   if (charState === 'damage' && Math.floor(t * 20) % 2) g.globalAlpha = .45;
   g.shadowColor='#061225';g.shadowBlur=2;
-  // 構え：ノーツが1マス手前まで来たら、専用の構えの絵に切り替える（絵があるキャラだけ。今はヴェノ）。構えたら次の拍でブレイク
-  if(READY_POSE_ON&&pose==='idle'&&heroReady[selectedHero]){const left=nextNoteLeft(t);if(left!=null&&left<1)pose='ready';}
   drawPose(pose, 0, 0);
   g.restore();
 }
@@ -2318,7 +2309,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 押した時刻・判定の基準・処理結果を記録して、あとで原因を調べられるようにする。オフのときは何も記録しない
-const APP_VERSION = 'v80', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v81', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
