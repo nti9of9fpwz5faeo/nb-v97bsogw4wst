@@ -1,5 +1,5 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('fs'),path=require('path'),http=require('http');
-const root=path.resolve(__dirname,'..'),out=process.env.QA_DIR||'/tmp/neon-v87-qa';fs.mkdirSync(out,{recursive:true});
+const root=path.resolve(__dirname,'..'),out=process.env.QA_DIR||'/tmp/neon-v88-qa';fs.mkdirSync(out,{recursive:true});
 const server=http.createServer((req,res)=>{let f=path.join(root,decodeURIComponent(req.url.split('?')[0]));if(f===root+'/')f+='index.html';fs.readFile(f,(e,data)=>{if(e){res.writeHead(404);return res.end();}res.setHeader('Content-Type',f.endsWith('.js')?'text/javascript':f.endsWith('.css')?'text/css':f.endsWith('.html')?'text/html':'application/octet-stream');res.end(data);});});
 (async()=>{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
@@ -24,14 +24,14 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
    return {before,rate,idx:player.idx,lap,beatBefore:beat,beatAfter:nextBeat,sameSource:songSrc===window.savedSource,sameStart:songStart===window.savedStart,
     cancelledVoice:window.cancelledVoice,stage:document.getElementById('app').dataset.endlessStage,events:diagRun.events.filter(e=>['speed_up','course_continue','warp'].includes(e.type)),notes:notes.length,gIdx};
   });
-  assert.equal(transition.cancelledVoice,true);assert.equal(transition.before,1);assert.equal(transition.rate,1.1);assert.equal(transition.idx,0);assert.equal(transition.lap,1);assert.equal(transition.beatBefore,transition.beatAfter);assert.ok(transition.sameSource&&transition.sameStart);assert.equal(transition.stage,'1');assert.equal(transition.notes,0);assert.equal(transition.gIdx,8);assert.equal(transition.events.some(e=>e.type==='warp'),false);
+  assert.equal(transition.cancelledVoice,true);assert.equal(transition.before,1);assert.equal(transition.rate,1.1);assert.equal(transition.idx,50);assert.equal(transition.lap,1);assert.equal(transition.beatBefore,transition.beatAfter);assert.ok(transition.sameSource&&transition.sameStart);assert.equal(transition.stage,'1');assert.equal(transition.notes,0);assert.equal(transition.gIdx,58);assert.equal(transition.events.some(e=>e.type==='warp'),false);
   const speed=transition.events.find(e=>e.type==='speed_up');assert.ok(speed.sourceSongTimeSec>.1);assert.equal(speed.courseSteps,50);
   // Live audio crosses its actual end without an ended/restart callback or gameplay reset.
-  await page.evaluate(()=>{notes=[{id:80001,idx:30,from:30,at:songTime(),pop:-9,hp:1}];window.seamNote=notes[0];player.idx=6;player.from=6;player.at=-9;window.seamBeat=nextBeat;});
+  await page.evaluate(()=>{notes=[{id:80001,idx:80,from:80,at:songTime(),pop:-9,hp:1}];window.seamNote=notes[0];player.idx=56;player.from=56;player.at=-9;window.seamBeat=nextBeat;});
   await page.waitForFunction(()=>endlessCycle>=1);
   const seam=await page.evaluate(()=>({state,sameSource:songSrc===window.savedSource,beatAdvanced:nextBeat>window.seamBeat,keptNote:notes.includes(window.seamNote),idx:player.idx,rear:rearClear,
    frontAlpha:rearTileAlpha(player.idx,songTime()),aheadAlpha:rearTileAlpha(player.idx+1,songTime()),pass:timingHistoryRun.pass,chart:[chartVal(endlessClock.beatCount),chartVal(endlessClock.beatCount+2)]}));
-  assert.equal(seam.state,'play');assert.ok(seam.sameSource&&seam.beatAdvanced&&seam.keptNote);assert.equal(seam.idx,6);assert.equal(seam.rear.to,5);assert.equal(seam.frontAlpha,1);assert.equal(seam.aheadAlpha,1);assert.equal(seam.pass,2);assert.deepEqual(seam.chart,[1,2]);
+  assert.equal(seam.state,'play');assert.ok(seam.sameSource&&seam.beatAdvanced&&seam.keptNote);assert.equal(seam.idx,56);assert.equal(seam.rear.to,55);assert.equal(seam.frontAlpha,1);assert.equal(seam.aheadAlpha,1);assert.equal(seam.pass,2);assert.deepEqual(seam.chart,[1,2]);
   // Real input path on both sides of a rate boundary and of the repeating chart seam.
   const judged=await page.evaluate(()=>{
    stopMoveScheduler();const saved=songTime;let now=0;songTime=()=>now;const result=[];let id=91000;
@@ -53,7 +53,7 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
    const t=ctx.currentTime-songStart;nextBeat=nearestBeat(t);if(beatTime(nextBeat)<=t)nextBeat++;startMoveScheduler();stopMoveScheduler();playGuideClick=old;return captured;
   });assert.ok(guides.length>0);for(const v of guides)assert.ok(Math.abs(v.at-v.expected)<1e-10);
   // Six scenes, all checkpoints, all five course layouts and mobile proportions.
-  await page.evaluate(()=>{pauseGame();});
+  await page.evaluate(()=>{pauseGame();chooseCourse();});
   const signatures=[];
   for(let stage=0;stage<6;stage++){
    signatures.push(await page.evaluate(stage=>{rate=1+stage*.1;applyRate();setPalette(0);setStepsHud();NBWorkshop.clearToasts();hideJudge();diagOn=false;document.getElementById('diagLine').classList.add('hide');charState='idle';charUntil=0;effects=[];fx=[];texts=[];player.idx=0;player.from=0;player.at=-9;lineK=0;cameraRow=0;cameraFrom=0;cameraTarget=0;revealEnd=REVEAL_ENDS[0];notes=[];document.getElementById('pauseOv').classList.add('hide');draw(pausedAt);return getComputedStyle(document.getElementById('app')).backgroundImage;},stage));
@@ -79,14 +79,14 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
   await page.waitForFunction(()=>state==='play');assert.ok(await page.evaluate(()=>Math.abs(window.resumeOffset-window.pauseSource)<1e-8));
   // Rate cap, retained last scene, no reset of source, HP or accumulated records.
   const cap=await page.evaluate(()=>{
-   stopMoveScheduler();notes=[];hp=99;for(let i=0;i<14;i++){player.idx=50;player.from=50;lineK=LINES.length-1;checkLines(songTime());stopMoveScheduler();}
+   stopMoveScheduler();notes=[];hp=99;for(let i=0;i<14;i++){player.idx=GOAL_INDEX;player.from=GOAL_INDEX;lineK=LINES.length-1;checkLines(songTime());stopMoveScheduler();}
    return {rate,stage:endlessStage(),hp,steps:recordSteps,measure:NBMeasure.finish({counts})};
   });assert.equal(cap.rate,2.2);assert.equal(cap.stage,5);assert.equal(cap.hp,99);assert.ok(cap.steps>=999);assert.ok(cap.measure.transitions.some(e=>e.type==='speed_up'));assert.ok(cap.measure.transitions.some(e=>e.type==='song_loop'));assert.ok(cap.measure.courses>=15);
   const ultimate=await page.evaluate(()=>{
    playMode='endless';endless=true;startGame();stopMoveScheduler();moveLocked=false;notes=[];player.idx=45;player.from=45;lineK=7;recordSteps=0;moveSteps=0;
    const t=Math.max(0,songTime());rushAnim={t0:t-.6,moveAt:t,from:45,to:50,dur:.5,moved:false,blown:[]};rushGuardUntil=t+2;
    drawRushAnim(t);stopMoveScheduler();return {rate,idx:player.idx,moveSteps,lap,rush:!!rushAnim};
-  });assert.deepEqual(ultimate,{rate:1.1,idx:0,moveSteps:5,lap:1,rush:false});
+  });assert.deepEqual(ultimate,{rate:1.1,idx:50,moveSteps:5,lap:1,rush:true});
   // Purchased themes still supply palette; stage motifs continue to change.
   await page.evaluate(()=>{returnToSongs();NBWorkshop.shoppingGift();});await page.click('[data-nav="shop"]');await page.click('#themeCatalogOpen');await page.click('[data-theme="aurora"]');await page.click('[data-theme="aurora"]');await page.click('#collectionClose');
   assert.ok(await page.evaluate(()=>{startGame();stopMoveScheduler();rate=1.4;applyRate();setPalette(0);const theme=NBProgression.themes.find(x=>x.id==='aurora');return document.getElementById('app').style.getPropertyValue('--sky1')===theme.colors[0]&&endlessStage()===4;}));

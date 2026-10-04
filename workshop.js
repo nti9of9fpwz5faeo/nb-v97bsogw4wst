@@ -56,10 +56,10 @@ window.NBWorkshop = (() => {
     gemCourse=NBBlockGems.create(typeof spawnSeed==='number'?spawnSeed:0);drops=[];NBMeasure.start();refreshWallet();
   }
   function suspendRun() { NBDiamond.reset(); NBMeasure.interrupt();if (ledger) ledger.flush(); run = null; gemCourse = null; drops=[]; }
-  function nextCourse({silent=false}={}) {
+  function nextCourse({silent=false,continuous=false}={}) {
     NBDiamond.reset();
     if (!active()) return;
-    tick(songTime()); NBMeasure.warp();run.serial++; run.seen.clear();drops=[];run.gemSoundAt=-Infinity;if(!silent)NBSound.play('warp');
+    tick(songTime()); NBMeasure.warp(continuous);run.serial++; run.seen.clear();drops=[];run.gemSoundAt=-Infinity;if(!silent)NBSound.play('warp');
   }
 
   function judged(word, beat, t) {

@@ -19,7 +19,7 @@ window.NBMeasure=(()=>{
   }
   function tick(t,rebase=false,bonus=0){
     if(!active())return;
-    NBPlaytest.observe(current,{player:rushAnim&&!(speedOn()&&player.idx>=GOAL_INDEX)?playerVis(t):player.idx,snapshot:NBMovement.sample(player.idx,notes,moveLocked,gIdx,GOAL_INDEX),time:t,rush:!!rushAnim,rebase,bonus,rate});
+    NBPlaytest.observe(current,{player:rushAnim?playerVis(t):player.idx,snapshot:NBMovement.sample(player.idx,notes,moveLocked,gIdx,GOAL_INDEX),time:t,rush:!!rushAnim,rebase,bonus,rate});
   }
   function finish(result={},interrupted=false){
     if(!active())return null;
@@ -89,5 +89,5 @@ window.NBMeasure=(()=>{
     $('measureOv').addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();$('measureOv').classList.add('hide');}});refresh();
   }
 
-  return {active,pending,arm,start,tick,finish,interrupt,init,decorate,show,summary,transition:e=>NBPlaytest.transition(current,e),warp:()=>NBPlaytest.warp(current),purple:()=>NBPlaytest.purple(current)};
+  return {active,pending,arm,start,tick,finish,interrupt,init,decorate,show,summary,transition:e=>NBPlaytest.transition(current,e),warp:(continuous=false)=>NBPlaytest.warp(current,continuous?(rushAnim?playerVis(songTime()):player.idx):0,continuous),purple:()=>NBPlaytest.purple(current)};
 })();

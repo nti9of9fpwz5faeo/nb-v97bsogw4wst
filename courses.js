@@ -26,6 +26,18 @@
     }
     return out;
   }
+  // Start at the existing terminal cell, then enter fresh rows before turning.
+  // This keeps all eight columns valid and cannot overlap the already travelled path.
+  function continuation(id,anchor){
+    const mirror=anchor.c<4,xs=patterns[id].xs.slice(1).map(c=>mirror?7-c:c);
+    const out=[{c:anchor.c,r:anchor.r}];let c=anchor.c,r=anchor.r,i=0;
+    while(out.length<55){
+      for(let n=0;n<2&&out.length<55;n++)out.push({c,r:++r});
+      const target=i<xs.length?xs[i++]:c<4?7:0,dir=Math.sign(target-c);
+      while(c!==target&&out.length<55){c+=dir;out.push({c,r});}
+    }
+    return out;
+  }
   function deck(random=Math.random){
     let bag=[],last=-1;
     return {next(){
@@ -33,5 +45,5 @@
       return last=bag.pop();
     }};
   }
-  const api={patterns,build,deck};if(typeof module!=='undefined')module.exports=api;else root.NBCourses=api;
+  const api={patterns,build,continuation,deck};if(typeof module!=='undefined')module.exports=api;else root.NBCourses=api;
 })(typeof window==='undefined'?globalThis:window);

@@ -31,7 +31,7 @@
     }
   }
   function transition(r,e){if(!r||r.done)return;r.transitions.push({type:e.type,gameTimeSec:e.gameTimeSec??e.songT,sourceSongTimeSec:e.sourceSongTimeSec,rate:e.rate,fromRate:e.fromRate,course:e.course,cycle:e.cycle});}
-  function warp(r){if(!r||r.done)return;r.warps++;r.lastPlayer=0;r.meter=null;r.lastTime=null;r.wasRush=false;}
+  function warp(r,player=0,continuous=false){if(!r||r.done)return;r.warps++;r.lastPlayer=player;r.meter=null;if(!continuous){r.lastTime=null;r.wasRush=false;}}
   function purple(r){if(r&&!r.done)r.purpleSteps++;}
   function finish(r,details={}){
     if(!r)return null;if(r.report)return r.report;r.done=true;
