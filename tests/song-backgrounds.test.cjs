@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict');
-const bg=require('../song-backgrounds.js'),clock=require('../endless-clock.js'),markers=require('../speed-markers.js');
+const bg=require('../song-backgrounds.js'),clock=require('../endless-clock.js');
 test('all section boundaries use source time and crossfade from the preceding scene',()=>{
   for(let i=1;i<bg.cues.length;i++){
     const c=bg.cues[i];assert.equal(bg.resolve(c.at-.001).scene,bg.cues[i-1].scene);
@@ -15,6 +15,14 @@ test('acceleration, future slowdown, pause and looping preserve the musical scen
   assert.equal(bg.resolve(c.position(c.time(192.7335+.1))).scene,0);
   assert.equal(bg.resolve(-.12).scene,0);
 });
-test('spirits distinguish acceleration and slowdown; no mark at the speed cap',()=>{
-  assert.equal(markers.kind(1,1.1),'fast');assert.equal(markers.kind(1.1,.8),'slow');assert.equal(markers.kind(2.2,2.2),null);
+test('music accents anticipate a rise, release on its beat, and respect reduced motion',()=>{
+  bg.configure(150,.385);
+  const c=bg.cues[1];assert.ok(Math.abs(c.at-27.985)<1e-8);
+  assert.ok(bg.atmosphere(c.at-.1).build>.9);
+  assert.equal(bg.atmosphere(c.at).release,1);
+  assert.equal(bg.atmosphere(c.at+1).release,0);
+  assert.equal(bg.atmosphere(c.at,true).release,0);
+  assert.equal(bg.atmosphere(c.at,true).pulse,0);
+  assert.ok(bg.atmosphere(bg.cues[3].at+2).energy>bg.atmosphere(bg.cues[2].at+2).energy);
+  const a=bg.atmosphere(c.at+.1);assert.deepEqual(a,bg.atmosphere(c.at+.1));
 });

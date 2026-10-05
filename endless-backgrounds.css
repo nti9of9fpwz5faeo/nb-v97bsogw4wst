@@ -7,3 +7,13 @@
 #songBackground[hidden]{display:none;}
 #songBackground>div{position:absolute;inset:0;background-position:center;background-size:cover;background-repeat:no-repeat;}
 #app[data-song-background]:before,#app[data-song-background]:after{opacity:0;}
+
+/* Music accents stay outside the central play area. No camera or hitbox motion. */
+#songAtmosphere{display:none;position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:-1;}
+#app[data-song-background] #songAtmosphere{display:block;}
+.musicBand{position:absolute;top:-20%;height:140%;width:15%;background:linear-gradient(110deg,transparent,#bffff9 45%,#eeccff 65%,transparent);opacity:var(--music-light,0);}
+.musicBand.left{left:-6%;transform:translate(calc(0px - var(--music-spread,0px)),var(--music-flow,0px)) rotate(18deg);}
+.musicBand.right{right:-6%;transform:translate(var(--music-spread,0px),calc(0px - var(--music-flow,0px))) rotate(18deg);}
+.musicRing{position:absolute;top:36%;width:36vw;height:36vw;border:14px solid #d1fff9;border-radius:50%;opacity:var(--music-burst,0);transform:scale(var(--music-ring-scale,1));}
+.musicRing.left{left:-31vw;}.musicRing.right{right:-31vw;}
+@media(prefers-reduced-motion:reduce){#app[data-song-background] #songAtmosphere{display:none;}}

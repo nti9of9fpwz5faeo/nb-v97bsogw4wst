@@ -1,5 +1,5 @@
 const {chromium}=require('playwright'),assert=require('node:assert/strict'),fs=require('fs'),path=require('path'),http=require('http');
-const root=path.resolve(__dirname,'..'),out=process.env.QA_DIR||'/tmp/neon-v88-qa';fs.mkdirSync(out,{recursive:true});
+const root=path.resolve(__dirname,'..'),out=process.env.QA_DIR||'/tmp/neon-v90-warp';fs.mkdirSync(out,{recursive:true});
 const server=http.createServer((req,res)=>{let f=path.join(root,decodeURIComponent(req.url.split('?')[0]));if(f===root+'/')f+='index.html';fs.readFile(f,(e,data)=>{if(e){res.writeHead(404);return res.end();}res.setHeader('Content-Type',f.endsWith('.js')?'text/javascript':f.endsWith('.css')?'text/css':f.endsWith('.html')?'text/html':'application/octet-stream');res.end(data);});});
 (async()=>{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
@@ -8,102 +8,53 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
   const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[];page.on('pageerror',e=>errors.push(String(e)));
   await page.route('**/*',r=>new URL(r.request().url()).origin===origin?r.continue():r.abort());
   await page.goto(origin);await page.waitForFunction(()=>state==='ready');
-  await page.evaluate(()=>{
-   playMode='endless';endless=true;setSong(SONGS[3]);songBuf=ctx.createBuffer(1,ctx.sampleRate*5.4,ctx.sampleRate);
-   activeChart={beats:[.12,.61,1.13,1.60,2.13,2.61,3.12,3.62,4.13,4.61,5.13],spawn:{normal:[1,0,2,0,1]},accents:[1,.5,1,.5,1]};diagOn=true;NBMeasure.arm();startGame();
-   window.savedSource=songSrc;window.savedStart=songStart;hp=99;
+  await page.evaluate(async()=>{
+   playMode='endless';endless=true;const sg=SONGS.find(s=>s.name==='Sombra en Movimiento');chartCache[sg.chart]=await (await fetch(sg.chart)).json();setSong(sg);songBuf=ctx.createBuffer(1,ctx.sampleRate*192.7335,ctx.sampleRate);diagOn=true;NBMeasure.arm();startGame();stopMoveScheduler();pauseGame();
+   window.starts=[];const create=ctx.createBufferSource.bind(ctx);ctx.createBufferSource=()=>{const src=create(),start=src.start.bind(src);src.start=(at,offset)=>{window.starts.push({lead:at-ctx.currentTime,offset,rate:src.playbackRate.value});return start(at,offset);};return src;};
   });
-  await page.waitForFunction(()=>songTime()>3.2);
-  const first=await page.evaluate(()=>({path:path.length,goal:GOAL_INDEX,exit:EXIT_INDEX,rows:ROWS,loop:songSrc.loop}));
-  assert.equal(first.path,55);assert.equal(first.goal,50);assert.equal(first.exit,54);assert.ok(first.rows>11);assert.equal(first.loop,true);
-  // Artificially large score cannot trigger a course; only actual position can.
-  const transition=await page.evaluate(()=>{
-   stopMoveScheduler();recordSteps=999;player.idx=49;player.from=49;player.at=-9;lineK=LINES.length-1;notes=[];pendingCheck=[];moveLocked=false;
-   checkLines(songTime());const before=rate,beat=nextBeat,now=songTime();effects=[{idx:49,t:now,d:.4}];
-   window.cancelledVoice=false;moveVoices.add({stop(){window.cancelledVoice=true;}});freeMove(now,null);stopMoveScheduler();
-   return {before,rate,idx:player.idx,lap,beatBefore:beat,beatAfter:nextBeat,sameSource:songSrc===window.savedSource,sameStart:songStart===window.savedStart,
-    cancelledVoice:window.cancelledVoice,stage:document.getElementById('app').dataset.endlessStage,events:diagRun.events.filter(e=>['speed_up','course_continue','warp'].includes(e.type)),notes:notes.length,gIdx};
+  // Actual 50th normal move, rather than score, triggers one new source and preserves records.
+  const result=await page.evaluate(()=>{
+   state='play';hp=4;recordSteps=210;moveSteps=49;combo=21;maxCombo=21;rushUnits=44;notes=[];pendingCheck=[];moveLocked=false;
+   player={idx:49,from:49,at:-9};lineK=LINES.length-1;revealEnd=EXIT_INDEX;gIdx=gIndexFor(lineK);cameraFrom=cameraTarget=Math.max(0,path[50].r-2);cameraAt=-9;
+   window.oldSource=songSrc;freeMove(Math.max(0,songTime()),null);stopMoveScheduler();const fresh=songSrc!==window.oldSource&&!!songSrc;pauseGame();draw(pausedAt);
+   return {goal:GOAL_INDEX,length:path.length,idx:player.idx,lap,courseLap,rate,hp,recordSteps,moveSteps,combo,rushUnits,nextBeat,locked:moveLocked,loop:songSrc?.loop??false,newSource:fresh,starts:window.starts,pass:timingHistoryRun.pass,scene:document.getElementById('app').dataset.songBackground};
   });
-  assert.equal(transition.cancelledVoice,true);assert.equal(transition.before,1);assert.equal(transition.rate,1.1);assert.equal(transition.idx,50);assert.equal(transition.lap,1);assert.equal(transition.beatBefore,transition.beatAfter);assert.ok(transition.sameSource&&transition.sameStart);assert.equal(transition.stage,'0');assert.equal(transition.notes,0);assert.equal(transition.gIdx,58);assert.equal(transition.events.some(e=>e.type==='warp'),false);
-  const speed=transition.events.find(e=>e.type==='speed_up');assert.ok(speed.sourceSongTimeSec>.1);assert.equal(speed.courseSteps,50);
-  // Live audio crosses its actual end without an ended/restart callback or gameplay reset.
-  await page.evaluate(()=>{notes=[{id:80001,idx:80,from:80,at:songTime(),pop:-9,hp:1}];window.seamNote=notes[0];player.idx=56;player.from=56;player.at=-9;window.seamBeat=nextBeat;});
-  await page.waitForFunction(()=>endlessCycle>=1);
-  const seam=await page.evaluate(()=>({state,sameSource:songSrc===window.savedSource,beatAdvanced:nextBeat>window.seamBeat,keptNote:notes.includes(window.seamNote),idx:player.idx,rear:rearClear,
-   frontAlpha:rearTileAlpha(player.idx,songTime()),aheadAlpha:rearTileAlpha(player.idx+1,songTime()),pass:timingHistoryRun.pass,chart:[chartVal(endlessClock.beatCount),chartVal(endlessClock.beatCount+2)]}));
-  assert.equal(seam.state,'play');assert.ok(seam.sameSource&&seam.beatAdvanced&&seam.keptNote);assert.equal(seam.idx,56);assert.equal(seam.rear.to,55);assert.equal(seam.frontAlpha,1);assert.equal(seam.aheadAlpha,1);assert.equal(seam.pass,2);assert.deepEqual(seam.chart,[1,2]);
-  // Real input path on both sides of a rate boundary and of the repeating chart seam.
-  const judged=await page.evaluate(()=>{
-   stopMoveScheduler();const saved=songTime;let now=0;songTime=()=>now;const result=[];let id=91000;
-   const boundary=endlessClock.nearest(endlessClock.segments[1].t),seam=endlessClock.beatCount;
-   for(const n of [boundary-1,boundary+1,seam-1,seam]){
-    for(const delta of [-.02,.02]){
-     now=beatTime(n)+delta;nextBeat=n+1;acted=-1;moveLocked=false;NBDiamond.reset();hurtGuardUntil=-9;rushGuardUntil=-9;
-     notes=[{id:id++,idx:player.idx,from:player.idx,at:-9,pop:-9,hp:1}];input('break',{timeStamp:0},'test');
-     result.push(NBTimingHistory.snapshot(timingHistoryRun).inputs.at(-1));
-    }
-   }
-   songTime=saved;nextBeat=Math.max(nextBeat,endlessClock.nearest(songTime())+1);return result;
-  });
-  assert.equal(judged.length,8);for(let i=0;i<judged.length;i++){assert.equal(judged[i].judge,'PERFECT',JSON.stringify(judged[i]));assert.equal(judged[i].offsetMs,i%2?20:-20);}
-  // Guide reservations use the new piecewise mapping without adding the manual offset.
-  await page.waitForFunction(()=>{const t=ctx.currentTime-songStart;let n=nearestBeat(t);if(beatTime(n)<=t)n++;return beatTime(n)-t<.09;});
-  const guides=await page.evaluate(()=>{
-   const old=playGuideClick,captured=[];playGuideClick=(n,at)=>captured.push({n,at,expected:songStart+beatTime(n)});guideOn=true;
-   const t=ctx.currentTime-songStart;nextBeat=nearestBeat(t);if(beatTime(nextBeat)<=t)nextBeat++;startMoveScheduler();stopMoveScheduler();playGuideClick=old;return captured;
-  });assert.ok(guides.length>0);for(const v of guides)assert.ok(Math.abs(v.at-v.expected)<1e-10);
-  // Fixed scenery across six speeds, all checkpoints, all five course layouts and mobile proportions.
-  await page.evaluate(()=>{pauseGame();chooseCourse();});
-  const signatures=[];
-  for(let stage=0;stage<6;stage++){
-   signatures.push(await page.evaluate(stage=>{rate=1+stage*.1;applyRate();setPalette(0);setStepsHud();NBWorkshop.clearToasts();hideJudge();diagOn=false;document.getElementById('diagLine').classList.add('hide');charState='idle';charUntil=0;effects=[];fx=[];texts=[];player.idx=0;player.from=0;player.at=-9;lineK=0;cameraRow=0;cameraFrom=0;cameraTarget=0;revealEnd=REVEAL_ENDS[0];notes=[];document.getElementById('pauseOv').classList.add('hide');draw(pausedAt);return getComputedStyle(document.getElementById('app')).backgroundImage;},stage));
-   await page.screenshot({path:path.join(out,`stage-${stage}.png`)});
-  }assert.equal(new Set(signatures).size,1);
-  const view=await page.evaluate(()=>{
-   const results=[];
-   for(let id=0;id<5;id++){
-    path.splice(0,path.length,...NBCourses.build(id,true));ROWS=Math.max(...path.map(p=>p.r))+1;
-    for(let k=0;k<LINES.length;k++){
-     lineK=k;player.idx=k?LINES[k-1]:0;player.from=player.idx;player.at=-9;gIdx=gIndexFor(k);advanceView(pausedAt);cameraRow=cameraTarget;
-     results.push({id,k,p:path[player.idx].r-cameraTarget,g:path[gIdx].r-cameraTarget,reveal:revealEnd>=gIdx});
-    }
-   }return results;
-  });for(const x of view){assert.ok(x.p>=0&&x.p<5,JSON.stringify(x));assert.ok(x.g>=0&&x.g<5,JSON.stringify(x));assert.equal(x.reveal,true);}
-  for(const size of [{width:360,height:640},{width:412,height:915},{width:768,height:1024}]){
-   await page.setViewportSize(size);await page.evaluate(()=>{lineK=0;player.idx=0;player.from=0;gIdx=gIndexFor(0);cameraFrom=0;cameraTarget=0;cameraRow=0;layout();});
-   assert.ok(await page.evaluate(()=>{const c=cv.getBoundingClientRect(),b=document.getElementById('bMove').getBoundingClientRect();return c.width<=innerWidth&&b.bottom<=innerHeight;}));
-   await page.screenshot({path:path.join(out,`viewport-${size.width}.png`)});
-  }
-  // Resume uses the same source position after a rate change, including after a loop.
-  await page.evaluate(()=>{rate=1.1;applyRate();state='play';pauseGame();window.pauseSource=sourceSongPosition(pausedAt);window.resumeOffset=null;const create=ctx.createBufferSource.bind(ctx);ctx.createBufferSource=()=>{const src=create(),start=src.start.bind(src);src.start=(at,offset)=>{window.resumeOffset=offset;return start(at,offset);};return src;};resumeGame();});
-  await page.waitForFunction(()=>state==='play');assert.ok(await page.evaluate(()=>Math.abs(window.resumeOffset-window.pauseSource)<1e-8));
-  // Rate cap, retained last scene, no reset of source, HP or accumulated records.
+  assert.equal(result.goal,50);assert.equal(result.length,55);assert.equal(result.idx,0);assert.equal(result.lap,1);assert.equal(result.courseLap,1);assert.equal(result.rate,1.1);assert.equal(result.hp,4);assert.equal(result.recordSteps,212);assert.equal(result.moveSteps,50);assert.equal(result.combo,21);assert.equal(result.rushUnits,44);assert.equal(result.nextBeat,0);assert.ok(result.locked&&result.newSource);assert.equal(result.loop,false);assert.equal(result.pass,2);assert.equal(result.scene,'0');
+  const start=result.starts.at(-1);assert.equal(start.offset,0);assert.ok(Math.abs(start.lead-.12)<.02);assert.ok(Math.abs(start.rate-1.1)<1e-6);
+  // The old INTRO_BEATS=4 preparation is intact at every playback speed.
+  const rest=await page.evaluate(()=>{
+   const rows=[];for(const r of [1,1.1,2.2]){rate=r;applyRate();notes=[{id:9871,idx:7,from:7,at:0,pop:0,hp:1}];pendingCheck=[];state='play';for(let n=0;n<4;n++)onBeat(n,beatTime(n));const before=notes[0].idx;onBeat(4,beatTime(4));rows.push({r,before,after:notes[0].idx,first:beatTime(4)});}state='paused';return rows;
+  });for(const r of rest){assert.equal(r.before,7);assert.equal(r.after,6);assert.ok(Math.abs(r.first-(.385+4*.4)/r.r)<1e-8);}
+  // Rush must finish its visible travel and landing protection before a warp.
+  const rush=await page.evaluate(()=>{
+   startGame();stopMoveScheduler();notes=[];moveLocked=false;lineK=LINES.length-1;player={idx:45,from:45,at:-9};
+   const t=1;hp=99;rushAnim={from:45,to:50,t0:t-.6,moveAt:t,dur:.5,blown:[],moved:false,trail:45};rushGuardUntil=t+1.1;
+   drawRushAnim(t);const first={idx:player.idx,lap};drawRushAnim(t+.5);checkLines(t+.5);const landingLap=lap;checkLines(t+1.11);stopMoveScheduler();pauseGame();return {first,landingLap,lap,idx:player.idx,moveSteps};
+  });assert.deepEqual(rush.first,{idx:50,lap:0});assert.equal(rush.landingLap,0);assert.equal(rush.lap,1);assert.equal(rush.idx,0);assert.equal(rush.moveSteps,5);
+  // Fifteen checkpoints retain 50-cell sections and cap speed; restarts still happen at the cap.
   const cap=await page.evaluate(()=>{
-   stopMoveScheduler();notes=[];hp=99;for(let i=0;i<14;i++){player.idx=GOAL_INDEX;player.from=GOAL_INDEX;lineK=LINES.length-1;checkLines(songTime());stopMoveScheduler();}
-   return {rate,stage:Number(document.getElementById('app').dataset.endlessStage),hp,steps:recordSteps,measure:NBMeasure.finish({counts})};
-  });assert.equal(cap.rate,2.2);assert.equal(cap.stage,0);assert.equal(cap.hp,99);assert.ok(cap.steps>=999);assert.ok(cap.measure.transitions.some(e=>e.type==='speed_up'));assert.ok(cap.measure.transitions.some(e=>e.type==='song_loop'));assert.ok(cap.measure.courses>=15);
-  const ultimate=await page.evaluate(()=>{
-   playMode='endless';endless=true;startGame();stopMoveScheduler();moveLocked=false;notes=[];player.idx=45;player.from=45;lineK=7;recordSteps=0;moveSteps=0;
-   const t=Math.max(0,songTime());rushAnim={t0:t-.6,moveAt:t,from:45,to:50,dur:.5,moved:false,blown:[]};rushGuardUntil=t+2;
-   drawRushAnim(t);stopMoveScheduler();return {rate,idx:player.idx,moveSteps,lap,rush:!!rushAnim};
-  });assert.deepEqual(ultimate,{rate:1.1,idx:50,moveSteps:5,lap:1,rush:true});
-  // Purchased themes still supply palette; speed never changes their backdrop.
-  await page.evaluate(()=>{returnToSongs();NBWorkshop.shoppingGift();});await page.click('[data-nav="shop"]');await page.click('#themeCatalogOpen');await page.click('[data-theme="aurora"]');await page.click('[data-theme="aurora"]');await page.click('#collectionClose');
-  assert.ok(await page.evaluate(()=>{startGame();stopMoveScheduler();rate=1.4;applyRate();setPalette(0);const theme=NBProgression.themes.find(x=>x.id==='aurora');return document.getElementById('app').style.getPropertyValue('--sky1')===theme.colors[0]&&Number(document.getElementById('app').dataset.endlessStage)===0;}));
-  // Retry resets speed/background. Other modes retain 35 steps and their old music rule.
-  const modes=await page.evaluate(()=>{
-   startGame();stopMoveScheduler();const retry={rate,stage:Number(document.getElementById('app').dataset.endlessStage),cycle:endlessCycle};
-   const result=[];for(const mode of ['distance','normal']){playMode=mode;endless=mode!=='normal';startGame();stopMoveScheduler();result.push({mode,goal:GOAL_INDEX,length:path.length,loop:songSrc.loop,stage:document.getElementById('app').dataset.endlessStage??null});}
-   setSong(SONGS[0]);startGame();stopMoveScheduler();result.push({mode:'tutorial',goal:GOAL_INDEX,length:path.length,loop:songSrc.loop});pauseGame();return {retry,result};
-  });assert.deepEqual(modes.retry,{rate:1,stage:0,cycle:0});for(const m of modes.result){assert.equal(m.goal,35);assert.equal(m.length,40);assert.equal(m.loop,false);if(m.mode!=='tutorial')assert.equal(m.stage,null);}
-  // Offline Web Audio samples prove the shared mapping matches real rate integration at the loop seam.
-  const audioError=await page.evaluate(async()=>{
-   const sr=48000,c=new OfflineAudioContext(1,sr*3,sr),b=c.createBuffer(1,sr,sr),samples=b.getChannelData(0);for(let i=0;i<sr;i++)samples[i]=i/sr;
-   const src=c.createBufferSource();src.buffer=b;src.loop=true;src.connect(c.destination);src.playbackRate.setValueAtTime(1,0);src.playbackRate.setValueAtTime(1.1,.4);src.playbackRate.setValueAtTime(2.2,1.6);src.start();
-   const map=NBEndlessClock.create({duration:1,bpm:120});map.change(.4,1.1);map.change(1.6,2.2);
-   const rendered=(await c.startRendering()).getChannelData(0);let error=0;for(const t of [.399,.401,.94,.946,1.599,1.601,1.72,2.4,2.99])error=Math.max(error,Math.abs(rendered[Math.round(t*sr)]-map.position(t)));return error;
-  });assert.ok(audioError<.001,String(audioError));assert.deepEqual(errors,[]);
-  fs.writeFileSync(path.join(out,'checks.json'),JSON.stringify({status:'PASS',transition,seam,judged:judged.map(x=>({judge:x.judge,offsetMs:x.offsetMs,source:x.songTimeSec})),guides,view,modes,audioError,pageErrors:errors},null,2));
-  console.log('PASS: 50 cells, actual-position transition, continuous audio, loop preservation, judgments ±20ms, guides, speed-independent scenery, cameras, pause/resume, cap, telemetry, themes, other modes, offline audio');
+   startGame();stopMoveScheduler();hp=99;for(let i=0;i<15;i++){player={idx:50,from:50,at:0};lineK=LINES.length-1;notes=[];checkLines(Math.max(0,songTime()));stopMoveScheduler();}
+   const r={rate,lap,goal:GOAL_INDEX,length:path.length,pass:timingHistoryRun.pass,offset:window.starts.at(-1).offset,loop:songSrc.loop};pauseGame();return r;
+  });assert.deepEqual(cap,{rate:2.2,lap:15,goal:50,length:55,pass:16,offset:0,loop:false});
+  // Resume restores the correct media offset at accelerated speed instead of restarting the section.
+  await page.evaluate(()=>{pausedAt=3;window.resumeExpected=sourceSongPosition(pausedAt);resumeGame();});await page.waitForFunction(()=>state==='play');
+  assert.ok(await page.evaluate(()=>Math.abs(window.starts.at(-1).offset-window.resumeExpected)<1e-8));
+  await page.evaluate(()=>{stopMoveScheduler();pauseGame();});
+  // Portal and post-warp view at mobile sizes, no spirit or speed-zone stamps loaded.
+  assert.equal(await page.evaluate(()=>typeof NBSpeedMarkers),'undefined');
+  await page.evaluate(()=>{startGame();stopMoveScheduler();pauseGame();document.querySelectorAll('.overlay').forEach(el=>el.classList.add('hide'));NBWorkshop.clearToasts();player={idx:48,from:48,at:-9};lineK=LINES.length-1;gIdx=gIndexFor(lineK);revealEnd=EXIT_INDEX;cameraFrom=cameraTarget=Math.max(0,path[50].r-2);cameraAt=-9;notes=[];draw(pausedAt);});
+  await page.screenshot({path:path.join(out,'warp-zone.png')});
+  for(const size of [{width:360,height:640},{width:412,height:915}]){await page.setViewportSize(size);await page.evaluate(()=>{layout();draw(pausedAt);});assert.ok(await page.evaluate(()=>document.getElementById('bMove').getBoundingClientRect().bottom<=innerHeight));}
+  // A retry fully resets music, rate, portal and background. Non-endless modes keep 35 cells.
+  const retry=await page.evaluate(()=>{startGame();stopMoveScheduler();pauseGame();draw(pausedAt);const r={rate,lap,idx:player.idx,goal:GOAL_INDEX,scene:document.getElementById('app').dataset.songBackground};return r;});assert.deepEqual(retry,{rate:1,lap:0,idx:0,goal:50,scene:'0'});
+  const modes=await page.evaluate(()=>{const rows=[];for(const mode of ['distance','normal']){playMode=mode;startGame();stopMoveScheduler();rows.push({goal:GOAL_INDEX,length:path.length,loop:songSrc.loop});pauseGame();}return rows;});for(const m of modes)assert.deepEqual(m,{goal:35,length:40,loop:false});
+  // A buffered move processed inside onBeat can warp; never consume old-time beats afterward.
+  await page.evaluate(()=>{
+   playMode='endless';startGame();stopMoveScheduler();hp=99;notes=[];pendingCheck=[];nextBeat=0;songStart=ctx.currentTime-30;
+   const original=onBeat;window.beatsAfterWarp=0;onBeat=(n,t)=>{if(!window.bufferedWarp){window.bufferedWarp=true;nextEndlessCourse(t);stopMoveScheduler();}else{window.beatsAfterWarp++;original(n,t);}};
+  });await page.waitForFunction(()=>window.bufferedWarp);assert.ok(await page.evaluate(()=>nextBeat<4&&window.beatsAfterWarp<4&&hp===99));
+  // Original time limit: finishing the music before the portal ends the run, without looping.
+  await page.evaluate(()=>{playMode='endless';startGame();stopMoveScheduler();hp=99;notes=[];pendingCheck=[];nextBeat=10000;songStart=ctx.currentTime-songBuf.duration-1;});await page.waitForFunction(()=>state==='over');assert.equal(await page.evaluate(()=>endReason),'song_end');
+  assert.deepEqual(errors,[]);console.log('PASS: 50-cell warp, original .12s lead + 4 beats, media restart, speed cap, HP/score/combo, rush landing, resume, retry, portal, mobile layouts, other modes, song end');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});
