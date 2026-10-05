@@ -28,9 +28,9 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
   });
   await page.screenshot({path:path.join(out,'01-before-gate.png')});
   const pixel=await page.evaluate(()=>{
-   const t=window.qaT,before=cellXY(playerVis(t)),labels=[],text=g.fillText.bind(g);g.fillText=(s,...args)=>{labels.push(s);text(s,...args);};draw(t);const upcoming=labels.some(s=>s==='加速 ×1.1');
-   state='play';freeMove(t,null);stopMoveScheduler();state='paused';pausedAt=t;draw(t);const after=cellXY(playerVis(t));g.fillText=text;
-   return {before,after,upcoming,passed:labels.some(s=>s==='速度 ×1.1'),idx:player.idx,goal:GOAL_INDEX};
+   const t=window.qaT,before=cellXY(playerVis(t)),labels=[],stamps=[],text=g.fillText.bind(g),stamp=NBSpeedMarkers.draw;g.fillText=(s,...args)=>{labels.push(s);text(s,...args);};NBSpeedMarkers.draw=(...args)=>{stamps.push(args[1]);stamp(...args);};draw(t);const upcoming=stamps.includes('fast');
+   state='play';freeMove(t,null);stopMoveScheduler();state='paused';pausedAt=t;draw(t);const after=cellXY(playerVis(t));g.fillText=text;NBSpeedMarkers.draw=stamp;
+   return {before,after,upcoming,passed:document.getElementById('lapGain').textContent==='速度 ×1.1'&&!labels.some(s=>s.includes('×1.1')),idx:player.idx,goal:GOAL_INDEX};
   });assert.deepEqual(pixel.before,pixel.after);assert.equal(pixel.upcoming,true);assert.equal(pixel.passed,true);assert.equal(pixel.idx,50);assert.equal(pixel.goal,100);
   await page.screenshot({path:path.join(out,'02-crossing-gate.png')});
   await page.evaluate(()=>{pausedAt=window.qaT+.4;draw(pausedAt);});await page.screenshot({path:path.join(out,'03-connected-road.png')});
@@ -53,6 +53,6 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
   await page.emulateMedia({reducedMotion:'reduce'});
   const reduced=await page.evaluate(()=>{const t=songTime();notes=[];lineK=LINES.length-1;player={idx:GOAL_INDEX,from:GOAL_INDEX-1,at:t};cameraFrom=cameraTarget=path[player.idx].r-3;cameraAt=t-1;cameraRow=cameraAtTime(t);const before=cellXY(playerVis(t));checkLines(t);stopMoveScheduler();cameraRow=cameraAtTime(t);return {before,after:cellXY(playerVis(t))};});assert.deepEqual(reduced.before,reduced.after);
   await page.evaluate(()=>pauseGame());assert.deepEqual(errors,[]);
-  const result={status:'PASS',continuity,pixel,rush,rear,reduced,errors};fs.writeFileSync(path.join(out,'checks.json'),JSON.stringify(result,null,2));console.log('PASS: 25 seamless boundaries, exact screen coordinates, gate labels, preserved ultimate, cumulative rear fade, visible-only rendering, reduced motion');
+  const result={status:'PASS',continuity,pixel,rush,rear,reduced,errors};fs.writeFileSync(path.join(out,'checks.json'),JSON.stringify(result,null,2));console.log('PASS: 25 seamless boundaries, exact screen coordinates, spirit stamps and HUD feedback, preserved ultimate, cumulative rear fade, visible-only rendering, reduced motion');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});

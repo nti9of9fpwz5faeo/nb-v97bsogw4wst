@@ -126,6 +126,7 @@ window.NBWorkshop = (() => {
     }
     if (run) run.finished = true;
   }
+  function usesDefaultTheme(){return !initialized||ledger.state.theme==='classic';}
   function palette(index, fallback) {
     if (!initialized || isTutorial() || ledger.state.theme === 'classic') return fallback;
     const theme = NBProgression.themes.find(t => t.id === ledger.state.theme);
@@ -427,5 +428,5 @@ window.NBWorkshop = (() => {
   }
   function ownedHero(id){return ledger.state.heroes.includes(id);}
   function flush() { if (ledger) { ledger.flush(); refreshWallet(); } }
-  return {setDiamondBlocks,refreshWallet,openRank,shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, palette, drawAtmosphere, style,setGemStyle,initGemStyles,prepareNote,destroyed,drawGemHint,drawGemDrops,resultMarkup, decorateResult, animateResult, finishReveal, paintScore, flush, clearToasts};
+  return {setDiamondBlocks,refreshWallet,openRank,shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, judged, steps, rush, finish, usesDefaultTheme, palette, drawAtmosphere, style,setGemStyle,initGemStyles,prepareNote,destroyed,drawGemHint,drawGemDrops,resultMarkup, decorateResult, animateResult, finishReveal, paintScore, flush, clearToasts};
 })();

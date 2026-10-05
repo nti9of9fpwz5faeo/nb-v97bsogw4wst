@@ -314,10 +314,11 @@
 </style>
 <link rel="stylesheet" href="workshop.css?v=85">
 <link rel="stylesheet" href="result-arcade.css?v=85">
-<link rel="stylesheet" href="endless-backgrounds.css?v=87">
+<link rel="stylesheet" href="endless-backgrounds.css?v=89">
 </head>
 <body>
 <div id="app">
+  <div id="songBackground" aria-hidden="true" hidden><div></div><div></div></div>
   <div id="rushDim" aria-hidden="true"></div>
   <div id="top">
   <div class="hudRow"><div id="hud" aria-label="体力5"></div><button id="pauseBtn" aria-label="一時停止・終了" disabled>Ⅱ</button></div>
@@ -344,7 +345,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">v88</span>
+  <span id="verBadge">v89</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -381,13 +382,15 @@
 <script src="playtest.js?v=88"></script>
 <script src="playtest-ui.js?v=88"></script>
 <script src="endless-clock.js?v=87"></script>
+<script src="song-backgrounds.js?v=89"></script>
+<script src="speed-markers.js?v=89"></script>
 <script src="courses.js?v=88"></script>
 <script src="menu.js?v=86"></script>
 <script src="timing-history.js?v=87"></script>
 <script src="timing-history-ui.js?v=86"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
-<script src="workshop.js?v=88"></script>
+<script src="workshop.js?v=89"></script>
 <script src="mining.js?v=85"></script>
 <script>
 // ===== 設定 =====
@@ -728,25 +731,18 @@ function drawHud(){
   hud.innerHTML=Array.from({length:MAX_HP},(_,i)=>`<svg viewBox="0 0 40 38" class="${i>=hp?'lost':''}" aria-hidden="true"><path d="M20 34C14 29 3 21 3 12C3 2 15 0 20 9C25 0 37 2 37 12C37 21 26 29 20 34Z" fill="${i>=hp?'#7485a8':'#bdff32'}" stroke="#081221" stroke-width="3.5" stroke-linejoin="round"/></svg>`).join('');
 }
 const PALETTES=[['#034afb','#00bff2','#11d6fb'],['#6500ed','#ed12eb','#c0ff3e'],['#006cd9','#00d5b0','#ffe941'],['#9820ed','#ff519b','#42f4ea'],['#0052f0','#06b7ff','#8eff50'],['#7316e7','#e92deb','#ffda35']];
-// Append another scene here to extend the speed-stage background catalog.
-const ENDLESS_SCENES=[
-  {colors:['#034afb','#00bff2','#11d6fb'],ring:[0,19,105,68],band:135,angle:155,size:360},
-  {colors:['#4331ba','#cb50bf','#b8edfa'],ring:[103,18,-4,76],band:145,angle:165,size:310},
-  {colors:['#00789a','#21b9a4','#a7ecce'],ring:[-10,42,110,83],band:120,angle:145,size:420},
-  {colors:['#79499c','#dc8b79','#f1d093'],ring:[98,37,-12,87],band:155,angle:175,size:330},
-  {colors:['#24519e','#64a7d0','#b9e9f5'],ring:[-5,13,108,58],band:115,angle:140,size:460},
-  {colors:['#3d2b91','#aa72c0','#ded7ff'],ring:[106,12,-7,65],band:140,angle:160,size:390}
-];
-function endlessStage(){return Math.min(ENDLESS_SCENES.length-1,Math.max(0,Math.round((rate-1)*10)));}
-function coursePalette(k){return NBWorkshop.palette(k,speedOn()?ENDLESS_SCENES[endlessStage()].colors:PALETTES[k%PALETTES.length]);}
+// Endless scenery stays fixed until a musical cue changes it.
+function coursePalette(k){return NBWorkshop.palette(k,PALETTES[speedOn()?0:k%PALETTES.length]);}
 function setPalette(k){
   const p=coursePalette(k),app=document.getElementById('app');
-  if(speedOn()){
-    const stage=endlessStage(),scene=ENDLESS_SCENES[stage];app.dataset.endlessStage=stage;
-    ['--ring-x','--ring-y','--ring2-x','--ring2-y'].forEach((key,i)=>app.style.setProperty(key,scene.ring[i]+'%'));
-    app.style.setProperty('--band-angle',scene.band+'deg');app.style.setProperty('--stage-angle',scene.angle+'deg');app.style.setProperty('--band-size',scene.size+'px');
-  }else delete app.dataset.endlessStage;
+  if(speedOn())app.dataset.endlessStage='0';else delete app.dataset.endlessStage;
   app.style.setProperty('--sky1',p[0]);app.style.setProperty('--sky2',p[1]);app.dataset.zone=k%2;
+}
+let backgroundPosition=0;
+function updateSongBackground(t){
+  const active=['play','paused','resuming','clear','over'].includes(state);
+  if(['play','paused','resuming'].includes(state))backgroundPosition=sourceSongPosition(t);
+  NBSongBackgrounds.render(document.getElementById('app'),active&&!isTutorial()&&song.file===NBSongBackgrounds.song&&NBWorkshop.usesDefaultTheme(),backgroundPosition,reduceMotion.matches);
 }
 
 // ===== ゲーム状態 =====
@@ -2136,6 +2132,7 @@ function noteView(nt,t,pre,nb,vp){
   return {ln,vis,at,moving,smooth};
 }
 function draw(t){
+  updateSongBackground(t);
   g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,boardW,boardH);
   // 音の時計を基準に表示だけ動かす。入力ボタンと当たり判定の座標は固定。
   cv.style.transform=`translateY(${impactOffset(t).toFixed(2)}px)`;
@@ -2257,33 +2254,17 @@ function drawLock(p,alpha){
   const s=cell*.12;g.beginPath();g.arc(p.x,p.y-s*.2,s*.55,Math.PI,Math.PI*2);g.lineTo(p.x+s*.55,p.y+s*.4);g.stroke();
   rr(g,p.x-s*.85,p.y,s*1.7,s*1.35,s*.15);g.fill();g.fillStyle='#1b252a';g.beginPath();g.arc(p.x,p.y+s*.55,s*.18,0,Math.PI*2);g.fill();g.restore();
 }
-// A stripe across the travelled tile, not a destination portal.
+// Small spirits are printed on the tile; crossing feedback stays in the HUD.
 let passedSpeedGate=null;
 function drawSpeedGates(t){
   if(!speedOn())return;
-  const drawGate=(idx,passed)=>{
-    if(idx>revealEnd||!path[idx])return;
-    const p=cellXY(idx);
-    if(p.y < -cell || p.y>boardH+cell)return;
-    const horizontal=path[idx].r===path[idx-1].r;
-    const age=passed?t-passed.t:0,alpha=passed?Math.max(0,1-age/.85):1;
-    if(alpha<=0)return;
-    g.save();g.globalAlpha=alpha;g.translate(p.x,p.y);
-    if(horizontal)g.rotate(Math.PI/2);
-    g.fillStyle='#081221';rr(g,-cell*.56,-cell*.14,cell*1.12,cell*.28,3);g.fill();
-    g.fillStyle=passed?'#eaffff':'#ffe957';
-    g.fillRect(-cell*.51,-cell*.09,cell*1.02,cell*.055);g.fillRect(-cell*.51,cell*.035,cell*1.02,cell*.055);
-    for(const x of [-.55,.55]){g.fillStyle='#081221';rr(g,cell*x-cell*.07,-cell*.23,cell*.14,cell*.46,3);g.fill();g.fillStyle=passed?'#eaffff':'#ffe957';g.fillRect(cell*x-cell*.035,-cell*.16,cell*.07,cell*.32);}
-    g.restore();
-    const nextRate=Math.min(SPEED_MAX,Math.round((rate+SPEED_STEP)*10)/10);
-    const label=passed?`速度 ×${passed.rate.toFixed(1)}`:nextRate>rate?`加速 ×${nextRate.toFixed(1)}`:`速度 ×${rate.toFixed(1)}`;
-    g.save();g.globalAlpha=alpha;g.font=`900 ${Math.max(10,cell*.26)}px sans-serif`;g.textAlign='center';g.textBaseline='middle';
-    const w=g.measureText(label).width+12,h=cell*.47,x=Math.max(w/2+3,Math.min(boardW-w/2-3,p.x));
-    const y=Math.max(h/2+3,p.y-cell*.82-(passed&&!reduceMotion.matches?Math.min(1,age/.85)*cell*.2:0));
-    g.fillStyle='#081c36';rr(g,x-w/2,y-h/2,w,h,5);g.fill();g.fillStyle=passed?'#eaffff':'#ffe957';g.fillText(label,x,y+1);g.restore();
+  const drawGate=(idx,kind,alpha=1)=>{
+    if(!kind||alpha<=0||idx>revealEnd||!path[idx])return;
+    const p=cellXY(idx);if(p.y < -cell || p.y>boardH+cell)return;
+    NBSpeedMarkers.draw(g,kind,p.x,p.y,cell,alpha);
   };
-  drawGate(GOAL_INDEX,null);
-  if(passedSpeedGate)drawGate(passedSpeedGate.idx,passedSpeedGate);
+  drawGate(GOAL_INDEX,NBSpeedMarkers.kind(rate,Math.min(SPEED_MAX,Math.round((rate+SPEED_STEP)*10)/10)));
+  if(passedSpeedGate)drawGate(passedSpeedGate.idx,passedSpeedGate.kind,Math.max(0,1-(t-passedSpeedGate.t)/.65));
 }
 function drawLineAndG(t){
   const last=lineK===LINES.length-1,L=edgeLine(LINES[lineK]);
@@ -2406,7 +2387,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 詳細モードは従来どおり任意。軽量の判定履歴は、表示を増やさず全プレイで記録する。
-const APP_VERSION = 'v88', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v89', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2699,7 +2680,8 @@ function nextEndlessCourse(t){
     diagEv('speed_up',{fromRate,toRate,rate,lap,gameTimeSec:r4(gameTime),audioContextTime:r4(at),sourceSongTimeSec:r4(endlessClock.position(gameTime)),courseSteps:50});
     startMoveScheduler();
   }
-  passedSpeedGate={idx:base,t,rate};
+  passedSpeedGate={idx:base,t,rate,kind:NBSpeedMarkers.kind(fromRate,toRate)};
+  if(toRate!==fromRate)showLapBanner(`速度 ×${rate.toFixed(1)}`);
   setPalette(0);setStepsHud();
   diagEv('course_continue',{course:courseLap+1,rate,gameTimeSec:r4(t),sourceSongTimeSec:r4(sourceSongPosition(t))});
 }
@@ -2709,7 +2691,7 @@ function startGame(){
   NBWorkshop.stopSongPreview();NBSound.stop(); NBMenu.playing();
   document.querySelectorAll('.overlay').forEach(o=>o.classList.add('hide'));
   lap=0;rate=song.rate||1;applyRate();endlessClock=null;endlessCycle=0;rearClear=null;passedSpeedGate=null;
-  reset();progFill.style.width='0%';
+  reset();backgroundPosition=0;progFill.style.width='0%';
   updateWarpHud(); // 速度を初期値に戻してから表示を更新
   runSongCorrMs=activeChart?songCorrSetting(song.chart):0;
   if(speedOn())endlessClock=NBEndlessClock.create({duration:songBuf.duration,bpm:song.bpm,offset:song.offset,beats:activeChart?.beats,correction:runSongCorrMs/1000,rate});
@@ -2884,7 +2866,7 @@ NBTimingHistoryUI.init({pending:()=>[...timingHistoryPending.values()],flush:()=
   layout();
   ctx = new (window.AudioContext || window.webkitAudioContext)();
   setSong(SONGS[0]);
-  const [seAB] = await Promise.all([loadAudio('audio/break.mp3').catch(() => null), ...imgList.map(loadImg), ...CHARACTERS.map(loadHero), loadCharacterSE()]);
+  const [seAB] = await Promise.all([loadAudio('audio/break.mp3').catch(() => null), ...imgList.map(loadImg), NBSpeedMarkers.preload(), NBSongBackgrounds.preload(), ...CHARACTERS.map(loadHero), loadCharacterSE()]);
   if (seAB) try { breakBuf = await ctx.decodeAudioData(seAB); } catch(e) {}
   loadAudio('audio/block_move.mp3?v=2').then(ab => ctx.decodeAudioData(ab)).then(b => moveBuf = b).catch(() => {});
   loadAudio('audio/goal.mp3').then(ab => ctx.decodeAudioData(ab)).then(b => goalBuf = b).catch(() => {});
