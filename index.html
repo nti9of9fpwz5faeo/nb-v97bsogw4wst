@@ -353,7 +353,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">v94</span>
+  <span id="verBadge">v95</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -920,7 +920,7 @@ function coachEnter(step,t){
   chooseCourse(true);player={idx:0,from:0,at:t};notes=[];pendingCheck=[];earlyInput=null;recentHits=[];
   effects=[];fx=[];texts=[];acted=-1;lineK=0;gIdx=EXIT_INDEX;gFrom=gIdx;gMoveAt=-9;
   cameraRow=0;cameraFrom=0;cameraTarget=0;cameraAt=-9;revealEnd=EXIT_INDEX;revealFrom=EXIT_INDEX;
-  moveLocked=false;setLockUI(false);setPalette(step);saveTutorial(step);drawHud();layout();coachUI();
+  moveLocked=step===0;setLockUI(moveLocked);setPalette(step);saveTutorial(step);drawHud();layout();coachUI();
   diagEv('tutorial_stage',{stage:step+1,kind:coachStep().kind});
 }
 function coachUI(){
@@ -2328,7 +2328,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 詳細モードは従来どおり任意。軽量の判定履歴は、表示を増やさず全プレイで記録する。
-const APP_VERSION = 'v94', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v95', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;

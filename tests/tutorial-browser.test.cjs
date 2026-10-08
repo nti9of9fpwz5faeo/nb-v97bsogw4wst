@@ -13,9 +13,11 @@ const server=http.createServer((req,res)=>{const f=path.join(root,decodeURICompo
  if(await page.locator('#tutorialBegin').count())await page.click('#tutorialBegin');
  await page.waitForFunction(()=>state==='play'&&ctx.state==='running');
  assert.equal(requests.some(u=>u.endsWith('audio/tutorial.mp3')),false);
- const first=await page.evaluate(()=>({goal:GOAL_INDEX,source:gIdx,path:path.map(p=>({...p})),bpm:BPM,locked:moveLocked,loop:songSrc.loop}));
- assert.equal(first.path.length,10);assert.ok(first.path[0].c>first.path.at(-1).c);
- assert.equal(first.goal,7);assert.equal(first.source,9);assert.equal(first.bpm,90);assert.equal(first.loop,true);assert.equal(first.locked,false);assert.equal(new Set(first.path.map(p=>p.r)).size,1);
+ const first=await page.evaluate(()=>({goal:GOAL_INDEX,source:gIdx,path:path.map(p=>({...p})),bpm:BPM,locked:moveLocked,loop:songSrc.loop,cell}));
+ assert.equal(first.path.length,8);assert.ok(first.path[0].c>first.path.at(-1).c);
+ assert.equal(first.goal,5);assert.equal(first.source,7);assert.equal(first.bpm,90);assert.equal(first.loop,true);assert.equal(first.locked,true);assert.equal(new Set(first.path.map(p=>p.r)).size,1);
+ await page.waitForFunction(()=>document.getElementById('coachCue').textContent==='赤が重なったら\nブレイク');
+ assert.equal(await page.locator('#bBreak').evaluate(e=>e.classList.contains('coachGuide')),true);
  const guide=await page.evaluate(()=>{
    const saved={notes,nextBeat,player,ringOn},rects=[],round=g.roundRect;
    g.roundRect=function(...a){rects.push(a);return round.apply(this,a);};
@@ -37,7 +39,7 @@ const server=http.createServer((req,res)=>{const f=path.join(root,decodeURICompo
  await page.screenshot({path:path.join(qa,'01-red.png')});
  // Pause/resume must preserve the same course and notes, without resetting the practice clock.
  await page.click('#pauseBtn');assert.equal(await page.evaluate(()=>state),'paused');await page.click('#resumeBtn');await page.waitForFunction(()=>state==='play',{},{timeout:8000});await page.waitForTimeout(400);
- console.log('automatic first entry, audio gesture, 10-cell horizontal path, 90 BPM, pause/resume: PASS');
+ console.log('automatic first entry, break-first instruction and lock, 8-cell horizontal path, 90 BPM, pause/resume: PASS');
  await page.evaluate(()=>{stopMoveScheduler();state='paused';});
  for(let stage=0;stage<3;stage++){
    const r=await page.evaluate(stage=>{
@@ -80,7 +82,8 @@ const server=http.createServer((req,res)=>{const f=path.join(root,decodeURICompo
  await page.click('#homeTutorial');await page.waitForFunction(()=>state==='play'&&isTutorial());assert.equal(await page.evaluate(()=>coach.step),0);
  // Real pointer input against the running audio clock, including the movement gate.
  await page.click('#bMove');await page.click('#bMove');await page.click('#bMove');
- assert.equal(await page.evaluate(()=>player.idx),1);
+ assert.equal(await page.evaluate(()=>player.idx),0);
+ assert.equal(await page.evaluate(()=>moveLocked),true);
  await page.waitForFunction(()=>notes[0]&&notes[0].idx-player.idx===1,{},{timeout:12000});
  await page.screenshot({path:path.join(qa,'04-shared-square-guide.png')});
  await page.evaluate(()=>new Promise((resolve,reject)=>{
@@ -95,7 +98,10 @@ const server=http.createServer((req,res)=>{const f=path.join(root,decodeURICompo
      requestAnimationFrame(hit);
    }hit();
  }));
- console.log('real move and break pointer inputs, judged against the live 90 BPM clock: PASS');
+ assert.equal(await page.evaluate(()=>moveLocked),false);
+ await page.click('#bMove');assert.equal(await page.evaluate(()=>player.idx),1);
+ await page.waitForFunction(()=>document.getElementById('coachCue').textContent==='「進む」で\n前へ');
+ console.log('movement blocked before first real pointer break, then unlocked with move instruction: PASS');
  // Reload partway through blue: resume at the beginning of blue, not back at red.
  await page.evaluate(()=>{coachEnter(1,songTime());pauseGame();});await page.reload();await page.waitForFunction(()=>coach?.step===1);
  if(await page.locator('#tutorialBegin').count())await page.click('#tutorialBegin');
@@ -106,8 +112,9 @@ const server=http.createServer((req,res)=>{const f=path.join(root,decodeURICompo
    await page.screenshot({path:path.join(qa,`layout-${size.width}.png`)});
  }
  // Normal courses still use 35 steps and four source cells.
- const normal=await page.evaluate(()=>{returnToSongs();setSong(SONGS[1]);songBuf=ctx.createBuffer(1,ctx.sampleRate*120,ctx.sampleRate);startGame();stopMoveScheduler();state='paused';return {goal:GOAL_INDEX,cols:new Set(path.map(p=>p.c)).size,locked:moveLocked};});
- assert.equal(normal.goal,35);assert.ok(normal.cols>1);assert.equal(normal.locked,true);
+ await page.setViewportSize({width:390,height:844});
+ const normal=await page.evaluate(()=>{returnToSongs();setSong(SONGS[1]);songBuf=ctx.createBuffer(1,ctx.sampleRate*120,ctx.sampleRate);startGame();stopMoveScheduler();state='paused';return {goal:GOAL_INDEX,cols:new Set(path.map(p=>p.c)).size,locked:moveLocked,cell};});
+ assert.equal(normal.goal,35);assert.ok(normal.cols>1);assert.equal(normal.locked,true);assert.equal(normal.cell,first.cell);
  assert.deepEqual(errors,[]);console.log('red → mixed blue → mixed purple, no skipping, blue retry, continuous beat, completion/reload/replay, saved stage, responsive layouts, normal-course isolation: PASS');
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);process.exit(1)});
