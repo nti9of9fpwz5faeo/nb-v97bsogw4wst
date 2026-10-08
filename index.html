@@ -311,6 +311,13 @@
   .coachDoneCard .ovBtn{width:100%;margin:8px 0 0}
 
 
+  .coaching #controls button.coachGuide{box-shadow:inset 0 0 0 3px #fff5a2,0 0 18px #fff3a344}
+  #tutorialBegin{position:absolute;inset:0;border:0;background:#07183244;color:#fff;font:900 21px sans-serif;z-index:8;cursor:pointer;display:grid;place-items:center}
+  #tutorialBegin span{padding:18px 24px;background:#08274deb;border:2px solid #8af3fa;border-radius:20px}
+  #tutorialBegin small{display:block;margin-top:9px;font-size:13px;font-weight:500}
+  .coaching .coachSafe{font-size:15px}
+  .coaching #coachCue{white-space:pre-line;font-size:14px;padding:7px 9px;border-radius:12px}
+  @media(max-width:350px){#coachCue{font-size:14px}.coaching .coachSafe{font-size:13px}}
 </style>
 <link rel="stylesheet" href="workshop.css?v=85">
 <link rel="stylesheet" href="result-arcade.css?v=85">
@@ -346,7 +353,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">v91</span>
+  <span id="verBadge">v92</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -384,6 +391,7 @@
 <script src="playtest-ui.js?v=88"></script>
 <script src="song-backgrounds.js?v=89"></script>
 <script src="courses.js?v=88"></script>
+<script src="tutorial.js?v=92"></script>
 <script src="menu.js?v=86"></script>
 <script src="timing-history.js?v=87"></script>
 <script src="timing-history-ui.js?v=86"></script>
@@ -395,7 +403,7 @@
 // ===== 設定 =====
 // 曲リスト（bpm＝テンポ、offset＝最初のドンまでの秒数）
 const SONGS = [
-  { name: 'チュートリアル', file: 'audio/tutorial.mp3', bpm: 100, offset: 0.005, level: '見て、まねして、リズムに乗ろう', tutorial: true },   // Neon Warmup：100 BPM。音源の打音立ち上がりに合わせて70ms→5ms（v45）。
+  { name: 'チュートリアル', file: 'audio/tutorial.mp3', bpm: 90, offset: 0, level: '短い一本道で、赤・青・紫を覚えよう', tutorial: true }, // 音はWeb Audioで毎拍生成。MP3は読み込まない。
   { name: 'Shatter Forward', file: 'audio/shatter_forward.mp3', bpm: 130.3, offset: .002, level: '曲専用譜面', chart: 'charts/shatter_forward.json' },
   { name: 'Neon Rush', file: 'audio/neon_rush.mp3', bpm: 149.999, offset: .6213, level: '固定譜面テスト', chart: 'charts/neon_rush.json' }, // SUNO。音源を解析：150BPM一定、1拍目0.6213秒
   { name: 'Zombie Protocol',     file: 'audio/song.mp3',    bpm: 129.3, offset: 0.12, level: 'ふつう', chart: 'charts/zombie_beats.json', purple: 0.15 }, // 紫ノーツ（突進で壊す）を試す曲 // テンポが揺れる曲なので拍の位置だけ譜面で持つ（ノーツはランダム）
@@ -530,7 +538,11 @@ const path = [];
 let coursePattern = 0;
 const courseDeck = NBCourses.deck();
 function chooseCourse(tutorial=false){
-  coursePattern=tutorial?0:courseDeck.next();
+  if(tutorial){
+    coursePattern=0;path.splice(0,path.length,...NBTutorial.path());LINES=[NBTutorial.goal];
+    REVEAL_ENDS=[path.length-1];GOAL_INDEX=NBTutorial.goal;EXIT_INDEX=path.length-1;ROWS=13;return;
+  }
+  coursePattern=courseDeck.next();
   path.splice(0,path.length,...NBCourses.build(coursePattern));
   LINES=[4,10,16,22,28,35];
   REVEAL_ENDS=[19,26,32,35,39,39];
@@ -686,7 +698,7 @@ let cell=40,dpr=1,boardW=320,boardH=280;
 function layout(){
   const wrap=document.getElementById('fieldWrap'),box=wrap.getBoundingClientRect(),style=getComputedStyle(wrap);
   const h=box.height-parseFloat(style.paddingTop)-parseFloat(style.paddingBottom);
-  const viewRows=VIEW_ROWS;
+  const viewRows=isTutorial()?13:VIEW_ROWS;
   cell=Math.max(8,Math.min((Math.min(box.width,520)-PAD*2)/COLS,(h-PAD*2)/viewRows));
   boardW=COLS*cell+PAD*2;boardH=viewRows*cell+PAD*2;
   dpr=Math.min(window.devicePixelRatio||1,3);
@@ -882,171 +894,111 @@ document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',(
   try{localStorage.setItem('neon-blade-mode',playMode);}catch(e){}
 }));
 
-// ===== チュートリアル v47：お手本 → 同じ操作を試す。演奏中は説明を読ませない =====
-const COACH_STEPS = [
-  {kind:'break',intro:'重なったらタップ',need:3},
-  {kind:'move',intro:'自由に進もう',need:4},
-  {kind:'blue',intro:'青は２拍で２回',need:2},
-  {kind:'purple',intro:'紫には「進む」',need:2},
-  {kind:'rush',intro:'必殺技（エンドレス）',need:1},
-  {kind:'free',intro:'曲に合わせて',need:6},
-];
-let coach=null;
+// ===== 短い一本道：ゴールごとに赤 → 青 → 紫。音の時計は継続 =====
+const COACH_STEPS=NBTutorial.stages;
+let coach=null,tutorialResumeStep=0;
 function isTutorial(){return !!song.tutorial;}
 function coachStep(){return coach&&COACH_STEPS[coach.step];}
-function coachMusicLevel(){return coachStep()?.kind==='free'?.7:0;}
-function coachBarAfter(t,lead=1){return Math.ceil((nearestBeat(t)+lead)/4)*4;}
-function coachMixAudio(){
-  if(!ctx||!songGain)return;
-  const a=ctx.currentTime;songGain.gain.cancelScheduledValues(a);songGain.gain.setValueAtTime(songGain.gain.value,a);
-  songGain.gain.linearRampToValueAtTime(coachMusicLevel(),a+SPB*2);
-}
+function coachMusicLevel(){return 0;}
+function tutorialProgress(){try{return NBTutorial.read(localStorage);}catch(_){return {step:0,complete:false};}}
+function saveTutorial(step,complete=false){try{NBTutorial.save(localStorage,step,complete);}catch(_) {}}
 function tutClearUI(){
   document.getElementById('tip').classList.add('hide');document.getElementById('spot').classList.add('hide');
   document.getElementById('app').classList.remove('coaching');document.getElementById('coachCue').hidden=true;
-  document.querySelectorAll('.coachDemoPress,.coachHold').forEach(b=>b.classList.remove('coachDemoPress','coachHold'));
+  document.getElementById('tutorialBegin')?.remove();
+  document.querySelectorAll('.coachDemoPress,.coachHold,.coachGuide').forEach(b=>b.classList.remove('coachDemoPress','coachHold','coachGuide'));
 }
 function updateSpot(){}
-function coachHud(){return '<span class="coachSafe">練習 ∞</span><button id="coachReplay" aria-label="お手本をもう一度見る">↻ お手本</button>';}
+function coachHud(){return `<span class="coachSafe">${coach.step+1} / 3　${coachStep().title}</span>`;}
 function coachStart(){
-  coach={step:0,done:0,moves:0,nextSpawn:INTRO_BEATS,phase:'intro',phaseBeat:4,demoActing:false,demoCount:0,demoMoves:0,demoHoldAt:null,demoRushStarted:false,rushEnabled:false,rushStarted:false,rushLanded:false,finishAt:null,spawned:0,touchType:null,touchAt:-9,touchUntil:-9};
-  document.getElementById('app').classList.add('coaching');drawHud();coachEnter(0,0);layout();
+  coach={step:tutorialResumeStep,done:0,phase:'play',nextSpawn:INTRO_BEATS,rushEnabled:false,finishAt:null};
+  tutorialResumeStep=0;document.getElementById('app').classList.add('coaching');coachEnter(coach.step,0);
 }
-function coachEnter(step,t,replay=false){
+function coachEnter(step,t){
   stopRushHold();hideJudge();
-  coach.step=step;if(!replay)coach.done=0;
-  coach.phase='intro';coach.phaseBeat=coachBarAfter(t,3);coach.nextSpawn=coach.phaseBeat;
-  coach.demoCount=0;coach.demoMoves=0;coach.demoHoldAt=null;coach.demoRushStarted=false;coach.demoEndAt=null;coach.touchUntil=-9;
-  if(step===4){coach.rushEnabled=true;coach.rushStarted=false;coach.rushLanded=false;rushUnits=RUSH_FULL-12;}
-  // 移動の実演・実践は空の道だけで行う。出題中の切替は手動のお手本再生時のみ。
-  if(replay){notes=[];pendingCheck=[];earlyInput=null;recentHits=[];}
-  coachMixAudio();coachUI();diagEv('tutorial_stage',{stage:step+1,kind:coachStep().kind,replay});
-}
-function coachPractice(t){
-  stopRushHold();
-  coach.phase='ready';coach.phaseBeat=coachBarAfter(t);coach.nextSpawn=coach.phaseBeat;
-  coach.touchUntil=-9;coach.demoHoldAt=null;acted=-1;earlyInput=null;recentHits=[];hideJudge();
-  if(coachStep().kind==='rush'){rushUnits=RUSH_FULL-12;coach.rushStarted=false;coach.rushLanded=false;}
-  coachUI();
+  Object.assign(coach,{step,done:0,phase:'play',nextSpawn:Math.max(INTRO_BEATS,nextBeat+2),finishAt:null});
+  chooseCourse(true);player={idx:0,from:0,at:t};notes=[];pendingCheck=[];earlyInput=null;recentHits=[];
+  effects=[];fx=[];texts=[];acted=-1;lineK=0;gIdx=EXIT_INDEX;gFrom=gIdx;gMoveAt=-9;
+  cameraRow=0;cameraFrom=0;cameraTarget=0;cameraAt=-9;revealEnd=EXIT_INDEX;revealFrom=EXIT_INDEX;
+  moveLocked=false;setLockUI(false);setPalette(step);saveTutorial(step);drawHud();layout();coachUI();
+  diagEv('tutorial_stage',{stage:step+1,kind:coachStep().kind});
 }
 function coachUI(){
   if(!isTutorial()||!coach)return;
-  const active=state==='play',playing=coach.phase==='play';
-  document.getElementById('bMove').disabled=!active||!playing;
-  document.getElementById('bBreak').disabled=!active||!playing;
-  const replay=document.getElementById('coachReplay');
-  if(replay){replay.textContent=playing?'↻ お手本':'スキップ';replay.disabled=!active||!!rushAnim||coach.finishAt!==null;replay.setAttribute('aria-label',playing?'お手本をもう一度見る':'お手本をスキップ');}
-  progFill.style.width=`${100*(coach.step+Math.min(1,coach.done/coachStep().need))/COACH_STEPS.length}%`;
+  const active=state==='play'&&coach.phase==='play';
+  document.getElementById('bMove').disabled=!active;document.getElementById('bBreak').disabled=!active;
+  progFill.style.width=`${100*(coach.step+player.idx/GOAL_INDEX)/3}%`;
 }
-hud.addEventListener('click',e=>{
-  if(!e.target.closest('#coachReplay')||!coach||state!=='play'||rushAnim||coach.finishAt!==null)return;
-  const t=songTime();
-  if(coach.phase==='play')coachEnter(coach.step,t,true);
-  else{notes=[];pendingCheck=[];earlyInput=null;coachPractice(t);}
-});
-function coachTouch(type,t,duration=.22){coach.touchType=type;coach.touchAt=t;coach.touchUntil=t+duration;}
-function coachDemoAction(type,n,t){
-  coach.demoActing=true;
-  try{
-    coachTouch(type==='charge'?'move':type,t);
-    if(type==='move')freeMove(t,null);else if(type==='rush')doRush(t,null,rushRelease==='auto');else doAction(type,n,t,0,null);
-    diagEv('tutorial_demo',{action:type,beat:n});
-  }finally{coach.demoActing=false;}
-}
-function tutProgress(kind){
-  if(!isTutorial()||!coach||kind!=='move'||coach.demoActing||coach.phase!=='play')return;
-  coach.moves++;if(coachStep().kind==='move')coach.done++;coachUI();
-}
+function tutProgress(){if(isTutorial())coachUI();}
 function coachOnBreak(nt,word,t,charge=false){
-  if(!coach)return;
-  if(coach.demoActing){coach.demoCount++;return;}
-  if(coach.phase!=='play')return;
-  const kind=coachStep().kind;
-  if(kind==='break'&&!charge&&word!=='GOOD'||kind==='blue'&&nt.hit&&!charge||kind==='purple'&&charge||kind==='free')coach.done++;
-  coachUI();
+  if(!coach||coach.phase!=='play'||nt.lesson!==coach.done)return;
+  const expected=coachStep().types[coach.done];
+  if((expected==='purple'&&charge)||(expected==='blue'&&nt.hit&&!charge)||(expected==='red'&&!charge)){
+    coach.done++;coach.nextSpawn=nextBeat+2;coachUI();
+  }
 }
-function coachOnTap(){} // 青→赤の変化と2つの点で示す。押す最中に新しい文章は出さない。
+function coachOnTap(){}
 function coachOnMiss(t,reason,nt,inputId){
-  diagEv('damage',{lifeLoss:false,tutorial:true,reason,causeInputId:inputId??null,noteId:nt?.id,noteIdx:nt?.idx,playerIdx:player.idx,hpBefore:hp,...diagCtx()});
-  showJudge('MISS','');coach.nextSpawn=Math.max(coach.nextSpawn,nearestBeat(t)+2);
+  diagEv('damage',{lifeLoss:false,tutorial:true,reason,causeInputId:inputId??null,noteId:nt?.id,playerIdx:player.idx,hpBefore:hp});
+  showJudge('MISS','');document.getElementById('jWord').textContent='もう一度';
+  coach.nextSpawn=Math.max(coach.nextSpawn,nearestBeat(t)+2);
 }
 function coachSpawn(n,t,frozen){
-  if(!coach)return;
-  if(coach.phase==='intro'&&n>=coach.phaseBeat){
-    coach.phase=coachStep().kind==='free'?'play':'demo';coach.demoStart=t;coach.nextSpawn=n;
-    coachUI();
-  }else if(coach.phase==='ready'&&n>=coach.phaseBeat){coach.phase='play';coachUI();}
-  if(!['demo','play'].includes(coach.phase)||n<INTRO_BEATS||frozen||rushGuard(t)||coach.finishAt!==null||n<coach.nextSpawn)return;
-  const kind=coachStep().kind,demo=coach.phase==='demo';
-  if(kind==='move'||kind==='rush'&&(rushReady()||coach.rushStarted||demo&&coach.demoRushStarted))return;
-  if(demo&&kind!=='rush'&&coach.demoCount>=1||!demo&&coach.done>=coachStep().need)return;
-  if(notes.length>=(kind==='free'?2:1))return;
-  const at=Math.min(gIdx,player.idx+4);
-  if(at<=player.idx||notes.some(nt=>Math.abs(nt.idx-at)<3))return;
-  const blue=kind==='blue'||kind==='free'&&coach.spawned%3===2;
-  const purple=kind==='purple'||kind==='free'&&coach.spawned%4===3;
-  notes.push(NBWorkshop.prepareNote({id:noteId++,idx:at,from:at,at:t,pop:t,hp:purple?1:blue?2:1,purple}));
-  coach.spawned++;coach.nextSpawn=n+(kind==='free'?4:6);
+  if(!coach||coach.phase!=='play'||frozen||notes.length||n<coach.nextSpawn||coach.done>=coachStep().types.length)return;
+  if(player.idx<coachStep().gates[coach.done])return;
+  const kind=coachStep().types[coach.done];
+  notes.push({id:noteId++,idx:gIdx,from:gIdx,at:t,pop:t,hp:kind==='blue'?2:1,purple:kind==='purple',lesson:coach.done});
+  coach.nextSpawn=n+2;
 }
-function coachBeat(n,t){
-  if(!coach||coach.phase!=='demo')return;
-  const kind=coachStep().kind;
-  const nt=notes.find(x=>x.idx<=player.idx);
-  if(nt&&(!nt.hit||n===nt.hitBeat+1))coachDemoAction(nt.purple?'charge':'break',n,t);
-  if(!['move','rush'].includes(kind)&&coach.demoCount>=1&&notes.length===0&&coach.demoEndAt===null)coach.demoEndAt=t+SPB;
+function coachBeat(){}
+function coachCanMove(t,rec){
+  if(!isTutorial()||!coach)return true;
+  if(coach.phase!=='play')return false;
+  const gate=coachStep().gates[coach.done];
+  if(gate!==undefined&&player.idx>=gate){
+    diagResult(rec,{status:'invalid',reason:'練習のブロックを壊してから進む'});return false;
+  }
+  return true;
+}
+function coachGoal(t){
+  if(coach.phase!=='play'||coach.done<coachStep().types.length)return false;
+  coach.phase='goal';coach.finishAt=t+SPB*2;notes=[];earlyInput=null;pendingCheck=[];
+  fx.push({type:'goal',idx:player.idx,t,d:.5});uiTone(784,.10);coachUI();return true;
 }
 function coachUpdate(t){
   if(!coach)return;
-  const kind=coachStep().kind;
-  if(coach.phase==='demo'){
-    if(coach.demoEndAt!==null&&t>=coach.demoEndAt)coachPractice(t);
-    if(kind==='move'){
-      // 拍には揃えず、まとめて3歩。1歩ずつ説明を挟む体験にしない。
-      const times=[.30,.53,.81];
-      while(coach.demoMoves<times.length&&t>=coach.demoStart+times[coach.demoMoves]){
-        moveLocked=false;setLockUI(false);coachDemoAction('move',nearestBeat(t),t);coach.demoMoves++;
-      }
-      if(t>=coach.demoStart+1.2)coachPractice(t);
-    }else if(kind==='rush'){
-      if(rushReady()&&!rushAnim&&!coach.demoRushStarted){
-        if(coach.demoHoldAt===null)coach.demoHoldAt=t+SPB;
-        if(t>=coach.demoHoldAt){
-          if(rushRelease==='manual')coachTouch('break',coach.demoHoldAt,RUSH_HOLD_MS/1000);
-          if(rushRelease==='auto'||t>=coach.demoHoldAt+RUSH_HOLD_MS/1000)coachDemoAction('rush',nearestBeat(t),t);
-        }
-      }
-      if(coach.demoRushStarted&&!rushAnim)coachPractice(t+SPB);
-    }
-  }
-  if(coach.phase==='play'&&coach.rushStarted&&!rushAnim&&!coach.rushLanded){coach.rushLanded=true;coach.done=1;}
-  if(coach.finishAt!==null){if(t>=coach.finishAt&&!rushAnim)coachFinish();return;}
-  if(coach.phase==='play'&&coach.done>=coachStep().need&&!rushAnim&&notes.length===0){
-    if(coach.step===COACH_STEPS.length-1)coach.finishAt=beatTime(coachBarAfter(t));
-    else coachEnter(coach.step+1,t);
+  if(coach.phase==='goal'&&t>=coach.finishAt){
+    if(coach.step===COACH_STEPS.length-1)coachFinish();
+    else{courseLap++;coachEnter(coach.step+1,t);}
   }
   coachUI();
 }
 function coachFinish(){
-  stopRushHold();stopMoveScheduler();stopSong();hideJudge();state='clear';tutClearUI();
+  saveTutorial(2,true);stopRushHold();stopMoveScheduler();stopSong();hideJudge();state='clear';tutClearUI();
   document.getElementById('pauseBtn').disabled=true;
   document.querySelectorAll('#controls button').forEach(b=>b.disabled=true);
   document.getElementById('coachDoneOv').classList.remove('hide');progFill.style.width='100%';
   diagEv('tutorial_complete',{counts:{...counts},lifeLoss:false});timingHistoryFinish('tutorial_complete');diagSave();
   [523,659,784].forEach((f,i)=>uiTone(f,.12,i*.1));
 }
-function tutLoopMusic(){
-  if(rushAnim)return;
-  diagEv('audio_restart',{reason:'練習曲の再開'});
-  const old=songTime();
-  notes=[];effects=[];fx=[];texts=[];pendingCheck=[];earlyInput=null;recentHits=[];nextBeat=0;acted=-1;
-  if(coach){
-    coach.nextSpawn=INTRO_BEATS;coach.phaseBeat=INTRO_BEATS;coach.touchUntil=-9;coach.demoHoldAt=null;
-    if(coach.phase==='demo'){coach.phase='intro';coach.demoCount=0;coach.demoMoves=0;coach.demoRushStarted=false;coach.demoEndAt=null;if(coachStep().kind==='rush')rushUnits=RUSH_FULL-12;}
-    if(coach.finishAt!==null)coach.finishAt=SPB*2;
-  }
-  lastBeatAt=-9;charUntil=0;charState='idle';player.from=player.idx;player.at=0;
-  cameraAt-=old;rushFade=null;rushGuardUntil=-9;hurtGuardUntil=-9;rushPoseUntil=-9;shards=[];slashMarks=[];mists=[];
-  hideJudge();stopMoveScheduler();startMusicAt();startMoveScheduler();coachUI();
+function startTutorial(step=0){
+  tutorialResumeStep=step;setSong(SONGS[0]);
+  // Silent looping source anchors the audio clock. Only scheduled percussion is audible.
+  songBuf=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate);startGame();
+}
+function autoStartTutorial(){
+  const saved=tutorialProgress();if(saved.complete)return;
+  startTutorial(saved.step);
+  if(ctx.state==='running')return;
+  state='paused';pausedAt=0;stopSong();stopMoveScheduler();coachUI();document.getElementById('pauseBtn').disabled=true;
+  const b=document.createElement('button');b.id='tutorialBegin';b.innerHTML='<span>タップしてスタート<small>音に合わせて、一歩ずつ</small></span>';
+  document.getElementById('fieldWrap').append(b);
+  b.onclick=async()=>{
+    b.disabled=true;
+    try{await ctx.resume();if(ctx.state!=='running')throw new Error('audio suspended');
+      b.remove();pausedAt=null;resumeFloor=-Infinity;startMusicAt();state='play';startMoveScheduler();coachUI();document.getElementById('pauseBtn').disabled=false;
+    }catch(_){b.disabled=false;}
+  };
 }
 // 次に自分のマスへ来るノーツと、届くまであと何拍か（0＝今届いた）。来ないときは null。紫（「進む」で壊す）も届く拍は同じなので含める
 function nextNoteInfo(t){
@@ -1099,30 +1051,31 @@ function drawCoachTarget(t){
 function placeCoachCue(t){
   const cue=document.getElementById('coachCue');
   if(!isTutorial()||!coach||!['play','paused','resuming'].includes(state)){cue.hidden=true;return;}
-  let text='';
-  if(coach.phase==='intro')text=coachStep().intro;
-  else if(coach.phase==='demo')text='お手本';
-  else if(coach.phase==='ready')text='やってみよう';
-  // ここだけはノーツが来ない待機時間。長押しを見失わないための短い合図。
-  if(coachStep().kind==='rush'&&rushReady()&&!rushAnim)text=rushRelease==='manual'?'長押し':'自動発動';
+  const target=notes[0],kind=coachStep().types[coach.done];
+  let text=coach.phase==='goal'?(coach.step===2?'クリア！':'ゴール！\n次のコースへ'):
+    coach.done>=coachStep().types.length?'ゴールまで\n進もう':
+    player.idx<coachStep().gates[coach.done]?'「進む」で\n前へ':
+    target?.hit?'次の拍も\nブレイク':kind==='purple'?'紫が重なったら\n進む':kind==='blue'?'青は２拍で\n２回ブレイク':'赤が重なったら\nブレイク';
   cue.textContent=text;cue.hidden=!text||!!rushAnim;
   if(!cue.hidden){
     const wrap=document.getElementById('fieldWrap').getBoundingClientRect(),canvas=cv.getBoundingClientRect(),p=cellXY(playerVis(t));
     const x=canvas.left-wrap.left+p.x,y=canvas.top-wrap.top+p.y,w=cue.offsetWidth,h=cue.offsetHeight;
-    const left=Math.max(4,Math.min(wrap.width-w-4,x-w/2));
-    let top=y-cell*.95-h;if(top<4)top=y+cell*.95;
+    const left=Math.max(4,Math.min(wrap.width-w-4,x+cell*.72));
+    let top=y-h/2;
     cue.style.transform=`translate(${Math.round(left)}px,${Math.round(Math.max(4,Math.min(wrap.height-h-4,top)))}px)`;
   }
   for(const type of ['move','break']){
     const b=document.getElementById(type==='move'?'bMove':'bBreak');
-    const touch=coach.phase==='demo'&&coach.touchType===type&&t>=coach.touchAt&&t<coach.touchUntil;
+    const touch=false;
+    const waiting=coachStep().gates[coach.done]!==undefined&&player.idx>=coachStep().gates[coach.done];
+    b.classList.toggle('coachGuide',state==='play'&&coach.phase==='play'&&type===(waiting&&kind!=='purple'?'break':'move'));
     const userHold=type==='break'&&coach.phase==='play'&&holdStartedPerf!==null&&rushReady()&&state==='play';
     const holding=touch&&coach.touchUntil-coach.touchAt>.3||userHold;
     b.classList.toggle('coachDemoPress',touch);b.classList.toggle('coachHold',holding);
     b.style.setProperty('--coach-hold',String(userHold?Math.min(1,(performance.now()-holdStartedPerf)/RUSH_HOLD_MS):holding?Math.min(1,(t-coach.touchAt)/(RUSH_HOLD_MS/1000)):0));
   }
 }
-document.getElementById('coachAgain').addEventListener('click',startGame);
+document.getElementById('coachAgain').addEventListener('click',()=>startTutorial());
 document.getElementById('coachSongs').addEventListener('click',returnToSongs);
 
 function onBeat(n, t){
@@ -1277,6 +1230,7 @@ function hideJudge(){
 }
 
 function freeMove(t, rec, charge=false){
+  if(isTutorial()&&!coachCanMove(t,rec))return;
   if(NBDiamond.active()){diagResult(rec,{status:"invalid",reason:"ダイヤ採掘中"});return;}
   NBWorkshop.tick(t,charge);
   const stuck = notes.find(x => x.hit && x.idx <= player.idx);
@@ -1658,7 +1612,7 @@ function startMoveScheduler(){
   };
   moveScheduler=setInterval(schedule,25);schedule();
 }
-// 練習用の伴奏：100 BPMの拍を同じオーディオ時計で先行予約。曲は仕上げで戻す。
+// 練習用90 BPM：裏拍・旋律なし。同じオーディオ時計で毎拍を先行予約。
 function playCoachBeat(n,at){
   const tone=(freq,end,dur,amp,type='sine',delay=0)=>{
     const o=ctx.createOscillator(),gn=ctx.createGain(),a=at+delay;
@@ -1667,10 +1621,9 @@ function playCoachBeat(n,at){
     o.connect(gn);gn.connect(buses().guide);moveVoices.add(o);
     o.onended=()=>{moveVoices.delete(o);o.disconnect();gn.disconnect();};o.start(a);o.stop(a+dur+.01);
   };
-  tone(n%2?160:125,48,.15,.28); // 低音で一定の拍を感じる
+  tone(135,48,.12,.26); // 毎拍、同じ短い打音
   tone(1200,700,.035,.13,'triangle');
-  tone(1600,1100,.025,.035,'triangle',SPB/2); // 小さな裏拍
-  if(n%4===0)tone([130.81,164.81,146.83,196][Math.floor(n/4)%4],110,.23,.09,'triangle');
+
 }
 // 拍のガイド音：短い「コッ」（中音域・余韻なし）。ノーツや操作に関係なく毎拍鳴らす。全部同じ高さ
 function playGuideClick(n,at){
@@ -2014,10 +1967,10 @@ const purpleCv=document.createElement('canvas');
 function rr(c,x,y,w,h,r){c.beginPath();c.roundRect(x,y,w,h,r);}
 function buildNoteSprite(){
   noteCv.width=320;noteCv.height=320;const c=noteCv.getContext('2d');c.scale(2,2);
-  c.shadowColor='#ff7be7';c.shadowBlur=5;rr(c,16,16,128,128,9);c.fillStyle='#ff19b8';c.fill();c.shadowBlur=0;
+  c.shadowColor='#ff7be7';c.shadowBlur=5;rr(c,16,16,128,128,9);c.fillStyle=isTutorial()?'#ff434b':'#ff19b8';c.fill();c.shadowBlur=0;
   c.strokeStyle='#081221';c.lineWidth=7;c.stroke();
-  c.strokeStyle='#ff87e0';c.lineWidth=2;rr(c,22,22,116,116,5);c.stroke();
-  c.strokeStyle='#c21a9d';c.lineWidth=1.5;c.beginPath();c.moveTo(80,25);c.lineTo(80,135);c.moveTo(25,80);c.lineTo(135,80);c.stroke();
+  c.strokeStyle=isTutorial()?'#ffb9ac':'#ff87e0';c.lineWidth=2;rr(c,22,22,116,116,5);c.stroke();
+  c.strokeStyle=isTutorial()?'#bd2237':'#c21a9d';c.lineWidth=1.5;c.beginPath();c.moveTo(80,25);c.lineTo(80,135);c.moveTo(25,80);c.lineTo(135,80);c.stroke();
   // かたいブロック（水色・2回ブレイク）
   hardCv.width=320;hardCv.height=320;const h=hardCv.getContext('2d');h.scale(2,2);
   h.shadowColor='#7be9ff';h.shadowBlur=5;rr(h,16,16,128,128,9);h.fillStyle='#19b6ff';h.fill();h.shadowBlur=0;
@@ -2072,6 +2025,10 @@ function drawCourse(t){
   if(!speedOn()&&revealEnd>=GOAL_INDEX){
     const p=cellXY(GOAL_INDEX);g.save();g.globalAlpha=tileAlpha(GOAL_INDEX,t);g.translate(p.x,p.y);g.rotate(Math.PI/4);
     g.fillStyle='#ffe737';g.strokeStyle='#081221';g.lineWidth=3;g.fillRect(-cell*.22,-cell*.22,cell*.44,cell*.44);g.strokeRect(-cell*.22,-cell*.22,cell*.44,cell*.44);g.restore();
+  }
+  if(isTutorial()){
+    const p=cellXY(GOAL_INDEX);g.save();g.font='bold 14px sans-serif';g.textBaseline='middle';
+    g.fillStyle='#fff4a3';g.textAlign='left';g.fillText('GOAL',p.x+cell*.8,p.y);g.restore();
   }
   // 未表示の次のマスへ短い破線のみ。奥のコースの形は先に見せない。
   if(revealEnd<EXIT_INDEX){
@@ -2337,7 +2294,7 @@ function checkLines(t){
   if (!(state==='play' && player.idx >= LINES[lineK] && hp > 0)) return false;
   if(speedOn()&&player.idx>=GOAL_INDEX){if(rushGuard(t))return false;nextEndlessCourse(t);return true;}
   if (lineK === LINES.length - 1 && !speedOn() && rushGuard(t)) return false; // 必殺技の駆け抜け・着地が終わってからワープ
-  if(isTutorial()&&lineK===LINES.length-1){nextCourse(t);coach.nextSpawn=nextBeat+2;return true;}
+  if(isTutorial()&&lineK===LINES.length-1)return coachGoal(t);
   if (lineK === LINES.length - 1 && endlessScoreOn()){ warp(t); return true; }
   else if (lineK === LINES.length - 1 && scoreOn()){ nextCourse(t); }
   else if (lineK === LINES.length - 1){ fx.push({ type: 'goal', idx: player.idx, t, d: .5 }); end(true); }
@@ -2369,9 +2326,8 @@ function loop(){
     const lapped = checkLines(t);
     if(lapped)t=songTime();
     if (isTutorial())coachUpdate(t);
-    if (state==='play' && !lapped && t > songBuf.duration / rate){
-      if(isTutorial()) tutLoopMusic();
-      else if(speedOn()){endReason='song_end';end(false);}
+    if (state==='play' && !isTutorial() && !lapped && t > songBuf.duration / rate){
+      if(speedOn()){endReason='song_end';end(false);}
       else if(endless&&!isTutorial()){ endReason = 'finish'; end(true); } // 距離チャレンジ：曲が終わったら完走
       else end(scoreOn());
     }
@@ -2383,7 +2339,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 詳細モードは従来どおり任意。軽量の判定履歴は、表示を増やさず全プレイで記録する。
-const APP_VERSION = 'v91', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v92', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2624,9 +2580,9 @@ function startMusicAt(rawPosition=0,lead=.12){
   const src=songSrc,gain=songGain;
   src.onended=()=>{src.disconnect();gain.disconnect();};
   songStart=at-offset;syncClock();
-  songSrc.loop=false;
+  songSrc.loop=isTutorial();
   const sourceOffset=offset*rate;
-  songSrc.start(at,Math.max(0,Math.min(sourceOffset,songBuf.duration)));
+  songSrc.start(at,isTutorial()?sourceOffset%songBuf.duration:Math.max(0,Math.min(sourceOffset,songBuf.duration)));
 }
 // 1周まわった（または曲が終わった）ときに、速くして最初から
 // スコアモード：最後のラインに着いたらコースの頭から続ける。曲・拍・速さはそのまま
@@ -2734,7 +2690,7 @@ function returnToSongs(){
 }
 document.getElementById('pauseBtn').addEventListener('click',pauseGame);
 document.getElementById('resumeBtn').addEventListener('click',resumeGame);
-document.getElementById('pauseRetry').addEventListener('click',startGame);
+document.getElementById('pauseRetry').addEventListener('click',()=>isTutorial()?startTutorial(coach?.step||0):startGame());
 document.getElementById('pauseQuit').addEventListener('click',returnToSongs);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseGame();});
 window.addEventListener('keydown',e=>{if(e.key==='Escape'){if(state==='play'||state==='resuming')pauseGame();else if(state==='paused')resumeGame();}});
@@ -2751,6 +2707,7 @@ showTimingValue();
 let pickingSong = false;
 async function pickSong(sg, btn){
   if(!NBWorkshop.ownsSong(sg))return;NBWorkshop.stopSongPreview();
+  if(sg.tutorial){startTutorial();return;}
   if (pickingSong) return;
   pickingSong = true;
   const buttons = [...document.querySelectorAll('.songBtn')];
@@ -2851,6 +2808,7 @@ NBTimingHistoryUI.init({pending:()=>[...timingHistoryPending.values()],flush:()=
   state = 'ready';
   document.getElementById('loadTxt').textContent = ''; NBMenu.ready();
   NBWorkshop.renderSongs();
+  autoStartTutorial();
   loop();
 })();
 </script>

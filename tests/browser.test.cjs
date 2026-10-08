@@ -8,6 +8,7 @@ const server=http.createServer((req,res)=>{let f=path.join(root,decodeURICompone
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_PATH || undefined,args:['--no-sandbox','--disable-dev-shm-usage','--autoplay-policy=no-user-gesture-required']});
  const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
  const errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+ await page.addInitScript(()=>localStorage.setItem('neon-blade-tutorial-courses-v1',JSON.stringify({step:2,complete:true})));
  await page.goto('http://127.0.0.1:8123');await page.waitForFunction(()=>state==='ready');
  console.log('ready',await page.evaluate(()=>({state,hero:selectedHero,version:APP_VERSION})),errors);
  await page.screenshot({path:path.join(qa,'home.png')});
