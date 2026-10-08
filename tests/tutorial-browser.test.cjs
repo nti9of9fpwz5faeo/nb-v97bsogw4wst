@@ -14,11 +14,12 @@ const server=http.createServer((req,res)=>{const f=path.join(root,decodeURICompo
  await page.waitForFunction(()=>state==='play'&&ctx.state==='running');
  assert.equal(requests.some(u=>u.endsWith('audio/tutorial.mp3')),false);
  const first=await page.evaluate(()=>({goal:GOAL_INDEX,source:gIdx,path:path.map(p=>({...p})),bpm:BPM,locked:moveLocked,loop:songSrc.loop}));
- assert.equal(first.goal,10);assert.equal(first.source,12);assert.equal(first.bpm,90);assert.equal(first.loop,true);assert.equal(first.locked,false);assert.equal(new Set(first.path.map(p=>p.c)).size,1);
+ assert.equal(first.path.length,10);assert.ok(first.path[0].c>first.path.at(-1).c);
+ assert.equal(first.goal,7);assert.equal(first.source,9);assert.equal(first.bpm,90);assert.equal(first.loop,true);assert.equal(first.locked,false);assert.equal(new Set(first.path.map(p=>p.r)).size,1);
  await page.screenshot({path:path.join(qa,'01-red.png')});
  // Pause/resume must preserve the same course and notes, without resetting the practice clock.
- await page.click('#pauseBtn');assert.equal(await page.evaluate(()=>state),'paused');await page.click('#resumeBtn');await page.waitForFunction(()=>state==='play',{},{timeout:8000});
- console.log('automatic first entry, audio gesture, 10-step straight path, 90 BPM, pause/resume: PASS');
+ await page.click('#pauseBtn');assert.equal(await page.evaluate(()=>state),'paused');await page.click('#resumeBtn');await page.waitForFunction(()=>state==='play',{},{timeout:8000});await page.waitForTimeout(400);
+ console.log('automatic first entry, audio gesture, 10-cell horizontal path, 90 BPM, pause/resume: PASS');
  await page.evaluate(()=>{stopMoveScheduler();state='paused';});
  for(let stage=0;stage<3;stage++){
    const r=await page.evaluate(stage=>{
@@ -61,7 +62,7 @@ const server=http.createServer((req,res)=>{const f=path.join(root,decodeURICompo
  await page.click('#homeTutorial');await page.waitForFunction(()=>state==='play'&&isTutorial());assert.equal(await page.evaluate(()=>coach.step),0);
  // Real pointer input against the running audio clock, including the movement gate.
  await page.click('#bMove');await page.click('#bMove');await page.click('#bMove');
- assert.equal(await page.evaluate(()=>player.idx),2);
+ assert.equal(await page.evaluate(()=>player.idx),1);
  await page.evaluate(()=>new Promise((resolve,reject)=>{
    const until=performance.now()+12000;
    function hit(){
@@ -80,8 +81,8 @@ const server=http.createServer((req,res)=>{const f=path.join(root,decodeURICompo
  if(await page.locator('#tutorialBegin').count())await page.click('#tutorialBegin');
  for(const size of [{width:320,height:568},{width:844,height:390}]){
    await page.setViewportSize(size);await page.waitForTimeout(120);
-   const boxes=await page.evaluate(()=>{const c=cv.getBoundingClientRect(),p=cellXY(0),src=cellXY(gIdx),b=document.getElementById('bMove').getBoundingClientRect();return {overflow:document.documentElement.scrollWidth>innerWidth,start:c.top+p.y,source:c.top+src.y,buttonBottom:b.bottom,buttonTop:b.top,height:innerHeight};});
-   assert.equal(boxes.overflow,false);assert.ok(boxes.start<boxes.buttonTop&&boxes.source>0);assert.ok(boxes.buttonBottom<=boxes.height);
+   const boxes=await page.evaluate(()=>{const c=cv.getBoundingClientRect(),p=cellXY(0),src=cellXY(gIdx),b=document.getElementById('bMove').getBoundingClientRect();return {overflow:document.documentElement.scrollWidth>innerWidth,start:c.top+p.y,source:c.top+src.y,buttonBottom:b.bottom,buttonTop:b.top,height:innerHeight,startX:c.left+p.x,sourceX:c.left+src.x,width:innerWidth};});
+   assert.equal(boxes.overflow,false);assert.ok(boxes.start<boxes.buttonTop&&boxes.source>0);assert.ok(boxes.buttonBottom<=boxes.height);assert.ok(boxes.sourceX>0&&boxes.startX<boxes.width&&boxes.startX>boxes.sourceX);
    await page.screenshot({path:path.join(qa,`layout-${size.width}.png`)});
  }
  // Normal courses still use 35 steps and four source cells.
