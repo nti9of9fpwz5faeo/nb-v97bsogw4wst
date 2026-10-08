@@ -353,7 +353,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">v93</span>
+  <span id="verBadge">v94</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -1002,7 +1002,7 @@ function autoStartTutorial(){
 }
 // 次に自分のマスへ来るノーツと、届くまであと何拍か（0＝今届いた）。来ないときは null。紫（「進む」で壊す）も届く拍は同じなので含める
 function nextNoteInfo(t){
-  if(isTutorial()||!['play','paused','resuming'].includes(state)||rushAnim)return null;
+  if(!['play','paused','resuming'].includes(state)||rushAnim)return null;
   const nt=notes.filter(x=>x.idx>=player.idx).sort((a,b)=>a.idx-b.idx)[0];
   if(!nt)return null;
   const b0=beatTime(nextBeat-1),b1=beatTime(nextBeat),f=notesWillMove()&&b1>b0?Math.min(1,Math.max(0,(t-b0)/(b1-b0))):0;
@@ -1017,35 +1017,11 @@ function drawApproachRing(t){
   if(!ringOn)return;
   const info=nextNoteInfo(t);
   if(!info||info.left>=2)return;
-  const {nt,left}=info,col=nt.purple?'#8a3dff':nt.hit?'#ff2f2f':(nt.hp||1)>1?'#19b6ff':'#ff19b8';
+  const {nt,left}=info,col=nt.purple?'#8a3dff':nt.hit?'#ff2f2f':(nt.hp||1)>1?'#19b6ff':isTutorial()?'#ff434b':'#ff19b8';
   const p=cellXY(playerVis(t)),h=cell*.5*(1+left*.55),a=Math.min(1,(2-left)/.6);
   g.save();g.lineJoin='round';
   g.globalAlpha=a*.6;g.strokeStyle='#081221';g.lineWidth=Math.max(5,cell*.11);rr(g,p.x-h,p.y-h,h*2,h*2,cell*.1);g.stroke();
   g.globalAlpha=a;g.strokeStyle=col;g.lineWidth=Math.max(2.5,cell*.06);rr(g,p.x-h,p.y-h,h*2,h*2,cell*.1);g.stroke();
-  g.restore();
-}
-function drawCoachTarget(t){
-  if(!coach||!isTutorial()||!['play','paused','resuming'].includes(state)||rushAnim)return;
-  const p=cellXY(playerVis(t)),r=cell*.52,L=cell*.17,kind=coachStep().kind;
-  g.save();g.strokeStyle='#ffe768';g.lineWidth=Math.max(2.5,cell*.055);g.lineCap='round';
-  for(const sx of [-1,1])for(const sy of [-1,1]){g.beginPath();g.moveTo(p.x+sx*(r-L),p.y+sy*r);g.lineTo(p.x+sx*r,p.y+sy*r);g.lineTo(p.x+sx*r,p.y+sy*(r-L));g.stroke();}
-  // 接近を同じ場所で追えるリング。到着時の点滅だけを見て反応させない。
-  const nt=notes.filter(x=>x.idx>=player.idx).sort((a,b)=>a.idx-b.idx)[0];
-  if(nt&&kind!=='free'){
-    const b0=beatTime(nextBeat-1),b1=beatTime(nextBeat),f=notesWillMove()?Math.min(1,Math.max(0,(t-b0)/(b1-b0))):0;
-    const left=nt.hit?Math.max(0,(beatTime(nt.hitBeat+1)-t)/SPB):Math.max(0,nt.idx-player.idx-f);
-    const q=1-Math.min(1,left/4);
-    g.strokeStyle=nt.purple?'#e8adff':nt.hp>1||nt.hit?'#b9faff':'#fff6ad';g.lineWidth=3;
-    g.beginPath();g.arc(p.x,p.y,cell*.7,-Math.PI/2,-Math.PI/2+Math.PI*2*q);g.stroke();
-    if(nt.hp>1||nt.hit){
-      for(let i=0;i<2;i++){g.fillStyle=nt.hit&&i===0?'#76fa9c':'#fff';g.beginPath();g.arc(p.x+(i-.5)*cell*.27,p.y+cell*.91,cell*.08,0,Math.PI*2);g.fill();}
-    }
-  }
-  if(kind==='move'&&coach.phase==='play'){
-    for(let i=1;i<=3&&player.idx+i<=GOAL_INDEX;i++){
-      const q=cellXY(player.idx+i);g.globalAlpha=.7;g.strokeStyle='#fff';g.lineWidth=2;g.beginPath();g.arc(q.x,q.y,cell*.14,0,Math.PI*2);g.stroke();
-    }
-  }
   g.restore();
 }
 function placeCoachCue(t){
@@ -1061,7 +1037,7 @@ function placeCoachCue(t){
     const wrap=document.getElementById('fieldWrap').getBoundingClientRect(),canvas=cv.getBoundingClientRect(),p=cellXY(playerVis(t));
     const x=canvas.left-wrap.left+p.x,y=canvas.top-wrap.top+p.y,w=cue.offsetWidth,h=cue.offsetHeight;
     const left=Math.max(4,Math.min(wrap.width-w-4,x-w/2));
-    let top=y-cell*.95-h;
+    let top=player.idx>=GOAL_INDEX-2?y+cell*.95:y-cell*.95-h;
     cue.style.transform=`translate(${Math.round(left)}px,${Math.round(Math.max(4,Math.min(wrap.height-h-4,top)))}px)`;
   }
   for(const type of ['move','break']){
@@ -2018,18 +1994,32 @@ function firstVisibleTile(){
   while(lo<hi){const mid=(lo+hi)>>1;if(path[mid].r<cameraRow-1.5)lo=mid+1;else hi=mid;}
   return lo;
 }
+// 浮遊する針形のゴール。先端が到着するマスを指す。
+function drawTutorialGoal(t){
+  if(revealEnd<GOAL_INDEX)return;
+  const p=cellXY(GOAL_INDEX),bob=reduceMotion.matches?0:Math.sin(t*2.4)*cell*.055;
+  const tip=p.y-cell*.30-bob,top=tip-cell*.94,shoulder=top+cell*.24,w=cell*.18;
+  g.save();g.globalAlpha=tileAlpha(GOAL_INDEX,t);
+  g.fillStyle='#07548266';g.beginPath();g.ellipse(p.x,p.y+cell*.09,cell*.20,cell*.065,0,0,Math.PI*2);g.fill();
+  g.shadowColor='#ffe96b';g.shadowBlur=cell*.14;
+  g.beginPath();g.moveTo(p.x,top);g.lineTo(p.x+w,shoulder);g.lineTo(p.x,tip);g.lineTo(p.x-w,shoulder);g.closePath();
+  g.fillStyle='#ffe332';g.fill();g.shadowBlur=0;
+  g.beginPath();g.moveTo(p.x,shoulder+cell*.035);g.lineTo(p.x+w,shoulder);g.lineTo(p.x,tip);g.closePath();g.fillStyle='#e5ad10';g.fill();
+  g.beginPath();g.moveTo(p.x,top);g.lineTo(p.x-w,shoulder);g.lineTo(p.x,shoulder+cell*.035);g.closePath();g.fillStyle='#fff7a3';g.fill();
+  g.beginPath();g.moveTo(p.x,top);g.lineTo(p.x+w,shoulder);g.lineTo(p.x,tip);g.lineTo(p.x-w,shoulder);g.closePath();
+  g.strokeStyle='#634c13';g.lineWidth=Math.max(1,cell*.035);g.stroke();
+  g.font=`900 ${Math.max(11,Math.round(cell*.34))}px sans-serif`;g.textBaseline='bottom';g.textAlign='center';
+  g.fillStyle='#fff4a3';g.fillText('GOAL',p.x,top-cell*.16);g.restore();
+}
 function drawCourse(t){
   for(let i=firstVisibleTile();i<=revealEnd;i++)floorTile(cellXY(i),i,t);
   const s=cellXY(0);g.save();g.globalAlpha=rearTileAlpha(0,t);g.strokeStyle='#071423';g.lineWidth=4;
   g.beginPath();g.arc(s.x,s.y,cell*.30,0,Math.PI*2);g.stroke();g.strokeStyle='#e1ffff';g.lineWidth=2;g.stroke();g.restore();
-  if(!speedOn()&&revealEnd>=GOAL_INDEX){
+  if(!isTutorial()&&!speedOn()&&revealEnd>=GOAL_INDEX){
     const p=cellXY(GOAL_INDEX);g.save();g.globalAlpha=tileAlpha(GOAL_INDEX,t);g.translate(p.x,p.y);g.rotate(Math.PI/4);
     g.fillStyle='#ffe737';g.strokeStyle='#081221';g.lineWidth=3;g.fillRect(-cell*.22,-cell*.22,cell*.44,cell*.44);g.strokeRect(-cell*.22,-cell*.22,cell*.44,cell*.44);g.restore();
   }
-  if(isTutorial()){
-    const p=cellXY(GOAL_INDEX);g.save();g.font='bold 14px sans-serif';g.textBaseline='middle';
-    g.fillStyle='#fff4a3';g.textAlign='center';g.fillText('GOAL',p.x,p.y+cell*.95);g.restore();
-  }
+  if(isTutorial())drawTutorialGoal(t);
   // 未表示の次のマスへ短い破線のみ。奥のコースの形は先に見せない。
   if(revealEnd<EXIT_INDEX){
     const a=cellXY(revealEnd),b=cellXY(revealEnd+1);g.save();g.globalAlpha=.55;g.strokeStyle='#eaffff';g.lineWidth=2;g.setLineDash([3,4]);
@@ -2160,7 +2150,6 @@ function draw(t){
   drawChar(t);
   NBDiamond.drawFront(t);
   NBWorkshop.drawGemDrops(t); // Always above the character; show the actual award.
-  if(isTutorial())drawCoachTarget(t);
   drawRushOk(t);
   updateSpot(t);
   placeCoachCue(t);
@@ -2339,7 +2328,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 詳細モードは従来どおり任意。軽量の判定履歴は、表示を増やさず全プレイで記録する。
-const APP_VERSION = 'v93', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v94', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;

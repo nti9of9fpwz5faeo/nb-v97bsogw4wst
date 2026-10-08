@@ -16,6 +16,24 @@ const server=http.createServer((req,res)=>{const f=path.join(root,decodeURICompo
  const first=await page.evaluate(()=>({goal:GOAL_INDEX,source:gIdx,path:path.map(p=>({...p})),bpm:BPM,locked:moveLocked,loop:songSrc.loop}));
  assert.equal(first.path.length,10);assert.ok(first.path[0].c>first.path.at(-1).c);
  assert.equal(first.goal,7);assert.equal(first.source,9);assert.equal(first.bpm,90);assert.equal(first.loop,true);assert.equal(first.locked,false);assert.equal(new Set(first.path.map(p=>p.r)).size,1);
+ const guide=await page.evaluate(()=>{
+   const saved={notes,nextBeat,player,ringOn},rects=[],round=g.roundRect;
+   g.roundRect=function(...a){rects.push(a);return round.apply(this,a);};
+   try{
+     ringOn=true;nextBeat=8;player={idx:1,from:1,at:-9};
+     notes=[{id:-1,idx:3,from:3,at:-9,hp:1}];
+     drawApproachRing(beatTime(7)+SPB*.5);const far=rects.at(-1)?.[2];
+     notes[0].idx=2;drawApproachRing(beatTime(7)+SPB*.5);const near=rects.at(-1)?.[2];
+     notes[0].idx=1;drawApproachRing(beatTime(7));const on=rects.at(-1)?.[2];
+     notes[0].hit=true;notes[0].hitBeat=7;
+     const blueBefore=nextNoteInfo(beatTime(7)+SPB*.25).left,blueOn=nextNoteInfo(beatTime(8)).left;
+     const beforeOff=rects.length;ringOn=false;drawApproachRing(beatTime(8));
+     return {far,near,on,cell,blueBefore,blueOn,offAdds:rects.length-beforeOff,oldCoachOverlay:typeof drawCoachTarget};
+   }finally{({notes,nextBeat,player,ringOn}=saved);g.roundRect=round;}
+ });
+ assert.ok(guide.far>guide.near&&guide.near>guide.on);assert.equal(guide.on,guide.cell);
+ assert.equal(guide.blueBefore,.75);assert.equal(guide.blueOn,0);assert.equal(guide.offAdds,0);assert.equal(guide.oldCoachOverlay,'undefined');
+ console.log('shared square guide shrinks to the player tile, blue second beat counts down, guide setting respected, old overlays removed: PASS');
  await page.screenshot({path:path.join(qa,'01-red.png')});
  // Pause/resume must preserve the same course and notes, without resetting the practice clock.
  await page.click('#pauseBtn');assert.equal(await page.evaluate(()=>state),'paused');await page.click('#resumeBtn');await page.waitForFunction(()=>state==='play',{},{timeout:8000});await page.waitForTimeout(400);
@@ -63,6 +81,8 @@ const server=http.createServer((req,res)=>{const f=path.join(root,decodeURICompo
  // Real pointer input against the running audio clock, including the movement gate.
  await page.click('#bMove');await page.click('#bMove');await page.click('#bMove');
  assert.equal(await page.evaluate(()=>player.idx),1);
+ await page.waitForFunction(()=>notes[0]&&notes[0].idx-player.idx===1,{},{timeout:12000});
+ await page.screenshot({path:path.join(qa,'04-shared-square-guide.png')});
  await page.evaluate(()=>new Promise((resolve,reject)=>{
    const until=performance.now()+12000;
    function hit(){
