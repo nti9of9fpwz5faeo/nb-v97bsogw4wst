@@ -89,3 +89,5 @@
 .gemStyleSwitch button[aria-pressed=true]{background:#126596;color:#fff;border-color:#126596}
 .resultScreen .gemResultTypes{font:500 12px/1.6 system-ui;color:#b4c9d9;text-align:left}
 #startOv .menuHeader #menuTitle{flex:none}#startOv .menuHeader #verBadge{display:inline-block;flex:none;align-self:center;margin:0 auto 0 0;padding:3px 10px;font-size:12px;opacity:1}
+
+.songModeSwitch button[data-song-mode="fullsong"]{grid-column:1/-1}.songModeDescription{background:#eafaff;border-radius:12px;padding:10px 12px;font:600 12px/1.6 system-ui!important;color:#355c72!important;margin:6px 3px 12px!important;text-align:left!important}

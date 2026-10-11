@@ -31,7 +31,7 @@ window.NBMeasure=(()=>{
   }
   function interrupt(){if(active()){tick(songTime());finish({},true);}}
   function summary(r){
-    return [`ネオンブレード プレイ記録 ${r.appVersion}`,`曲：${r.song.name}`,`モード：${({distance:'1曲チャレンジ',endless:'エンドレス'})[r.mode]||r.mode} ／ 難易度：${r.difficulty==='normal'?'通常':r.difficulty==='hard'?'ハード':r.difficulty}`,
+    return [`ネオンブレード プレイ記録 ${r.appVersion}`,`曲：${r.song.name}`,`モード：${({distance:'1曲チャレンジ',endless:'エンドレス',fullsong:'フル曲エンドレス'})[r.mode]||r.mode} ／ 難易度：${r.difficulty==='normal'?'通常':r.difficulty==='hard'?'ハード':r.difficulty}`,
       `結果：${r.completed?(r.outcome==='clear'?'完走':'ゲームオーバー'):'途中までの記録'}`,`計測時間：${r.seconds.toFixed(1)}秒`,
       `進むチャンス：${r.opportunities}マス ／ 活かした：${r.taken} ／ 逃した：${r.missed}`,
       `チャンスの活用率：${r.usagePercent===null?'算出できる記録なし':r.usagePercent+'%'}`,

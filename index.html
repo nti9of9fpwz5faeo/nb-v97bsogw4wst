@@ -319,7 +319,7 @@
   .coaching #coachCue{white-space:pre-line;font-size:14px;padding:7px 9px;border-radius:12px}
   @media(max-width:350px){#coachCue{font-size:14px}.coaching .coachSafe{font-size:13px}}
 </style>
-<link rel="stylesheet" href="workshop.css?v=85">
+<link rel="stylesheet" href="workshop.css?v=96">
 <link rel="stylesheet" href="result-arcade.css?v=85">
 <link rel="stylesheet" href="endless-backgrounds.css?v=89">
 </head>
@@ -353,7 +353,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">v95</span>
+  <span id="verBadge">v96</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -388,16 +388,16 @@
 <script src="movement.js?v=85"></script>
 <script src="gems.js?v=85"></script>
 <script src="playtest.js?v=88"></script>
-<script src="playtest-ui.js?v=88"></script>
+<script src="playtest-ui.js?v=96"></script>
 <script src="song-backgrounds.js?v=89"></script>
 <script src="courses.js?v=88"></script>
 <script src="tutorial.js?v=93"></script>
-<script src="menu.js?v=86"></script>
+<script src="menu.js?v=96"></script>
 <script src="timing-history.js?v=87"></script>
-<script src="timing-history-ui.js?v=86"></script>
+<script src="timing-history-ui.js?v=96"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
-<script src="workshop.js?v=91"></script>
+<script src="workshop.js?v=96"></script>
 <script src="mining.js?v=85"></script>
 <script>
 // ===== 設定 =====
@@ -421,14 +421,14 @@ let song = SONGS[0], BPM, OFFSET, SPB, WINDOW;
 const chartCache={};
 let activeChart=null;
 // エンドレス：1周するごとに曲もノーツも速くなる（ゴールなし）
-// モード：normal＝通常、distance＝距離チャレンジ、endless＝エンドレス（35マスごとに加速）
+// モード：distance＝1曲、endless＝ワープ時に加速、fullsong＝曲終了時に加速
 let playMode='distance',endless=true,lap=0,rate=1;
 try{playMode=localStorage.getItem('neon-blade-mode')||(localStorage.getItem('neon-blade-endless')==='1'?'distance':'normal');}catch(e){}
-if(!['distance','endless'].includes(playMode))playMode='distance';
+if(!['distance','endless','fullsong'].includes(playMode))playMode='distance';
 endless=playMode!=='normal';
 function applyRate(){ BPM = song.bpm * rate; OFFSET = song.offset / rate; SPB = 60 / BPM; WINDOW = Math.min(0.17, SPB * 0.36); }
-const MODE_DESC={normal:'いつものモードです。',distance:'曲が終わるまでに、どこまで進めるかを競います。',endless:'35マス進むとワープ。速度が上がり、曲の最初から次の区間へ。最初の4拍は準備時間です。'};
-function updateModeUI(){ document.getElementById('rushPicker').classList.add('hide'); document.querySelectorAll('[data-rush]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.rush===rushRelease))); document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===playMode))); document.getElementById('modeDesc').textContent=MODE_DESC[playMode]; }
+const MODE_DESC={normal:'いつものモードです。',distance:'曲が終わるまでに、どこまで進めるかを競います。',fullsong:'ワープしても曲と速度はそのまま。曲が終わるたびに＋0.1倍で最初から再開（最大2.2倍）。',endless:'35マス進むとワープ。速度が上がり、曲の最初から次の区間へ。最初の4拍は準備時間です。'};
+function updateModeUI(){ document.getElementById('rushPicker').classList.add('hide'); document.querySelectorAll('[data-rush]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.rush===rushRelease))); document.querySelectorAll('[data-mode],[data-song-mode]').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.mode||b.dataset.songMode)===playMode))); document.getElementById('modeDesc').textContent=MODE_DESC[playMode]; }
 function setSong(sg){ song = sg; activeChart=chartCache[sg.chart]||null; GAPS = sg.dense ? DIFFICULTIES[difficulty].dense : DIFFICULTIES[difficulty].gaps; applyRate(); }
 const COLS = 8; let ROWS = 11;
 const MAX_HP = 5;
@@ -460,7 +460,8 @@ const STEP_BONUS_PTS = { PERFECT: 100, GREAT: 50 };                  // 次の�
 const EL_MOVE_PTS = 50;                                               // 成功した前進1回の基本点
 const COMBO_TIERS = [ { min: 0, mult: 1 }, { min: 10, mult: 2 }, { min: 25, mult: 3 } ]; // コンボ倍率（上限×3）
 const SPEED_STEP = 0.1, SPEED_MAX = 2.2;                  // 35マスごとの加速（足し算）と上限
-function speedOn(){ return playMode === 'endless' && !isTutorial(); }
+function fullSongOn(){ return playMode === 'fullsong' && !isTutorial(); }
+function speedOn(){ return (playMode === 'endless' || playMode === 'fullsong') && !isTutorial(); }
 function comboMult(c){ if (EL_SCORING !== 'combo') return 1; let m = 1; for (const t of COMBO_TIERS) if (c >= t.min) m = t.mult; return m; }
 let elScore = 0, moveSteps = 0, recordSteps = 0; // スコア／実際に進んだマス／倍率込みの記録歩数
 let stepBonus = null; // 次の一歩ボーナス：null / 'PERFECT' / 'GREAT'
@@ -1579,6 +1580,7 @@ function startMoveScheduler(){
     // 予約時刻＝曲の再生位置と同じ時計（songStart＋拍の時刻）。曲別の拍補正は beatTime() に含まれる。
     // 手動タイミング補正は足さない（音は曲と一緒に遅れて聞こえるので、曲と同じ時刻に鳴らす）
     while(songStart+beatTime(nextMoveBeat)<now+.12){
+      if(fullSongOn()&&beatTime(nextMoveBeat)>songBuf.duration/rate)break;
       const n=nextMoveBeat++,at=songStart+beatTime(n);
       if(at<now)continue;
       if(isTutorial()&&coach?.step<5){if(n>=0)playCoachBeat(n,at);}
@@ -1670,8 +1672,8 @@ function captureResult(clear){
   if(result.newBest){try{localStorage.setItem(key,String(result.score));}catch(e){}}
   if(speedOn()){
     // エンドレス：ブレイクで得た点の合計。自己ベストは曲・難易度ごと（距離チャレンジ・旧方式とは別）
-    Object.assign(result,{endless:true,mode:'endless',scoring:EL_SCORING,rushRelease,score:EL_SCORING==='rush'?recordSteps:elScore,unit:EL_SCORING==='rush'?' STEPS':'',moveSteps,recordSteps,rank:'—',badge:'',courses:courseLap,speed:rate,endReason,reasonText:END_REASON[endReason]||''});
-    const skey=`neon-blade-${EL_SCORING==='rush'?'rush-'+rushRelease:EL_SCORING==='stepBonus'?'stepbonus':'combo'}-best-v1:${song.file}:${runDifficulty}`+(activeChart?.chartVersion?':'+activeChart.chartVersion:'');
+    Object.assign(result,{endless:true,mode:playMode,songLoops:lap,scoring:EL_SCORING,rushRelease,score:EL_SCORING==='rush'?recordSteps:elScore,unit:EL_SCORING==='rush'?' STEPS':'',moveSteps,recordSteps,rank:'—',badge:'',courses:courseLap,speed:rate,endReason,reasonText:END_REASON[endReason]||''});
+    const skey=`neon-blade-${fullSongOn()?'fullsong-':''}${EL_SCORING==='rush'?'rush-'+rushRelease:EL_SCORING==='stepBonus'?'stepbonus':'combo'}-best-v1:${song.file}:${runDifficulty}`+(activeChart?.chartVersion?':'+activeChart.chartVersion:'');
     let prev=0;try{const v=Number(localStorage.getItem(skey));if(Number.isInteger(v)&&v>=0)prev=v;}catch(e){}
     result.newBest=result.score>prev;result.best=result.newBest?result.score:prev;result.previousBest=prev;
     if(result.newBest){try{localStorage.setItem(skey,String(result.score));}catch(e){}}
@@ -1710,10 +1712,10 @@ function renderResult(result){
   text('foot',`残りHP ${result.hp} / ${time}`);
   const label=ov.querySelector('.scoreLabel span'),help=ov.querySelector('.scoreHelp p');
   label.dataset.orig??=label.textContent;help.dataset.orig??=help.innerHTML;
-  label.textContent=result.mode==='endless'?(result.scoring==='rush'?'進んだ距離':'ENDLESS SCORE'):result.endless?'到達距離':label.dataset.orig;
-  help.innerHTML=result.mode==='endless'?(result.scoring==='rush'?`記録は進んだ距離（歩数）です。ブロックを壊すとキャラに力がたまります（PERFECTなら30回で満タン。GREAT・GOODでも少したまります）。${result.rushRelease==='auto'?'満タンになると自動で':'満タンになったら（キャラの横に「OK」）ブレイクボタンを長押しで'}必殺技が発動し、5マス一気に突き進みます。途中のブロックは全部吹き飛ばします。35マス進むたびにワープし、速度が0.1ずつ上がります（最大2.2倍）。曲の最初から再開し、最初の4拍は準備時間です。ライフ切れ、または到達前に曲が終わると終了です。`:result.scoring==='stepBonus'?`ブレイク（PERFECT 100／GREAT 80／GOOD 30）と前進（50）で点が入ります。PERFECT・GREATで壊すと、次の一歩が強くなります（PERFECTなら＋100、GREATなら＋50。持てるのは1回分）。35マス進むたびにワープし、速度が0.1ずつ上がります（最大2.2倍）。曲の最初から再開し、最初の4拍は準備時間です。ライフ切れ、または到達前に曲が終わると終了です。`:`進むとブレイクで点が入ります。PERFECT・GREATでコンボがつながり、10コンボで×2、25コンボで×3。倍率は点と歩数の両方にかかります（キャラが進むのは1マスずつ）。GOOD・受付時間外の入力・被弾でコンボは0に戻ります。35マス進むたびにワープし、速度が0.1ずつ上がります（最大2.2倍）。曲の最初から再開し、最初の4拍は準備時間です。ライフ切れ、または到達前に曲が終わると終了です。`):result.endless?`曲が終わるまでに進んだマス数が記録です（判定で増えたり減ったりしません）。コースの終わりでワープするには、そのコースでPERFECTを${WARP_PERFECT}回取る必要があります。足りないときは終わりで待ち、ブレイクを続けて達成すると自動でワープします。ライフがなくなると、その時点の距離が記録になります。`:help.dataset.orig;
+  label.textContent=['endless','fullsong'].includes(result.mode)?(result.scoring==='rush'?'進んだ距離':'ENDLESS SCORE'):result.endless?'到達距離':label.dataset.orig;
+  help.innerHTML=['endless','fullsong'].includes(result.mode)?(result.scoring==='rush'?`記録は進んだ距離（歩数）です。ブロックを壊すとキャラに力がたまります（PERFECTなら30回で満タン。GREAT・GOODでも少したまります）。${result.rushRelease==='auto'?'満タンになると自動で':'満タンになったら（キャラの横に「OK」）ブレイクボタンを長押しで'}必殺技が発動し、5マス一気に突き進みます。途中のブロックは全部吹き飛ばします。35マス進むたびにワープし、速度が0.1ずつ上がります（最大2.2倍）。曲の最初から再開し、最初の4拍は準備時間です。ライフ切れ、または到達前に曲が終わると終了です。`:result.scoring==='stepBonus'?`ブレイク（PERFECT 100／GREAT 80／GOOD 30）と前進（50）で点が入ります。PERFECT・GREATで壊すと、次の一歩が強くなります（PERFECTなら＋100、GREATなら＋50。持てるのは1回分）。35マス進むたびにワープし、速度が0.1ずつ上がります（最大2.2倍）。曲の最初から再開し、最初の4拍は準備時間です。ライフ切れ、または到達前に曲が終わると終了です。`:`進むとブレイクで点が入ります。PERFECT・GREATでコンボがつながり、10コンボで×2、25コンボで×3。倍率は点と歩数の両方にかかります（キャラが進むのは1マスずつ）。GOOD・受付時間外の入力・被弾でコンボは0に戻ります。35マス進むたびにワープし、速度が0.1ずつ上がります（最大2.2倍）。曲の最初から再開し、最初の4拍は準備時間です。ライフ切れ、または到達前に曲が終わると終了です。`):result.endless?`曲が終わるまでに進んだマス数が記録です（判定で増えたり減ったりしません）。コースの終わりでワープするには、そのコースでPERFECTを${WARP_PERFECT}回取る必要があります。足りないときは終わりで待ち、ブレイクを続けて達成すると自動でワープします。ライフがなくなると、その時点の距離が記録になります。`:help.dataset.orig;
   text('reason',result.endless?result.reasonText:'');
-  if(result.mode==='endless'){text('badge',`ワープ ${result.courses}回　速度 ×${result.speed.toFixed(1)}`);text('foot',result.scoring==='rush'?`解放：${result.rushRelease==='auto'?'自動':'自分で'}`:result.scoring==='stepBonus'?`${result.moveSteps}歩`:`記録 ${result.recordSteps}歩（実移動 ${result.moveSteps}マス）`);}
+  if(['endless','fullsong'].includes(result.mode)){text('badge',`ワープ ${result.courses}回　速度 ×${result.speed.toFixed(1)}`);text('foot',result.scoring==='rush'?`解放：${result.rushRelease==='auto'?'自動':'自分で'}`:result.scoring==='stepBonus'?`${result.moveSteps}歩`:`記録 ${result.recordSteps}歩（実移動 ${result.moveSteps}マス）`);}
   else if(result.endless)text('badge',`ワープ ${result.warps}回`);
   renderHeroCanvas(ov.querySelector('canvas'),result.heroId);
   ov.querySelector('details').open=false;ov.scrollTop=0;
@@ -2306,7 +2308,7 @@ function loop(){
     while(state==='play'){
       const beforeEpoch=musicEpoch;
       const bt=beatTime(nextBeat),hit=pendingCheck[0]?.checkAt??Infinity;
-      if(Math.min(bt,hit)>t)break;
+      if(Math.min(bt,hit)>(fullSongOn()?Math.min(t,songBuf.duration/rate):t))break;
       if(hit<=bt){const pc=pendingCheck.shift();checkHit(hit,null,null,pc.n);}
       else{lastBeatLagMs=r2((t-bt)*1000);if(diagRun&&lastBeatLagMs>50)diagEv('beat_late',{beat:nextBeat,lagMs:lastBeatLagMs,frameDtMs});onBeat(nextBeat,bt);if(musicEpoch===beforeEpoch)nextBeat++;}
       if(musicEpoch!==beforeEpoch){t=songTime();break;}
@@ -2315,8 +2317,9 @@ function loop(){
     const lapped = checkLines(t);
     if(lapped)t=songTime();
     if (isTutorial())coachUpdate(t);
-    if (state==='play' && !isTutorial() && !lapped && t > songBuf.duration / rate){
-      if(speedOn()){endReason='song_end';end(false);}
+    if (state==='play' && !isTutorial() && !lapped && (fullSongOn()?sourceSongPosition(t)>=songBuf.duration:t>songBuf.duration/rate)){
+      if(fullSongOn()){if(!rushAnim){restartFullSong();t=songTime();}}
+      else if(speedOn()){endReason='song_end';end(false);}
       else if(endless&&!isTutorial()){ endReason = 'finish'; end(true); } // 距離チャレンジ：曲が終わったら完走
       else end(scoreOn());
     }
@@ -2328,7 +2331,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 詳細モードは従来どおり任意。軽量の判定履歴は、表示を増やさず全プレイで記録する。
-const APP_VERSION = 'v95', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v96', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2390,7 +2393,7 @@ function diagStart(){
     device: { userAgent: navigator.userAgent, platform: navigator.userAgentData?.platform ?? navigator.platform ?? null, mobile: navigator.userAgentData?.mobile ?? null, language: navigator.language, screen: { w: screen.width, h: screen.height, dpr: window.devicePixelRatio }, maxTouchPoints: navigator.maxTouchPoints ?? null, audioOutput: diagOutput, audioOutputLabel: OUTPUT_LABEL[diagOutput], audioOutputNote: '音の出力は手動で選んだ値（自動判別していない）' },
     song: { name: song.name, file: song.file, baseBpm: song.bpm, offset: song.offset, chart: song.chart || null, chartVersion: activeChart?.chartVersion ?? null, chartBeats: activeChart?.beats?.length ?? null, local: !!song.local, tutorial: isTutorial() },
     settings: { mode: playMode, difficulty: runDifficulty, hero: runHeroId, noteSpeed, timingMs, scoreMode: scoreOn(), songCorrMs: runSongCorrMs, songCorrLabel: activeChart && SONG_BEAT_CORR[song.chart] ? (runSongCorrMs === 0 ? '元の0ms' : '修正候補' + runSongCorrMs + 'ms') : '補正対象外', guideSound: useGuide() ? '専用ガイド音（移動音は鳴らさない）' : '移動音', volumes: { ...vol }, masterHeadroom: MASTER_HEADROOM },
-    timingModel: { judgedBeatTime: '(譜面の拍＋曲別補正)÷再生倍率。エンドレスはワープごとに曲・拍の時計を再スタート', songTime: '出力時刻−songStart−手動補正', guideScheduleCtxTime: 'songStart＋beatTime(n)（曲別補正は含む・手動補正は含まない。ガイド音は曲と同じ時計で鳴らす）', note: '手動補正は画面と判定だけに効く。曲とガイド音は同じ出力経路で同じだけ遅れるため' },
+    timingModel: { judgedBeatTime: '(譜面の拍＋曲別補正)÷再生倍率。通常エンドレスはワープ時、フル曲エンドレスは曲終了時に曲・拍の時計を再スタート', songTime: '出力時刻−songStart−手動補正', guideScheduleCtxTime: 'songStart＋beatTime(n)（曲別補正は含む・手動補正は含まない。ガイド音は曲と同じ時計で鳴らす）', note: '手動補正は画面と判定だけに効く。曲とガイド音は同じ出力経路で同じだけ遅れるため' },
     judgeWindows: { perfectMs: 45, greatMs: 90, acceptMsFormula: 'min(170, 1拍×0.36)', note: '受付限界は再生倍率で変わる。各入力に実際の値を記録' },
     audio: { sampleRate: ctx?.sampleRate ?? null, ...latencyInfo(), getOutputTimestamp: !!ctx?.getOutputTimestamp },
     limits: { maxEvents: DIAG_MAX_EVENTS, dropChunk: DIAG_DROP_CHUNK }, droppedEvents: 0, droppedNote: null, saveError: null, events: [] };
@@ -2471,7 +2474,7 @@ function diagRender(){
   const S = diagSummary(run), v = x => x == null ? '—' : x, ms = x => x == null ? '—' : (x > 0 ? '+' : '') + x + 'ms';
   const rows = list => list.map(g => `<tr><td>${g.k}</td><td>${g.n}</td><td>${ms(g.median)}</td><td>${v(g.sd)}</td><td>${g.P}/${g.G}/${g.D}</td></tr>`).join('') || '<tr><td colspan="5">なし</td></tr>';
   const head = '<tr><th></th><th>数</th><th>中央値</th><th>ばらつき</th><th>P/G/GOOD</th></tr>';
-  body.innerHTML = `<p class="diagNote">${run.song.name}／${({normal:'通常',distance:'距離チャレンジ',endless:'エンドレス'})[run.settings.mode] || run.settings.mode}／${String(run.settings.difficulty).toUpperCase()}／音の出力：${run.device.audioOutputLabel}／${run.appVersion}</p>
+  body.innerHTML = `<p class="diagNote">${run.song.name}／${({normal:'通常',distance:'距離チャレンジ',endless:'エンドレス',fullsong:'フル曲エンドレス'})[run.settings.mode] || run.settings.mode}／${String(run.settings.difficulty).toUpperCase()}／音の出力：${run.device.audioOutputLabel}／${run.appVersion}</p>
     <table><tr><th>PERFECT</th><th>GREAT</th><th>GOOD</th><th>MISS</th></tr><tr><td style="text-align:left">${S.counts.PERFECT}</td><td>${S.counts.GREAT}</td><td>${S.counts.GOOD}</td><td>${S.counts.MISS}</td></tr></table>
     <p class="diagNote">MISSの内訳：入力MISS（受付時間外・ライフ−1）${S.counts.missTiming}／被弾（ライフ−1）${S.counts.missDamage}</p>
     <table><tr><td>早押し／遅押し／ぴったり</td><td>${S.early}／${S.late}／${S.exact}</td></tr><tr><td>ズレの中央値</td><td>${ms(S.offset.median)}</td></tr><tr><td>ばらつき（標準偏差）</td><td>${v(S.offset.sd)}ms</td></tr><tr><td>ばらつき（四分位範囲）</td><td>${v(S.offset.iqr)}ms</td></tr><tr><td>入力処理待ち（中央値／最大）</td><td>${v(S.delay.median)}ms／${v(S.delayMax)}ms</td></tr><tr><td>無効入力（統計には含めない）</td><td>${S.invalid}</td></tr></table>
@@ -2584,11 +2587,19 @@ function nextCourse(t){
   revealEnd=REVEAL_ENDS[0];revealFrom=revealEnd;
   texts.push({ s: 'COURSE ' + (courseLap + 1), idx: 0, t, col: '#ffe941', big: true });
 }
-// Each 35-cell section restarts its own source clock after the warp.
+// Playback cycles count music restarts, independently of full-song mode warps.
 function sourceSongCycle(t){return speedOn()?lap+1:undefined;}
 function sourceSongPosition(t){return (t+timingMs/1000)*rate;}
 function rearTileAlpha(){return 1;}
 function nextEndlessCourse(t){
+  if(fullSongOn()){
+    diagEv('warp',{fromRate:rate,toRate:rate,courseSteps:GOAL_INDEX,gameTimeSec:r4(t)});
+    nextCourse(t);
+    earlyInput=null;recentHits=[];pendingExtension=null;
+    moveLocked=true;setLockUI(true);stopRushHold();
+    showLapBanner('WARP!');setStepsHud();
+    return;
+  }
   const fromRate=rate;
   diagEv('warp',{fromRate,toRate:Math.min(SPEED_MAX,Math.round((rate+SPEED_STEP)*10)/10),courseSteps:GOAL_INDEX,gameTimeSec:r4(t)});
   NBWorkshop.nextCourse();courseLap++;lap++;chooseCourse();
@@ -2606,6 +2617,22 @@ function nextEndlessCourse(t){
   if(rate!==fromRate)diagEv('speed_up',{fromRate,toRate:rate,rate,lap,gameTimeSec:0,sourceSongTimeSec:0,courseSteps:GOAL_INDEX});
   diagEv('audio_restart',{reason:'warp',rate,lap,course:courseLap+1,cycle:lap+1,gameTimeSec:0,sourceSongTimeSec:0});
   showLapBanner(`WARP!　SPEED ×${rate.toFixed(1)}`);setStepsHud();updateWarpHud();
+}
+// A song loop changes only the music clock; the player keeps the current course and tile.
+function restartFullSong(){
+  const fromRate=rate;
+  NBWorkshop.restartSong();lap++;
+  rate=Math.min(SPEED_MAX,Math.round((rate+SPEED_STEP)*10)/10);applyRate();
+  player={idx:player.idx,from:player.idx,at:0};notes=[];effects=[];texts=[];fx=[];
+  nextBeat=0;acted=-1;pendingCheck=[];earlyInput=null;recentHits=[];pendingExtension=null;nextGap=4;runLen=1;
+  rushGuardUntil=-9;hurtGuardUntil=-9;rushFade=null;shards=[];slashMarks=[];mists=[];rushPoseUntil=-9;
+  charState='idle';charUntil=0;damageAt=-9;lastBeatAt=-9;lastMoveAt=-9;shakeUntil=-9;
+  gFrom=gIdx;gMoveAt=-9;cameraFrom=cameraTarget;cameraRow=cameraTarget;cameraAt=-9;
+  moveLocked=true;setLockUI(true);hideJudge();stopRushHold();backgroundPosition=0;resumeFloor=-Infinity;
+  stopMoveScheduler();startMusicAt();startMoveScheduler();
+  if(rate!==fromRate)diagEv('speed_up',{fromRate,toRate:rate,rate,lap,gameTimeSec:0,sourceSongTimeSec:0});
+  diagEv('audio_restart',{reason:'song_end',rate,lap,course:courseLap+1,cycle:lap+1,gameTimeSec:0,sourceSongTimeSec:0});
+  showLapBanner(`曲 ${lap+1}周目　SPEED ×${rate.toFixed(1)}`);setStepsHud();
 }
 function startGame(){
   timingHistoryFinish('retry');

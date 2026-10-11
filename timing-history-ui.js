@@ -7,7 +7,7 @@ window.NBTimingHistoryUI=(()=>{
   function renderRecord(){
     $('historyCopy').disabled=$('historySave').disabled=!selected;
     if(!selected){$('historyBody').textContent='まだ記録がありません。プレイ終了時に自動で保存されます。';return;}
-    const r=selected,s=r.summary,modes={distance:'1曲チャレンジ',endless:'エンドレス',normal:'通常'},ends={clear:'クリア',game_over:'ゲームオーバー',quit:'途中終了',retry:'やり直し',tutorial_complete:'練習終了',interrupted:'中断'};
+    const r=selected,s=r.summary,modes={distance:'1曲チャレンジ',endless:'エンドレス',fullsong:'フル曲エンドレス',normal:'通常'},ends={clear:'クリア',game_over:'ゲームオーバー',quit:'途中終了',retry:'やり直し',tutorial_complete:'練習終了',interrupted:'中断'};
     $('historyBody').innerHTML=`<h3>${esc(r.song.name)}</h3><p>${esc(new Date(r.createdAt).toLocaleString('ja-JP'))}／${esc(r.appVersion)}<br>${esc(modes[r.mode]||r.mode)}／${esc(ends[r.endReason]||r.endReason)}／速度 ${r.playbackRates.map(v=>'×'+esc(v)).join('・')}<br>BPM ${esc(r.baseBpm)}／開始 ${esc(r.firstBeatSeconds)}秒<br>曲別補正 ${ms(r.songCorrectionMs)}／端末の判定補正 ${ms(r.timingMs)}</p>
       <table><tr><th>PERFECT</th><th>GREAT</th><th>GOOD</th><th>MISS</th></tr><tr>${['PERFECT','GREAT','GOOD','MISS'].map(k=>'<td>'+s.counts[k]+'</td>').join('')}</tr></table>
       <p>平均 ${ms(s.meanMs)}／中央値 ${ms(s.medianMs)}<br>FAST ${s.FAST}回／SLOW ${s.SLOW}回／一致 ${s.EXACT}回</p>

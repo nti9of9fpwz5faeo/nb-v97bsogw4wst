@@ -18,7 +18,7 @@ window.NBMenu=(()=>{
     document.querySelectorAll('[data-nav]').forEach(b=>b.setAttribute('aria-current',b.dataset.nav===(['special','missions','heroes'].includes(page)?'home':page)?'page':'false'));
     if(page==='heroes'){$('startOv').classList.add('hide');previewCharacter(selectedHero);$('heroOv').classList.remove('hide');}
     if(page==='shop'||page==='missions'){$('startOv').classList.add('hide');NBWorkshop.openPanel(page);}
-    if(page==='songs')NBWorkshop.renderSongs();
+    if(page==='songs'){NBWorkshop.renderSongs();updateModeUI();}
   }
   function init(){
     const root=$('startOv');
@@ -28,13 +28,13 @@ window.NBMenu=(()=>{
     root.querySelectorAll(':scope > p:not([id]):not([class])').forEach(el=>el.remove());
     root.insertAdjacentHTML('afterbegin','<header class="menuHeader"><button id="menuBack" aria-label="ホームへ戻る" hidden>‹</button><h1 id="menuTitle">NEON BLADE</h1><span class="menuWallet"><img src="img/gems/novice.webp" alt="ダイヤ"><b data-wallet>0</b></span></header>');
     root.insertAdjacentHTML('beforeend','<main class="menuPage" id="page-home"><p class="homeLead">リズムを斬って、その先へ。</p><div id="homeModes"></div><button id="specialMode" class="modeCard special"><span>✦</span><div><strong>特別ステージ</strong><small>特別な景色と演出を楽しむ</small></div><b>›</b></button><button id="homeTutorial" class="tutorialLink">操作を練習する <span>›</span></button></main><main class="menuPage" id="page-songs" hidden></main><main class="menuPage" id="page-settings" hidden><p class="pageIntro">自分に合った音とタイミングに。</p></main><main class="menuPage" id="page-special" hidden><div class="specialHero">✦</div><h2>音楽と景色が、一つになる。</h2><p>曲ごとに作り込まれた、特別なコース。</p><div id="specialCatalog"></div></main>');
-    $('page-songs').insertAdjacentHTML('beforeend','<div class="songModeSwitch" role="group" aria-label="遊び方"><button data-song-mode="distance">♫ 1曲チャレンジ</button><button data-song-mode="endless">∞ エンドレス</button></div><p class="songStartHint">曲をタップしてスタート</p>');
-    const syncMode=()=>document.querySelectorAll('[data-song-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.songMode===playMode)));
+    $('page-songs').insertAdjacentHTML('beforeend','<div class="songModeSwitch" role="group" aria-label="遊び方"><button data-song-mode="distance">♫ 1曲チャレンジ</button><button data-song-mode="endless">∞ エンドレス</button><button data-song-mode="fullsong">♫ フル曲エンドレス</button></div><p class="songStartHint">曲をタップしてスタート</p>');
+    const syncMode=()=>{document.querySelectorAll('[data-song-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.songMode===playMode)));$('modeDesc').textContent=MODE_DESC[playMode];};
     document.querySelectorAll('[data-song-mode]').forEach(b=>b.onclick=()=>{playMode=b.dataset.songMode;endless=true;updateModeUI();try{localStorage.setItem('neon-blade-mode',playMode);}catch(_){}syncMode();});syncMode();
     NBWorkshop.initGemStyles();$('page-songs').append($('gemStylePicker'));
     ['songList','myFile','myPanel','loadTxt'].forEach(id=>$('page-songs').append($(id)));
     ['timingSettings','soundSettings','diagHistorySettings','diagSettings'].forEach(id=>$('page-settings').append($(id)));
-    $('difficultyPicker')?.remove();$('modeDesc').hidden=true;$('modePicker').remove();$('rushPicker').hidden=true;
+    $('difficultyPicker')?.remove();$('page-songs').querySelector('.songModeSwitch').after($('modeDesc'));$('modeDesc').className='songModeDescription';$('modePicker').remove();$('rushPicker').hidden=true;
     $('homeModes').innerHTML='<button class="homeMissionEntry" id="homeMissions"><span class="missionEntryIcon">✓</span><span><strong>ミッション</strong><small data-mission-home>今日の目標をチェック</small></span><b data-mission-count hidden></b><span>›</span></button>';
     $('homeMissions').onclick=()=>show('missions');
     $('menuTitle').after($('verBadge'));document.querySelector('.menuHeader').append($('playerRank'));
