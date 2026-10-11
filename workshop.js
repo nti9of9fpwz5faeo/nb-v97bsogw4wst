@@ -1,6 +1,8 @@
 /* Results, progression and optional diamonds embedded in breakable blocks. */
 window.NBWorkshop = (() => {
   'use strict';
+  const DISTANCE_GEM_SPACING=15;
+  const DISTANCE_GEM={id:'novice',value:1,color:'#66eeff'};
   const GEM = '<img class="gemIcon" src="img/gems/novice.webp" alt="">';
   let previewSource=null, previewToken=0, previewButton=null;
   let ledger, run, gemCourse, drops = [], gemStyle = 'glow', initialized = false, toastTimer, toastGap, toastQueue = [], returnFocus, missionTab='daily', missionSong=null;
@@ -52,6 +54,7 @@ window.NBWorkshop = (() => {
     if (!initialized) return;
     ledger.flush(); clearToasts();
     run = {gems: 0, tileGems: 0, missions: [], rushes: 0, serial: 0, hits:0, stepValue:0, id:globalThis.crypto?.randomUUID?.() || String(Date.now())+Math.random(), seen: new Set(), finished: false};
+    run.nextDistanceGem=DISTANCE_GEM_SPACING;run.distanceGems=0;
     run.gemStyle=gemStyle;run.gemCounts=Object.fromEntries(NBBlockGems.types.map(type=>[type.id,0]));run.gemClaims=new Set();run.gemSoundAt=-Infinity;
     gemCourse=NBBlockGems.create(typeof spawnSeed==='number'?spawnSeed:0);drops=[];NBMeasure.start();refreshWallet();
   }
@@ -59,11 +62,11 @@ window.NBWorkshop = (() => {
   function nextCourse({silent=false,continuous=false}={}) {
     NBDiamond.reset();
     if (!active()) return;
-    tick(songTime()); NBMeasure.warp(continuous);run.serial++; run.seen.clear();drops=[];run.gemSoundAt=-Infinity;if(!silent)NBSound.play('warp');
+    tick(songTime()); NBMeasure.warp(continuous);run.serial++; run.seen.clear();drops=fullSongOn()?drops.filter(d=>d.checkpoint&&songTime()-d.t<1.2).map(d=>({...d,idx:0})):[];run.gemSoundAt=-Infinity;if(!silent)NBSound.play('warp');
   }
 
   function restartSong(){
-    tick(songTime());NBDiamond.reset();drops=[];
+    tick(songTime());NBDiamond.reset();drops=drops.filter(d=>d.checkpoint&&songTime()-d.t<1.2).map(d=>({...d,t:0}));
     if(active()){run.serial++;run.seen.clear();run.gemSoundAt=-Infinity;}
   }
 
@@ -80,7 +83,46 @@ window.NBWorkshop = (() => {
   }
   function tick(t,rebase=false,bonus=0){
     if(!active())return;
+    collectDistanceGems(t);
     NBMeasure.tick(t,rebase,bonus);
+  }
+  // Physical course distance, independent of combo STEPS and song restarts.
+  function distanceGemPositions(){
+    if(!fullSongOn()||!run||run.finished)return [];
+    const base=courseLap*GOAL_INDEX,positions=[];
+    const first=Math.max(run.nextDistanceGem,Math.ceil((base+1)/DISTANCE_GEM_SPACING)*DISTANCE_GEM_SPACING);
+    for(let distance=first;distance<=base+GOAL_INDEX;distance+=DISTANCE_GEM_SPACING)positions.push({distance,idx:distance-base});
+    return positions;
+  }
+  function collectDistanceGems(t){
+    if(!fullSongOn())return;
+    const base=courseLap*GOAL_INDEX,reached=base+(rushAnim?playerVis(t):player.idx);
+    while(run.nextDistanceGem<=reached){
+      const distance=run.nextDistanceGem;
+      run.nextDistanceGem+=DISTANCE_GEM_SPACING;run.distanceGems++;
+      apply({}, {}, DISTANCE_GEM.value);
+      drops.push({type:DISTANCE_GEM,idx:Math.max(0,Math.min(GOAL_INDEX,distance-base)),t,checkpoint:distance});
+      if(drops.length>8)drops.shift();
+      NBSound.play('diamond');
+      diagEv('distance_diamond',{distance,award:DISTANCE_GEM.value,course:courseLap+1});
+    }
+  }
+  function drawDistanceGems(t){
+    const art=IMG['gems/novice'];
+    for(const marker of distanceGemPositions()){
+      const p=cellXY(marker.idx),alpha=tileAlpha(marker.idx,t);
+      if(alpha<=0||p.y < -cell||p.y>boardH+cell)continue;
+      const size=cell*.78,bob=reduceMotion.matches?0:Math.sin(t*2.2)*cell*.035;
+      g.save();g.globalAlpha=alpha;
+      g.strokeStyle='#e6fcff';g.lineWidth=Math.max(2,cell*.055);g.shadowColor='#30dfff';g.shadowBlur=cell*.16;
+      rr(g,p.x-cell*.40,p.y-cell*.40,cell*.80,cell*.80,cell*.08);g.stroke();g.shadowBlur=0;
+      g.fillStyle='#073d6877';g.beginPath();g.ellipse(p.x,p.y+cell*.17,cell*.23,cell*.07,0,0,Math.PI*2);g.fill();
+      if(art?.naturalWidth)g.drawImage(art,p.x-size/2,p.y-size*.83-bob,size,size);
+      g.font=`900 ${Math.max(10,Math.round(cell*.23))}px system-ui`;g.textAlign='center';g.textBaseline='middle';
+      const label=marker.distance+'マス',w=g.measureText(label).width+10,h=Math.max(15,cell*.32);
+      rr(g,p.x-w/2,p.y+cell*.25,w,h,4);g.fillStyle='#092d48';g.fill();g.fillStyle='#e5fcff';g.fillText(label,p.x,p.y+cell*.25+h/2);
+      g.restore();
+    }
   }
   // ダイヤブロックは「じゃま・挙動が読みづらい」ため出さない（v80）。仕組みは残してあり、setDiamondBlocks(true)で戻せる
   let diamondBlocks=false;
@@ -124,7 +166,7 @@ window.NBWorkshop = (() => {
       result.progression=ledger.awardXP(xp);run.gems+=result.progression.reward;
     }
     clearToasts(); ledger.flush(); refreshWallet();
-    result.rewards = {total: run?.gems || 0, tiles: run?.tileGems || 0, missions: [...(run?.missions || [])], balance: ledger.state.gems};
+    result.rewards = {total: run?.gems || 0, tiles: run?.tileGems || 0, checkpoints:run?.distanceGems||0, missions: [...(run?.missions || [])], balance: ledger.state.gems};
     result.rushes = run?.rushes || 0;
     if(run&&!run.finished&&!isTutorial()){
       result.rewardId=run.id;result.adEligible=ledger.prepareAdReward(run.id,result.rewards.total);
@@ -154,7 +196,7 @@ window.NBWorkshop = (() => {
     for(const drop of drops){
       const k=(t-drop.t)/1.2,p=cellXY(drop.idx),size=cell*.6,art=IMG['gems/'+drop.type.id];
       g.save();g.globalAlpha=Math.min(1,(1-k)*3);g.font=`800 ${Math.max(12,cell*.24)}px system-ui`;
-      const label='獲得 +'+drop.type.value,w=size+g.measureText(label).width+22,h=Math.max(size+10,32);
+      const label=(drop.checkpoint?drop.checkpoint+'マス！ +':'獲得 +')+drop.type.value,w=size+g.measureText(label).width+22,h=Math.max(size+10,32);
       const x=Math.max(w/2+4,Math.min(boardW-w/2-4,p.x)),y=Math.max(h/2+4,p.y-cell*(1.05+(reduceMotion.matches?0:k*.25)));
       g.translate(x,y);g.fillStyle='#102337';g.strokeStyle=drop.type.color;g.lineWidth=2;rr(g,-w/2,-h/2,w,h,9);g.fill();g.stroke();
       const ix=-w/2+size/2+8;
@@ -314,14 +356,14 @@ window.NBWorkshop = (() => {
     if (steps) ov.querySelector('.scoreHelp p').textContent = '記録はコンボ倍率込みのSTEPS。20コンボで1マス＝2 STEPS、50コンボで3 STEPS。必殺技で進んだマスにも倍率がかかります。PERFECT・GREATでコンボ継続、GOOD・MISSでリセット。ブレイクで力をため、満タンで必殺技。35マス進むたびにワープし速度＋0.1（最大2.2倍）。曲は頭から再開し、最初の4拍は準備時間。ライフ切れ、または到達前に曲が終わると終了です。';
     else if (scoreOn()) ov.querySelector('.scoreHelp p').textContent = '進むたびに直前のブレイク判定に応じて加点。ブレイクそのものでも加点されます。曲が終わるまでにスコアを伸ばそう。';
     else if (!result.endless) ov.querySelector('.scoreHelp p').textContent = '判定精度 × 到達率 × 1,000,000点。自己ベストはクリアした記録を曲・難易度ごとに保存します。';
-    if(result.mode==='fullsong'){ov.querySelector('.scoreHelp p').textContent='記録はコンボ倍率込みのSTEPS。20コンボで1マス＝2 STEPS、50コンボで3 STEPS。満タンの必殺技はブレイク長押しで発動。35マスでワープしても曲と速度は変わりません。曲が終わるたびに＋0.1倍（最大2.2倍）で最初から再開し、最初の4拍は準備時間。ライフがなくなるまで続きます。自己ベストはこのモード専用です。';ov.querySelector('[data-result-badge]').textContent=`曲 ${result.songLoops+1}周目 ／ ワープ ${result.courses}回 ／ ×${result.speed.toFixed(1)}`;}
+    if(result.mode==='fullsong'){ov.querySelector('.scoreHelp p').textContent='記録はコンボ倍率込みのSTEPS。20コンボで1マス＝2 STEPS、50コンボで3 STEPS。満タンの必殺技はブレイク長押しで発動。35マスでワープしても曲と速度は変わりません。曲が終わるたびに＋0.1倍（最大2.2倍）で最初から再開し、最初の4拍は準備時間。ライフがなくなるまで続きます。15マス進むごとに道のダイヤを1個獲得。必殺技で通過しても拾えます。自己ベストはこのモード専用です。';ov.querySelector('[data-result-badge]').textContent=`曲 ${result.songLoops+1}周目 ／ ワープ ${result.courses}回 ／ ×${result.speed.toFixed(1)}`;}
     if(result.mode==='distance')ov.querySelector('.scoreHelp p').textContent='曲を最後まで聴く間に進んだマス数がSTEPSになります。ワープは条件なし、曲はそのまま続きます。満タンの必殺技はブレイク長押しで発動。ライフがなくなれば終了です。';
     if(steps&&result.progression){ov.querySelector('.resultRank small').textContent='PLAYER RANK';ov.querySelector('[data-result-rank]').textContent=result.progression.rank;}
     ov.querySelectorAll('details').forEach(el => el.open = false);
     const rewards = result.rewards || {total: 0, tiles: 0, missions: [], balance: ledger?.state.gems || 0};
     ov.querySelector('[data-result-gems]').textContent = '＋' + rewards.total;
     ov.querySelector('[data-result-balance]').textContent = fmt(rewards.balance);
-    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? [rewards.tiles?'ブロックから獲得 ＋'+rewards.tiles:'',rewards.total>rewards.tiles?'ランクアップ ＋'+(rewards.total-rewards.tiles):''].filter(Boolean).join(' ／ ') : isTutorial() ? '本編ではブロックからダイヤが出ます' : 'ダイヤ入りのブロックを壊すと獲得できます';
+    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? [rewards.checkpoints?'15マスごとのダイヤ ＋'+rewards.checkpoints:'',rewards.tiles>(rewards.checkpoints||0)?'ブロックから獲得 ＋'+(rewards.tiles-(rewards.checkpoints||0)):'',rewards.total>rewards.tiles?'ランクアップ ＋'+(rewards.total-rewards.tiles):''].filter(Boolean).join(' ／ ') : result.mode==='fullsong'?'15マス先のダイヤを目指そう！':isTutorial() ? '本編ではブロックからダイヤが出ます' : 'ダイヤ入りのブロックを壊すと獲得できます';
     const gemTypes=ov.querySelector('[data-result-gem-types]');gemTypes.textContent='ダイヤ採掘 ／ '+NBBlockGems.types.filter(type=>result.gemCounts?.[type.id]).map(type=>type.name+' ×'+result.gemCounts[type.id]).join('・');gemTypes.hidden=!Object.values(result.gemCounts||{}).some(Boolean);
     const growth=ov.querySelector('[data-result-growth]');growth.innerHTML='';
     const growthDetail=ov.querySelector('[data-result-growth-detail]');growthDetail.hidden=!result.progression;growthDetail.textContent=result.progression?`ランク ${result.progression.rank} ／ 次のランクまで ${result.progression.need-result.progression.progress} XP${result.progression.unlocked.length?' ／ 新しい曲を解放！':''}`:'';
@@ -434,5 +476,5 @@ window.NBWorkshop = (() => {
   }
   function ownedHero(id){return ledger.state.heroes.includes(id);}
   function flush() { if (ledger) { ledger.flush(); refreshWallet(); } }
-  return {setDiamondBlocks,refreshWallet,openRank,shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, restartSong, judged, steps, rush, finish, usesDefaultTheme, palette, drawAtmosphere, style,setGemStyle,initGemStyles,prepareNote,destroyed,drawGemHint,drawGemDrops,resultMarkup, decorateResult, animateResult, finishReveal, paintScore, flush, clearToasts};
+  return {setDiamondBlocks,refreshWallet,openRank,shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, restartSong, judged, steps, rush, finish, usesDefaultTheme, palette, drawAtmosphere, style,setGemStyle,initGemStyles,prepareNote,destroyed,distanceGemPositions,drawDistanceGems,drawGemHint,drawGemDrops,resultMarkup, decorateResult, animateResult, finishReveal, paintScore, flush, clearToasts};
 })();
