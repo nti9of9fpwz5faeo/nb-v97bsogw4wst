@@ -20,7 +20,7 @@
       const right=cycle*grid.length+lo,left=right-1;
       return t-time(beatSource(left))<time(beatSource(right))-t?left:right;
     }
-    return {source,time,change,segments,rateAt:t=>atTime(t).rate,duration,beatCount:grid.length,beatSource,beat:n=>time(beatSource(n)),nearest,
+    return {source,time,change,segments,duration,beatCount:grid.length,beatSource,beat:n=>time(beatSource(n)),nearest,
       chartIndex:n=>grid[local(n)].index,cycle:t=>Math.max(0,Math.floor(source(t)/duration)),
       position:t=>{const s=source(t);return s<0?s:((s%duration)+duration)%duration;}};
   }
