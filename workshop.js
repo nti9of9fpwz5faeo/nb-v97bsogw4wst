@@ -62,7 +62,7 @@ window.NBWorkshop = (() => {
   function nextCourse({silent=false,continuous=false}={}) {
     NBDiamond.reset();
     if (!active()) return;
-    tick(songTime()); NBMeasure.warp(continuous);run.serial++; run.seen.clear();drops=fullSongOn()?drops.filter(d=>d.checkpoint&&songTime()-d.t<1.2).map(d=>({...d,idx:0})):[];run.gemSoundAt=-Infinity;if(!silent)NBSound.play('warp');
+    tick(songTime()); NBMeasure.warp(continuous);run.serial++; run.seen.clear();drops=continuous?drops.filter(d=>songTime()-d.t<1.2):fullSongOn()?drops.filter(d=>d.checkpoint&&songTime()-d.t<1.2).map(d=>({...d,idx:0})):[];run.gemSoundAt=-Infinity;if(!silent)NBSound.play('warp');
   }
 
   function restartSong(){
@@ -89,14 +89,14 @@ window.NBWorkshop = (() => {
   // Physical course distance, independent of combo STEPS and song restarts.
   function distanceGemPositions(){
     if(!fullSongOn()||!run||run.finished)return [];
-    const base=courseLap*GOAL_INDEX,positions=[];
+    const base=0,positions=[];
     const first=Math.max(run.nextDistanceGem,Math.ceil((base+1)/DISTANCE_GEM_SPACING)*DISTANCE_GEM_SPACING);
     for(let distance=first;distance<=base+GOAL_INDEX;distance+=DISTANCE_GEM_SPACING)positions.push({distance,idx:distance-base});
     return positions;
   }
   function collectDistanceGems(t){
     if(!fullSongOn())return;
-    const base=courseLap*GOAL_INDEX,reached=base+(rushAnim?playerVis(t):player.idx);
+    const base=0,reached=base+(rushAnim?playerVis(t):player.idx);
     while(run.nextDistanceGem<=reached){
       const distance=run.nextDistanceGem;
       run.nextDistanceGem+=DISTANCE_GEM_SPACING;run.distanceGems++;
@@ -356,7 +356,7 @@ window.NBWorkshop = (() => {
     if (steps) ov.querySelector('.scoreHelp p').textContent = '記録はコンボ倍率込みのSTEPS。20コンボで1マス＝2 STEPS、50コンボで3 STEPS。必殺技で進んだマスにも倍率がかかります。PERFECT・GREATでコンボ継続、GOOD・MISSでリセット。ブレイクで力をため、満タンで必殺技。35マス進むたびにワープし速度＋0.1（最大2.2倍）。曲は頭から再開し、最初の4拍は準備時間。ライフ切れ、または到達前に曲が終わると終了です。';
     else if (scoreOn()) ov.querySelector('.scoreHelp p').textContent = '進むたびに直前のブレイク判定に応じて加点。ブレイクそのものでも加点されます。曲が終わるまでにスコアを伸ばそう。';
     else if (!result.endless) ov.querySelector('.scoreHelp p').textContent = '判定精度 × 到達率 × 1,000,000点。自己ベストはクリアした記録を曲・難易度ごとに保存します。';
-    if(result.mode==='fullsong'){ov.querySelector('.scoreHelp p').textContent='記録はコンボ倍率込みのSTEPS。20コンボで1マス＝2 STEPS、50コンボで3 STEPS。満タンの必殺技はブレイク長押しで発動。35マスでワープしても曲と速度は変わりません。曲が終わるたびに＋0.1倍（最大2.2倍）で最初から再開し、最初の4拍は準備時間。ライフがなくなるまで続きます。15マス進むごとに道のダイヤを1個獲得。必殺技で通過しても拾えます。自己ベストはこのモード専用です。';ov.querySelector('[data-result-badge]').textContent=`曲 ${result.songLoops+1}周目 ／ ワープ ${result.courses}回 ／ ×${result.speed.toFixed(1)}`;}
+    if(result.mode==='fullsong'){ov.querySelector('.scoreHelp p').textContent='記録はコンボ倍率込みのSTEPS。20コンボで1マス＝2 STEPS、50コンボで3 STEPS。満タンの必殺技はブレイク長押しで発動。35マスごとにゲートを突破し、つながった道をそのまま進みます。途中で曲と速度は変わりません。曲が終わったら5秒休憩して＋0.1倍（最大2.2倍）で再開。ライフがなくなるまで続きます。15マス進むごとに道のダイヤを1個獲得。必殺技で通過しても拾えます。自己ベストはこのモード専用です。';ov.querySelector('[data-result-badge]').textContent=`ROUND ${result.songLoops+1} ／ ゲート ${result.courses}突破 ／ ×${result.speed.toFixed(1)}`;}
     if(result.mode==='distance')ov.querySelector('.scoreHelp p').textContent='曲を最後まで聴く間に進んだマス数がSTEPSになります。ワープは条件なし、曲はそのまま続きます。満タンの必殺技はブレイク長押しで発動。ライフがなくなれば終了です。';
     if(steps&&result.progression){ov.querySelector('.resultRank small').textContent='PLAYER RANK';ov.querySelector('[data-result-rank]').textContent=result.progression.rank;}
     ov.querySelectorAll('details').forEach(el => el.open = false);
@@ -478,3 +478,4 @@ window.NBWorkshop = (() => {
   function flush() { if (ledger) { ledger.flush(); refreshWallet(); } }
   return {setDiamondBlocks,refreshWallet,openRank,shoppingGift,openPanel,specialStageMarkup,tick,ownsSong,renderSongs,stopSongPreview,heroLabel,selectHero,ownedHero,init, resetRun, suspendRun, nextCourse, restartSong, judged, steps, rush, finish, usesDefaultTheme, palette, drawAtmosphere, style,setGemStyle,initGemStyles,prepareNote,destroyed,distanceGemPositions,drawDistanceGems,drawGemHint,drawGemDrops,resultMarkup, decorateResult, animateResult, finishReveal, paintScore, flush, clearToasts};
 })();
+
