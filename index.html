@@ -323,7 +323,7 @@
   .coaching #coachCue{white-space:pre-line;font-size:14px;padding:7px 9px;border-radius:12px}
   @media(max-width:350px){#coachCue{font-size:14px}.coaching .coachSafe{font-size:13px}}
 </style>
-<link rel="stylesheet" href="workshop.css?v=96">
+<link rel="stylesheet" href="workshop.css?v=99">
 <link rel="stylesheet" href="result-arcade.css?v=85">
 <link rel="stylesheet" href="endless-backgrounds.css?v=89">
 </head>
@@ -357,7 +357,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">v98</span>
+  <span id="verBadge">v99</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -396,7 +396,7 @@
 <script src="song-backgrounds.js?v=89"></script>
 <script src="courses.js?v=88"></script>
 <script src="tutorial.js?v=93"></script>
-<script src="menu.js?v=96"></script>
+<script src="menu.js?v=99"></script>
 <script src="timing-history.js?v=87"></script>
 <script src="timing-history-ui.js?v=96"></script>
 <script src="sound.js?v=59"></script>
@@ -426,13 +426,13 @@ let song = SONGS[0], BPM, OFFSET, SPB, WINDOW;
 const chartCache={};
 let activeChart=null;
 // エンドレス：1周するごとに曲もノーツも速くなる（ゴールなし）
-// モード：distance＝1曲、endless＝ワープ時に加速、fullsong＝曲終了時に加速
+// モード：distance＝1曲、endless＝ワープ加速、fullsong＝曲終了加速、shuttle＝時間内ゴール＋耐久
 let playMode='distance',endless=true,lap=0,rate=1;
 try{playMode=localStorage.getItem('neon-blade-mode')||(localStorage.getItem('neon-blade-endless')==='1'?'distance':'normal');}catch(e){}
-if(!['distance','endless','fullsong'].includes(playMode))playMode='distance';
+if(!['distance','endless','fullsong','shuttle'].includes(playMode))playMode='distance';
 endless=playMode!=='normal';
 function applyRate(){ BPM = song.bpm * rate; OFFSET = song.offset / rate; SPB = 60 / BPM; WINDOW = Math.min(0.17, SPB * 0.36); }
-const MODE_DESC={normal:'いつものモードです。',distance:'曲が終わるまでに、どこまで進めるかを競います。',fullsong:'35マスごとにゲート突破。道も曲も途切れず続きます。曲の終了後は5秒休憩して＋0.1倍（最大2.2倍）。15マスごとにダイヤを獲得。',endless:'35マス進むとワープ。速度が上がり、曲の最初から次の区間へ。最初の4拍は準備時間です。'};
+const MODE_DESC={shuttle:'曲が終わるまでにゴールへ！80マスから、ラウンドごとに＋5マス（最大110）。35マスごとの門をくぐり、ゴールでブレイクして曲の終わりまで耐えよう。成功後は5秒休憩して＋0.1倍（最大2.2倍）。',normal:'いつものモードです。',distance:'曲が終わるまでに、どこまで進めるかを競います。',fullsong:'35マスごとにゲート突破。道も曲も途切れず続きます。曲の終了後は5秒休憩して＋0.1倍（最大2.2倍）。',endless:'35マス進むとワープ。速度が上がり、曲の最初から次の区間へ。最初の4拍は準備時間です。'};
 function updateModeUI(){ document.getElementById('rushPicker').classList.add('hide'); document.querySelectorAll('[data-rush]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.rush===rushRelease))); document.querySelectorAll('[data-mode],[data-song-mode]').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.mode||b.dataset.songMode)===playMode))); document.getElementById('modeDesc').textContent=MODE_DESC[playMode]; }
 function setSong(sg){ song = sg; activeChart=chartCache[sg.chart]||null; GAPS = sg.dense ? DIFFICULTIES[difficulty].dense : DIFFICULTIES[difficulty].gaps; applyRate(); }
 const COLS = 8; let ROWS = 11;
@@ -449,7 +449,7 @@ function scoreOn(){ return SCORE_MODE && !isTutorial() && !endless; }
 const WARP_PERFECT = 0;  // 1区間（ワープまで）に必要なPERFECTの累計回数（試遊用・未決定）
 let secPerfect = 0, warpReady = false, sectionNo = 1, termWaitLogged = false;
 let endReason = null;
-const END_REASON = { hp: 'ライフ切れ', finish: '完走', song_end: '曲の終了' };
+const END_REASON = { hp: 'ライフ切れ', finish: '完走', song_end: '曲の終了', shuttle_timeout: '時間切れ：ゴールに届かなかった' };
 function endlessScoreOn(){ return playMode === 'distance' && !isTutorial(); } // 距離チャレンジ
 // ===== エンドレス：35マス到達でワープ → 速度＋0.1（最大2.2）。ブレイク点に得点倍率を掛ける =====
 // ===== エンドレス：コンボでスコアと歩数が伸びる（試遊用の仮の値。ここでまとめて調整） =====
@@ -467,8 +467,22 @@ const COMBO_TIERS = [ { min: 0, mult: 1 }, { min: 10, mult: 2 }, { min: 25, mult
 const FULL_SONG_SECTION = 35, FULL_SONG_REST = 5;
 let fullSongTail = null, fullSongRest = null;
 const SPEED_STEP = 0.1, SPEED_MAX = 2.2;                  // 35マスごとの加速（足し算）と上限
-function fullSongOn(){ return playMode === 'fullsong' && !isTutorial(); }
-function speedOn(){ return (playMode === 'endless' || playMode === 'fullsong') && !isTutorial(); }
+function shuttleOn(){ return playMode === 'shuttle' && !isTutorial(); }
+function fullSongOn(){ return (playMode === 'fullsong' || playMode === 'shuttle') && !isTutorial(); }
+const SHUTTLE_START = 80, SHUTTLE_STEP = 5, SHUTTLE_MAX = 110;
+let shuttleArrived = false, shuttleGate = 0;
+function shuttleLength(){ return Math.min(SHUTTLE_MAX, SHUTTLE_START + lap * SHUTTLE_STEP); }
+function setupShuttleCourse(){
+  shuttleArrived=false;shuttleGate=0;
+  GOAL_INDEX=shuttleLength();
+  while(path.length<GOAL_INDEX+5){
+    path.push(...NBCourses.continuation(courseDeck.next(),path.at(-1)).slice(1));
+  }
+  path.splice(GOAL_INDEX+5);
+  LINES=[];for(let n=4;n<GOAL_INDEX;n+=6)LINES.push(n);LINES.push(GOAL_INDEX);
+  REVEAL_ENDS=LINES.map(n=>Math.min(GOAL_INDEX+4,n+15));
+}
+function speedOn(){ return (playMode === 'endless' || playMode === 'fullsong' || playMode === 'shuttle') && !isTutorial(); }
 function comboMult(c){ if (EL_SCORING !== 'combo') return 1; let m = 1; for (const t of COMBO_TIERS) if (c >= t.min) m = t.mult; return m; }
 let elScore = 0, moveSteps = 0, recordSteps = 0; // スコア／実際に進んだマス／倍率込みの記録歩数
 let stepBonus = null; // 次の一歩ボーナス：null / 'PERFECT' / 'GREAT'
@@ -498,6 +512,10 @@ function setDistHud(){ NBWorkshop.steps(distance());document.getElementById('sco
 function atTerminal(){ return player.idx >= LINES[LINES.length - 1]; }
 function updateWarpHud(){
   const el = document.getElementById('warpHud');
+  if (shuttleOn()){
+    const seconds=songBuf?Math.max(0,Math.ceil((songBuf.duration-sourceSongPosition(songTime()))/rate)):0;
+    el.className='';el.textContent=`ROUND ${lap+1}　${shuttleArrived?'ゴール！耐えよう':`あと${Math.max(0,GOAL_INDEX-player.idx)}マス`}　${seconds}秒`;return;
+  }
   if (fullSongOn()){ el.className=''; el.textContent=`ROUND ${lap+1}　／　ゲート ${courseLap}突破`; return; }
   if (speedOn()){ el.className = ''; el.textContent = (rushOn() ? '' : recordSteps.toLocaleString('en-US') + ' STEPS　') + 'SPEED ×' + rate.toFixed(1); return; }
   if (!endlessScoreOn()){ el.className = 'hide'; return; }
@@ -556,7 +574,7 @@ function chooseCourse(tutorial=false){
   LINES=[4,10,16,22,28,35];
   REVEAL_ENDS=[19,26,32,35,39,39];
   GOAL_INDEX=LINES.at(-1);
-  if(fullSongOn())prepareFullSongTail();
+  if(shuttleOn())setupShuttleCourse();else if(fullSongOn())prepareFullSongTail();
   EXIT_INDEX=path.length-1;ROWS=Math.max(...path.map(p=>p.r))+1;
 }
 // Preview the next section's first cells before reaching the gate, so notes keep
@@ -1116,7 +1134,7 @@ function onBeat(n, t){
     const lastIdx = Math.max(-99, ...notes.map(x => x.idx));
     if (chartNotes() ? chartSpawns(n)&&lastIdx<gIdx : gIdx - lastIdx >= nextGap){
       const pr = isTutorial() ? 0 : (song?.purple ?? PURPLE_RATE), fixedPurple = chartNotes() && activeChart?.fixedTypes;
-      const purple = !moveLocked && pr > 0 && (fixedPurple ? chartPurple(n, pr) : rand() < pr); // 紫＝突進ノーツ（周の最初の1個にはしない）
+      const purple = !(shuttleOn() && gIdx >= GOAL_INDEX) && !moveLocked && pr > 0 && (fixedPurple ? chartPurple(n, pr) : rand() < pr); // 紫＝突進ノーツ（周の最初の1個にはしない）
       notes.push(NBWorkshop.prepareNote({ id: noteId++, idx: gIdx, from: gIdx, at: t, pop: t, hp: purple ? 1 : chartNotes() ? chartHp(n, gIdx - lastIdx) : rollHp(gIdx - lastIdx), purple }));
       if(!chartNotes())nextGap = pickGap(); // 紫も連続ブロックに混ざる（突進で後ろを押し返すので空けない）
     }
@@ -1708,8 +1726,8 @@ function captureResult(clear){
   if(result.newBest){try{localStorage.setItem(key,String(result.score));}catch(e){}}
   if(speedOn()){
     // エンドレス：ブレイクで得た点の合計。自己ベストは曲・難易度ごと（距離チャレンジ・旧方式とは別）
-    Object.assign(result,{endless:true,mode:playMode,songLoops:lap,scoring:EL_SCORING,rushRelease,score:EL_SCORING==='rush'?recordSteps:elScore,unit:EL_SCORING==='rush'?' STEPS':'',moveSteps,recordSteps,rank:'—',badge:'',courses:courseLap,speed:rate,endReason,reasonText:END_REASON[endReason]||''});
-    const skey=`neon-blade-${fullSongOn()?'fullsong-gates-':''}${EL_SCORING==='rush'?'rush-'+rushRelease:EL_SCORING==='stepBonus'?'stepbonus':'combo'}-best-v1:${song.file}:${runDifficulty}`+(activeChart?.chartVersion?':'+activeChart.chartVersion:'');
+    Object.assign(result,{endless:true,mode:playMode,roundsCleared:lap,goalDistance:GOAL_INDEX,goalReached:shuttleArrived,songLoops:lap,scoring:EL_SCORING,rushRelease,score:EL_SCORING==='rush'?recordSteps:elScore,unit:EL_SCORING==='rush'?' STEPS':'',moveSteps,recordSteps,rank:'—',badge:'',courses:courseLap,speed:rate,endReason,reasonText:END_REASON[endReason]||''});
+    const skey=`neon-blade-${shuttleOn()?'shuttle-':fullSongOn()?'fullsong-gates-':''}${EL_SCORING==='rush'?'rush-'+rushRelease:EL_SCORING==='stepBonus'?'stepbonus':'combo'}-best-v1:${song.file}:${runDifficulty}`+(activeChart?.chartVersion?':'+activeChart.chartVersion:'');
     let prev=0;try{const v=Number(localStorage.getItem(skey));if(Number.isInteger(v)&&v>=0)prev=v;}catch(e){}
     result.newBest=result.score>prev;result.best=result.newBest?result.score:prev;result.previousBest=prev;
     if(result.newBest){try{localStorage.setItem(skey,String(result.score));}catch(e){}}
@@ -2223,6 +2241,10 @@ function drawLock(p,alpha){
 }
 // A compact floor vortex: two broad cyan curls inside a single dark oval.
 function drawWarpZone(t){
+  if(shuttleOn()){
+    for(let idx=FULL_SONG_SECTION;idx<GOAL_INDEX;idx+=FULL_SONG_SECTION)drawCheckpointGate(t,idx,`${idx}マス`);
+    drawCheckpointGate(t,GOAL_INDEX,'GOAL',shuttleArrived?'#8affbf':'#8af3ff');return;
+  }
   if(fullSongOn()){drawCheckpointGate(t);return;}
   if(!speedOn()||revealEnd<GOAL_INDEX)return;
   const p=cellXY(GOAL_INDEX);if(p.y < -cell || p.y>boardH+cell)return;
@@ -2244,20 +2266,20 @@ function drawWarpZone(t){
   }
   g.restore();
 }
-function drawCheckpointGate(t){
-  if(revealEnd<GOAL_INDEX)return;
-  const p=cellXY(GOAL_INDEX);if(p.y < -cell || p.y>boardH+cell)return;
-  g.save();g.translate(p.x,p.y);g.globalAlpha=tileAlpha(GOAL_INDEX,t);
+function drawCheckpointGate(t,idx=GOAL_INDEX,label=`${idx}マス`,color='#ffe64a'){
+  if(revealEnd<idx)return;
+  const p=cellXY(idx);if(p.y < -cell || p.y>boardH+cell)return;
+  g.save();g.translate(p.x,p.y);g.globalAlpha=tileAlpha(idx,t);
   const w=cell*.48,top=-cell*1.05,bottom=cell*.35;
   g.strokeStyle='#081221';g.lineWidth=cell*.17;g.lineJoin='round';
   g.beginPath();g.moveTo(-w,bottom);g.lineTo(-w,top);g.lineTo(w,top);g.lineTo(w,bottom);g.stroke();
-  g.strokeStyle='#ffe64a';g.lineWidth=cell*.095;g.stroke();
+  g.strokeStyle=color;g.lineWidth=cell*.095;g.stroke();
   g.strokeStyle='#fff7b5';g.lineWidth=Math.max(1,cell*.025);g.beginPath();g.moveTo(-w,top+cell*.13);g.lineTo(w,top+cell*.13);g.stroke();
-  g.fillStyle='#ffe64a';g.strokeStyle='#081221';g.lineWidth=2;
+  g.fillStyle=color;g.strokeStyle='#081221';g.lineWidth=2;
   rr(g,-cell*.52,top-cell*.32,cell*1.04,cell*.35,cell*.07);g.fill();g.stroke();
   g.font=`900 ${Math.max(10,Math.round(cell*.27))}px system-ui`;g.textAlign='center';g.textBaseline='middle';
-  g.fillStyle='#081221';g.fillText(`${GOAL_INDEX}マス`,0,top-cell*.14);
-  g.strokeStyle='#ffe64a';g.lineWidth=2;g.setLineDash([cell*.1,cell*.08]);
+  g.fillStyle='#081221';g.fillText(label,0,top-cell*.14);
+  g.strokeStyle=color;g.lineWidth=2;g.setLineDash([cell*.1,cell*.08]);
   g.beginPath();g.moveTo(-cell*.39,cell*.15);g.lineTo(cell*.39,cell*.15);g.stroke();g.restore();
 }
 function drawLineAndG(t){
@@ -2335,8 +2357,28 @@ function drawChar(t){
 // ラインに着いたか調べる。エンドレスで周回したら true
 function checkLines(t){
   if(NBDiamond.locked())return false;
-  if (!(state==='play' && player.idx >= LINES[lineK] && hp > 0)) return false;
-  if(speedOn()&&player.idx>=GOAL_INDEX){if(rushGuard(t))return false;nextEndlessCourse(t);return true;}
+  if(state!=='play'||hp<=0)return false;
+  if(shuttleOn()){
+    while(shuttleGate+FULL_SONG_SECTION<GOAL_INDEX&&player.idx>=shuttleGate+FULL_SONG_SECTION){
+      shuttleGate+=FULL_SONG_SECTION;courseLap++;
+      fx.push({type:'milestone',idx:shuttleGate,t,d:.8,col:'#ffe65c'});
+      texts.push({s:`${shuttleGate}マス 突破！`,idx:shuttleGate,t,col:'#fff2a1',big:true});
+      [784,988,1175].forEach((f,i)=>uiTone(f,.07,i*.04));
+      diagEv('checkpoint',{round:lap+1,distance:shuttleGate,rate});
+    }
+    if(player.idx>=GOAL_INDEX){
+      if(rushAnim)return false;
+      if(!shuttleArrived){
+        shuttleArrived=true;notes.forEach(nt=>{if(nt.purple){nt.purple=false;nt.hp=1;}});
+        fx.push({type:'milestone',idx:GOAL_INDEX,t,d:.8,col:'#8affbf'});
+        showLapBanner('GOAL！ 曲の終わりまで耐えよう');
+        diagEv('shuttle_goal',{round:lap+1,distance:GOAL_INDEX,rate});
+      }
+      updateWarpHud();return false;
+    }
+  }
+  if(player.idx<LINES[lineK])return false;
+  if(!shuttleOn()&&speedOn()&&player.idx>=GOAL_INDEX){if(rushGuard(t))return false;nextEndlessCourse(t);return true;}
   if (lineK === LINES.length - 1 && !speedOn() && rushGuard(t)) return false; // 必殺技の駆け抜け・着地が終わってからワープ
   if(isTutorial()&&lineK===LINES.length-1)return coachGoal(t);
   if (lineK === LINES.length - 1 && endlessScoreOn()){ warp(t); return true; }
@@ -2383,14 +2425,15 @@ function loop(){
     document.getElementById('roundRestCount').textContent=`次のラウンドまで ${Math.ceil(left)}秒`;
     if(left<=0){restartFullSong();t=songTime();}
   }
-  if (state === 'play' && songBuf && !isTutorial()) progFill.style.width = (Math.min(1, Math.max(0, t / (songBuf.duration / rate))) * 100) + '%';
+  if(shuttleOn()&&state==='play'){updateWarpHud();progFill.style.width=`${Math.min(100,100*player.idx/GOAL_INDEX)}%`;}
+  else if (state === 'play' && songBuf && !isTutorial()) progFill.style.width = (Math.min(1, Math.max(0, t / (songBuf.duration / rate))) * 100) + '%';
   draw(t);
   if(state==='clear'&&victoryAt>=0)drawVictory();
 }
 
 // ===== 判定診断モード =====
 // 詳細モードは従来どおり任意。軽量の判定履歴は、表示を増やさず全プレイで記録する。
-const APP_VERSION = 'v98', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v99', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2533,7 +2576,7 @@ function diagRender(){
   const S = diagSummary(run), v = x => x == null ? '—' : x, ms = x => x == null ? '—' : (x > 0 ? '+' : '') + x + 'ms';
   const rows = list => list.map(g => `<tr><td>${g.k}</td><td>${g.n}</td><td>${ms(g.median)}</td><td>${v(g.sd)}</td><td>${g.P}/${g.G}/${g.D}</td></tr>`).join('') || '<tr><td colspan="5">なし</td></tr>';
   const head = '<tr><th></th><th>数</th><th>中央値</th><th>ばらつき</th><th>P/G/GOOD</th></tr>';
-  body.innerHTML = `<p class="diagNote">${run.song.name}／${({normal:'通常',distance:'距離チャレンジ',endless:'エンドレス',fullsong:'フル曲エンドレス'})[run.settings.mode] || run.settings.mode}／${String(run.settings.difficulty).toUpperCase()}／音の出力：${run.device.audioOutputLabel}／${run.appVersion}</p>
+  body.innerHTML = `<p class="diagNote">${run.song.name}／${({normal:'通常',distance:'距離チャレンジ',endless:'エンドレス',fullsong:'フル曲エンドレス',shuttle:'シャトルラン'})[run.settings.mode] || run.settings.mode}／${String(run.settings.difficulty).toUpperCase()}／音の出力：${run.device.audioOutputLabel}／${run.appVersion}</p>
     <table><tr><th>PERFECT</th><th>GREAT</th><th>GOOD</th><th>MISS</th></tr><tr><td style="text-align:left">${S.counts.PERFECT}</td><td>${S.counts.GREAT}</td><td>${S.counts.GOOD}</td><td>${S.counts.MISS}</td></tr></table>
     <p class="diagNote">MISSの内訳：入力MISS（受付時間外・ライフ−1）${S.counts.missTiming}／被弾（ライフ−1）${S.counts.missDamage}</p>
     <table><tr><td>早押し／遅押し／ぴったり</td><td>${S.early}／${S.late}／${S.exact}</td></tr><tr><td>ズレの中央値</td><td>${ms(S.offset.median)}</td></tr><tr><td>ばらつき（標準偏差）</td><td>${v(S.offset.sd)}ms</td></tr><tr><td>ばらつき（四分位範囲）</td><td>${v(S.offset.iqr)}ms</td></tr><tr><td>入力処理待ち（中央値／最大）</td><td>${v(S.delay.median)}ms／${v(S.delayMax)}ms</td></tr><tr><td>無効入力（統計には含めない）</td><td>${S.invalid}</td></tr></table>
@@ -2676,6 +2719,7 @@ function nextEndlessCourse(t){
 function fullSongBeatEnd(){return Math.min(songBuf.duration,song.gameplayEnd??songBuf.duration)/rate;}
 function beginFullSongRest(t){
   if(fullSongRest)return;
+  if(shuttleOn()&&!shuttleArrived){endReason='shuttle_timeout';end(false);return;}
   fullSongRest={at:t,until:ctx.currentTime+FULL_SONG_REST,remaining:FULL_SONG_REST};
   state='roundrest';stopSong();stopMoveScheduler();stopRushHold();hideJudge();
   notes=[];pendingCheck=[];earlyInput=null;
@@ -2691,6 +2735,7 @@ function restartFullSong(){
   const fromRate=rate;
   NBWorkshop.restartSong();lap++;
   rate=Math.min(SPEED_MAX,Math.round((rate+SPEED_STEP)*10)/10);applyRate();
+  if(shuttleOn()){chooseCourse();player={idx:0,from:0,at:0};lineK=0;gIdx=gIndexFor(0);revealEnd=REVEAL_ENDS[0];revealFrom=revealEnd;cameraTarget=0;setPalette(lap%PALETTES.length);}
   player={idx:player.idx,from:player.idx,at:0};notes=[];effects=[];texts=[];fx=[];
   nextBeat=0;acted=-1;pendingCheck=[];earlyInput=null;recentHits=[];pendingExtension=null;nextGap=4;runLen=1;
   rushGuardUntil=-9;hurtGuardUntil=-9;rushFade=null;shards=[];slashMarks=[];mists=[];rushPoseUntil=-9;

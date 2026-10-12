@@ -86,27 +86,9 @@ window.NBWorkshop = (() => {
     collectDistanceGems(t);
     NBMeasure.tick(t,rebase,bonus);
   }
-  // Physical course distance, independent of combo STEPS and song restarts.
-  function distanceGemPositions(){
-    if(!fullSongOn()||!run||run.finished)return [];
-    const base=0,positions=[];
-    const first=Math.max(run.nextDistanceGem,Math.ceil((base+1)/DISTANCE_GEM_SPACING)*DISTANCE_GEM_SPACING);
-    for(let distance=first;distance<=base+GOAL_INDEX;distance+=DISTANCE_GEM_SPACING)positions.push({distance,idx:distance-base});
-    return positions;
-  }
-  function collectDistanceGems(t){
-    if(!fullSongOn())return;
-    const base=0,reached=base+(rushAnim?playerVis(t):player.idx);
-    while(run.nextDistanceGem<=reached){
-      const distance=run.nextDistanceGem;
-      run.nextDistanceGem+=DISTANCE_GEM_SPACING;run.distanceGems++;
-      apply({}, {}, DISTANCE_GEM.value);
-      drops.push({type:DISTANCE_GEM,idx:Math.max(0,Math.min(GOAL_INDEX,distance-base)),t,checkpoint:distance});
-      if(drops.length>8)drops.shift();
-      NBSound.play('diamond');
-      diagEv('distance_diamond',{distance,award:DISTANCE_GEM.value,course:courseLap+1});
-    }
-  }
+  // Roadside diamonds are temporarily removed; saved balances remain intact.
+  function distanceGemPositions(){return [];}
+  function collectDistanceGems(t){}
   function drawDistanceGems(t){
     const art=IMG['gems/novice'];
     for(const marker of distanceGemPositions()){
@@ -341,7 +323,7 @@ window.NBWorkshop = (() => {
   }
   function decorateResult(result, ov) {
     NBMeasure.decorate(result,ov);
-    const steps = result.mode === 'distance' || ['endless','fullsong'].includes(result.mode) && result.scoring === 'rush';
+    const steps = result.mode === 'distance' || ['endless','fullsong','shuttle'].includes(result.mode) && result.scoring === 'rush';
     const comparable = steps || result.endless || scoreOn();
     const prev = result.previousBest || 0, delta = result.score - prev;
     delete ov.dataset.celebrated;
@@ -356,14 +338,19 @@ window.NBWorkshop = (() => {
     if (steps) ov.querySelector('.scoreHelp p').textContent = '記録はコンボ倍率込みのSTEPS。20コンボで1マス＝2 STEPS、50コンボで3 STEPS。必殺技で進んだマスにも倍率がかかります。PERFECT・GREATでコンボ継続、GOOD・MISSでリセット。ブレイクで力をため、満タンで必殺技。35マス進むたびにワープし速度＋0.1（最大2.2倍）。曲は頭から再開し、最初の4拍は準備時間。ライフ切れ、または到達前に曲が終わると終了です。';
     else if (scoreOn()) ov.querySelector('.scoreHelp p').textContent = '進むたびに直前のブレイク判定に応じて加点。ブレイクそのものでも加点されます。曲が終わるまでにスコアを伸ばそう。';
     else if (!result.endless) ov.querySelector('.scoreHelp p').textContent = '判定精度 × 到達率 × 1,000,000点。自己ベストはクリアした記録を曲・難易度ごとに保存します。';
-    if(result.mode==='fullsong'){ov.querySelector('.scoreHelp p').textContent='記録はコンボ倍率込みのSTEPS。20コンボで1マス＝2 STEPS、50コンボで3 STEPS。満タンの必殺技はブレイク長押しで発動。35マスごとにゲートを突破し、つながった道をそのまま進みます。途中で曲と速度は変わりません。曲が終わったら5秒休憩して＋0.1倍（最大2.2倍）で再開。ライフがなくなるまで続きます。15マス進むごとに道のダイヤを1個獲得。必殺技で通過しても拾えます。自己ベストはこのモード専用です。';ov.querySelector('[data-result-badge]').textContent=`ROUND ${result.songLoops+1} ／ ゲート ${result.courses}突破 ／ ×${result.speed.toFixed(1)}`;}
+    if(result.mode==='fullsong'){ov.querySelector('.scoreHelp p').textContent='記録はコンボ倍率込みのSTEPS。20コンボで1マス＝2 STEPS、50コンボで3 STEPS。満タンの必殺技はブレイク長押しで発動。35マスごとにゲートを突破し、つながった道をそのまま進みます。途中で曲と速度は変わりません。曲が終わったら5秒休憩して＋0.1倍（最大2.2倍）で再開。ライフがなくなるまで続きます。自己ベストはこのモード専用です。';ov.querySelector('[data-result-badge]').textContent=`ROUND ${result.songLoops+1} ／ ゲート ${result.courses}突破 ／ ×${result.speed.toFixed(1)}`;}
+    if(result.mode==='shuttle'){
+      ov.querySelector('.scoreHelp p').textContent='曲が終わるまでにゴールへ到着し、そこでブレイクして曲の終わりまで耐えるモード。距離は80→85→90…最大110マス。35マスごとの門では曲と速度は変わりません。成功後は5秒休憩して速度＋0.1（最大2.2倍）。ライフ切れ、またはゴール未到着で曲が終わると終了。STEPSと自己ベストはこのモード専用です。';
+      ov.querySelector('[data-result-badge]').textContent=`${result.roundsCleared}ラウンド達成 ／ ×${result.speed.toFixed(1)}`;
+      ov.querySelector('[data-result-foot]').textContent=`ROUND ${result.songLoops+1} ／ 目標${result.goalDistance}マス`;
+    }
     if(result.mode==='distance')ov.querySelector('.scoreHelp p').textContent='曲を最後まで聴く間に進んだマス数がSTEPSになります。ワープは条件なし、曲はそのまま続きます。満タンの必殺技はブレイク長押しで発動。ライフがなくなれば終了です。';
     if(steps&&result.progression){ov.querySelector('.resultRank small').textContent='PLAYER RANK';ov.querySelector('[data-result-rank]').textContent=result.progression.rank;}
     ov.querySelectorAll('details').forEach(el => el.open = false);
     const rewards = result.rewards || {total: 0, tiles: 0, missions: [], balance: ledger?.state.gems || 0};
     ov.querySelector('[data-result-gems]').textContent = '＋' + rewards.total;
     ov.querySelector('[data-result-balance]').textContent = fmt(rewards.balance);
-    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? [rewards.checkpoints?'15マスごとのダイヤ ＋'+rewards.checkpoints:'',rewards.tiles>(rewards.checkpoints||0)?'ブロックから獲得 ＋'+(rewards.tiles-(rewards.checkpoints||0)):'',rewards.total>rewards.tiles?'ランクアップ ＋'+(rewards.total-rewards.tiles):''].filter(Boolean).join(' ／ ') : result.mode==='fullsong'?'15マス先のダイヤを目指そう！':isTutorial() ? '本編ではブロックからダイヤが出ます' : 'ダイヤ入りのブロックを壊すと獲得できます';
+    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? [rewards.checkpoints?'15マスごとのダイヤ ＋'+rewards.checkpoints:'',rewards.tiles>(rewards.checkpoints||0)?'ブロックから獲得 ＋'+(rewards.tiles-(rewards.checkpoints||0)):'',rewards.total>rewards.tiles?'ランクアップ ＋'+(rewards.total-rewards.tiles):''].filter(Boolean).join(' ／ ') : ['fullsong','shuttle'].includes(result.mode)?'':isTutorial() ? '本編ではブロックからダイヤが出ます' : 'ダイヤ入りのブロックを壊すと獲得できます';
     const gemTypes=ov.querySelector('[data-result-gem-types]');gemTypes.textContent='ダイヤ採掘 ／ '+NBBlockGems.types.filter(type=>result.gemCounts?.[type.id]).map(type=>type.name+' ×'+result.gemCounts[type.id]).join('・');gemTypes.hidden=!Object.values(result.gemCounts||{}).some(Boolean);
     const growth=ov.querySelector('[data-result-growth]');growth.innerHTML='';
     const growthDetail=ov.querySelector('[data-result-growth-detail]');growthDetail.hidden=!result.progression;growthDetail.textContent=result.progression?`ランク ${result.progression.rank} ／ 次のランクまで ${result.progression.need-result.progression.progress} XP${result.progression.unlocked.length?' ／ 新しい曲を解放！':''}`:'';
