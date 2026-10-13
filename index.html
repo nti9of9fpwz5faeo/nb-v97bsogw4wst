@@ -359,7 +359,7 @@
 <div class="overlay" id="startOv">
   <span class="eyebrow">MOVE WITH THE BEAT</span>
   <h1>NEON <b>BLADE</b></h1>
-  <span id="verBadge">v102</span>
+  <span id="verBadge">v103</span>
   <button id="heroOpen" disabled><canvas id="heroMini" width="240" height="180" aria-hidden="true"></canvas><span><small>CHARACTER</small><strong id="heroCurrent">ネオン</strong></span><b>変更 ↗</b></button>
   <p id="loadTxt">読み込み中…</p>
   <div id="difficultyPicker" role="group" aria-label="難易度"><button class="difficultyBtn" data-difficulty="normal" aria-pressed="true">NORMAL</button><button class="difficultyBtn" data-difficulty="hard" aria-pressed="false">HARD</button></div>
@@ -398,12 +398,13 @@
 <script src="song-backgrounds.js?v=89"></script>
 <script src="courses.js?v=88"></script>
 <script src="tutorial.js?v=93"></script>
-<script src="menu.js?v=99"></script>
+<script src="finish-challenge.js?v=103"></script>
+<script src="menu.js?v=103"></script>
 <script src="timing-history.js?v=87"></script>
-<script src="timing-history-ui.js?v=96"></script>
+<script src="timing-history-ui.js?v=103"></script>
 <script src="sound.js?v=59"></script>
 <script src="monetization.js?v=59"></script>
-<script src="workshop.js?v=98"></script>
+<script src="workshop.js?v=103"></script>
 <script src="mining.js?v=85"></script>
 <script>
 // ===== 設定 =====
@@ -431,10 +432,10 @@ let activeChart=null;
 // モード：distance＝1曲、endless＝ワープ加速、fullsong＝曲終了加速、shuttle＝時間内ゴール＋耐久
 let playMode='distance',endless=true,lap=0,rate=1;
 try{playMode=localStorage.getItem('neon-blade-mode')||(localStorage.getItem('neon-blade-endless')==='1'?'distance':'normal');}catch(e){}
-if(!['distance','endless','fullsong','shuttle'].includes(playMode))playMode='distance';
+if(!['distance','endless','fullsong','shuttle','finish'].includes(playMode))playMode='distance';
 endless=playMode!=='normal';
 function applyRate(){ BPM = song.bpm * rate; OFFSET = song.offset / rate; SPB = 60 / BPM; WINDOW = Math.min(0.17, SPB * 0.36); }
-const MODE_DESC={shuttle:'曲が終わるまでにゴールへ！80マスから、ラウンドごとに＋5マス（最大110）。短い区間ゴールを次々クリア！次のゴールまでのゲージをため、最終ゴールで曲の終わりまで耐えよう。成功後は5秒休憩して＋0.1倍（最大2.2倍）。',normal:'いつものモードです。',distance:'曲が終わるまでに、どこまで進めるかを競います。',fullsong:'35マスごとにゲート突破。道も曲も途切れず続きます。曲の終了後は5秒休憩して＋0.1倍（最大2.2倍）。',endless:'35マス進むとワープ。速度が上がり、曲の最初から次の区間へ。最初の4拍は準備時間です。'};
+const MODE_DESC={finish:'Futuristic Action専用・固定譜面。曲に合わせて開くコースを進み、到達率100%でクリア！ライフ1。被弾後も短い保護時間は進めます。進む・ブレイクの判定を表示。',shuttle:'曲が終わるまでにゴールへ！80マスから、ラウンドごとに＋5マス（最大110）。短い区間ゴールを次々クリア！次のゴールまでのゲージをため、最終ゴールで曲の終わりまで耐えよう。成功後は5秒休憩して＋0.1倍（最大2.2倍）。',normal:'いつものモードです。',distance:'曲が終わるまでに、どこまで進めるかを競います。',fullsong:'35マスごとにゲート突破。道も曲も途切れず続きます。曲の終了後は5秒休憩して＋0.1倍（最大2.2倍）。',endless:'35マス進むとワープ。速度が上がり、曲の最初から次の区間へ。最初の4拍は準備時間です。'};
 function updateModeUI(){ document.getElementById('rushPicker').classList.add('hide'); document.querySelectorAll('[data-rush]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.rush===rushRelease))); document.querySelectorAll('[data-mode],[data-song-mode]').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.mode||b.dataset.songMode)===playMode))); document.getElementById('modeDesc').textContent=MODE_DESC[playMode]; }
 function setSong(sg){ song = sg; activeChart=chartCache[sg.chart]||null; GAPS = sg.dense ? DIFFICULTIES[difficulty].dense : DIFFICULTIES[difficulty].gaps; applyRate(); }
 const COLS = 8; let ROWS = 11;
@@ -445,7 +446,7 @@ const SCORE_MODE = true;
 const MOVE_PTS = { PERFECT: 100, GREAT: 80, GOOD: 50, MISS: 0 }, BREAK_RATE = 0.1;
 const PRICE_COL = { 100: '#ffffff', 80: '#50e6ff', 50: '#7dffb0', 0: '#8a96a8' };
 let runScore = 0, movePrice = 0, runSteps = 0, courseLap = 0;
-function scoreOn(){ return SCORE_MODE && !isTutorial() && !endless; }
+function scoreOn(){ return !finishOn() && SCORE_MODE && !isTutorial() && !endless; }
 // エンドレスのスコア（試し）：ゴールするたびに「判定精度点」＋「早着ボーナス」を累計。進むだけでは点は入らない
 // ===== 距離チャレンジ（エンドレス）：曲が終わるまでにどこまで進めるか。記録は進んだマス数 =====
 const WARP_PERFECT = 0;  // 1区間（ワープまで）に必要なPERFECTの累計回数（試遊用・未決定）
@@ -469,6 +470,21 @@ const COMBO_TIERS = [ { min: 0, mult: 1 }, { min: 10, mult: 2 }, { min: 25, mult
 const FULL_SONG_SECTION = 35, FULL_SONG_REST = 5;
 let fullSongTail = null, fullSongRest = null;
 const SPEED_STEP = 0.1, SPEED_MAX = 2.2;                  // 35マスごとの加速（足し算）と上限
+function finishOn(){return playMode==='finish'&&!isTutorial();}
+let finishChart=null,finishFailureAt=null;
+function finishProgress(){return NBFinish.percent(player.idx,GOAL_INDEX);}
+function finishHud(){
+  const p=finishProgress();document.getElementById('scoreNum').textContent=p+'%';
+  const el=document.getElementById('warpHud');el.className='';el.textContent='コース到達率　／　'+(finishFailureAt!==null?'被弾保護中：進める！':player.idx>=NBFinish.limit(finishChart,sourceSongPosition(songTime()))?'次のリズムで道が開く':NBFinish.section(Math.max(0,nearestBeat(songTime()))).name);
+  progFill.style.width=p+'%';
+  const bar=document.getElementById('progress');bar.setAttribute('role','progressbar');bar.setAttribute('aria-label','コース到達率');bar.setAttribute('aria-valuemin','0');bar.setAttribute('aria-valuemax','100');bar.setAttribute('aria-valuenow',p);
+}
+function setupFinishCourse(){
+  GOAL_INDEX=finishChart.goal;let pattern=1;
+  while(path.length<GOAL_INDEX+5)path.push(...NBCourses.continuation(pattern++%NBCourses.patterns.length,path.at(-1)).slice(1));
+  path.splice(GOAL_INDEX+5);LINES=[];for(let n=4;n<GOAL_INDEX;n+=6)LINES.push(n);LINES.push(GOAL_INDEX);
+  REVEAL_ENDS=LINES.map(n=>Math.min(GOAL_INDEX+4,n+15));
+}
 function shuttleOn(){ return playMode === 'shuttle' && !isTutorial(); }
 function fullSongOn(){ return (playMode === 'fullsong' || playMode === 'shuttle') && !isTutorial(); }
 const SHUTTLE_START = 80, SHUTTLE_STEP = 5, SHUTTLE_MAX = 110;
@@ -525,6 +541,7 @@ function setDistHud(){ NBWorkshop.steps(distance());document.getElementById('sco
 function atTerminal(){ return player.idx >= LINES[LINES.length - 1]; }
 function updateWarpHud(){
   const el = document.getElementById('warpHud');
+  if(finishOn()){finishHud();return;}
   if (shuttleOn()){
     const seconds=songBuf?Math.max(0,Math.ceil((songBuf.duration-sourceSongPosition(songTime()))/rate)):0;
     const progress=shuttleProgress(),cleared=!shuttleArrived&&songTime()<shuttleClearUntil;
@@ -586,12 +603,12 @@ function chooseCourse(tutorial=false){
     coursePattern=0;path.splice(0,path.length,...NBTutorial.path());LINES=[NBTutorial.goal];
     REVEAL_ENDS=[path.length-1];GOAL_INDEX=NBTutorial.goal;EXIT_INDEX=path.length-1;ROWS=NBTutorial.rows;return;
   }
-  coursePattern=courseDeck.next();
+  coursePattern=finishOn()?0:courseDeck.next();
   path.splice(0,path.length,...NBCourses.build(coursePattern));
   LINES=[4,10,16,22,28,35];
   REVEAL_ENDS=[19,26,32,35,39,39];
   GOAL_INDEX=LINES.at(-1);
-  if(shuttleOn())setupShuttleCourse();else if(fullSongOn())prepareFullSongTail();
+  if(finishOn())setupFinishCourse();else if(shuttleOn())setupShuttleCourse();else if(fullSongOn())prepareFullSongTail();
   EXIT_INDEX=path.length-1;ROWS=Math.max(...path.map(p=>p.r))+1;
 }
 // Preview the next section's first cells before reaching the gate, so notes keep
@@ -795,7 +812,7 @@ const progFill = document.getElementById('progFill');
 function drawHud(){
   if(isTutorial()&&coach){hud.innerHTML=coachHud();hud.setAttribute('aria-label','練習中。ライフは減りません');return;}
   hud.setAttribute('aria-label',`体力${hp}`);
-  hud.innerHTML=Array.from({length:MAX_HP},(_,i)=>`<svg viewBox="0 0 40 38" class="${i>=hp?'lost':''}" aria-hidden="true"><path d="M20 34C14 29 3 21 3 12C3 2 15 0 20 9C25 0 37 2 37 12C37 21 26 29 20 34Z" fill="${i>=hp?'#7485a8':'#bdff32'}" stroke="#081221" stroke-width="3.5" stroke-linejoin="round"/></svg>`).join('');
+  hud.innerHTML=Array.from({length:finishOn()?1:MAX_HP},(_,i)=>`<svg viewBox="0 0 40 38" class="${i>=hp?'lost':''}" aria-hidden="true"><path d="M20 34C14 29 3 21 3 12C3 2 15 0 20 9C25 0 37 2 37 12C37 21 26 29 20 34Z" fill="${i>=hp?'#7485a8':'#bdff32'}" stroke="#081221" stroke-width="3.5" stroke-linejoin="round"/></svg>`).join('');
 }
 const PALETTES=[['#034afb','#00bff2','#11d6fb'],['#6500ed','#ed12eb','#c0ff3e'],['#006cd9','#00d5b0','#ffe941'],['#9820ed','#ff519b','#42f4ea'],['#0052f0','#06b7ff','#8eff50'],['#7316e7','#e92deb','#ffda35']];
 // Endless scenery stays fixed until a musical cue changes it.
@@ -841,18 +858,19 @@ function reset(){
   revealEnd=REVEAL_ENDS[0];revealFrom=revealEnd;
   document.getElementById('impactVeil').classList.remove('hit');
   cv.style.transform = '';
-  hp = MAX_HP; player = { idx: 0, from: 0, at: 0 }; moveLocked = true;
+  finishFailureAt=null;
+  hp = finishOn()?1:MAX_HP; player = { idx: 0, from: 0, at: 0 }; moveLocked = true;
   runScore = 0; movePrice = 0; runSteps = 0; courseLap = 0;
   chooseCourse(isTutorial());revealEnd=REVEAL_ENDS[0];revealFrom=revealEnd;setPalette(0);
   secPerfect = 0; warpReady = false; sectionNo = 1; termWaitLogged = false; document.getElementById('lapGain').classList.remove('show');
   endReason = null;
   document.getElementById('judge').classList.toggle('minor', rushOn());
   elScore = 0; moveSteps = 0; recordSteps = 0; elLastMult = 1; stepBonus = null; rushUnits = 0; rushAnim = null; rushGuardUntil = -9; hurtGuardUntil = -9; rushFade = null; shards = []; slashMarks = []; mists = []; rushPoseUntil = -9;
-  document.getElementById('scoreNum').textContent = endlessScoreOn() ? '0マス' : '0'; if (rushOn()) setStepsHud(); updateWarpHud(); document.getElementById('scoreHud').classList.toggle('hide', !(scoreOn() || endlessScoreOn() || speedOn()));
+  document.getElementById('scoreNum').textContent = endlessScoreOn() ? '0マス' : '0'; if (rushOn()) setStepsHud(); updateWarpHud(); document.getElementById('scoreHud').classList.toggle('hide', !(finishOn() || scoreOn() || endlessScoreOn() || speedOn()));
   notes = []; effects = []; texts = []; fx = [];
   setLockUI(true); tutClearUI();
   nextBeat = 0; acted = -1; pendingCheck = [];
-  charState = 'idle'; charUntil = 0; shakeUntil = 0; spawnSeed = Math.floor(Math.random() * 100000) + 1; earlyInput = null;
+  charState = 'idle'; charUntil = 0; shakeUntil = 0; spawnSeed = finishOn()?103:Math.floor(Math.random() * 100000) + 1; earlyInput = null;
   nextGap = 4; runLen = 1;
   lineK = 0; gIdx = gIndexFor(0); gMoveAt = -9; gFrom = gIdx;
   counts = { PERFECT: 0, GREAT: 0, GOOD: 0, MISS: 0 }; combo = 0; maxCombo = 0;
@@ -927,14 +945,14 @@ function chartVal(n){const s=activeChart?.spawn;return (s?.[runDifficulty]??s?.n
 function chartSpawns(n){return !!chartVal(n);}
 // 種類を固定した譜面（fixedTypes）はランダムを使わない
 const PURPLE_RATE = 0.15; // 紫ノーツの出る割合（全曲共通。曲ごとに song.purple で上書きできる）
-function chartPurple(n,pr){ const h=((n+1)*2654435761)>>>0; return (h%1000)/1000 < pr; } // 種類固定の譜面用：拍番号で決まる
+function chartPurple(n,pr){ if(finishOn())return chartVal(n)===3; const h=((n+1)*2654435761)>>>0; return (h%1000)/1000 < pr; } // 種類固定の譜面用：拍番号で決まる
 function chartHp(n,gap){return activeChart?.fixedTypes?(chartVal(n)===2?2:1):rollHp(gap);}
 function chartFill(n,t){
   if(!pendingExtension)return;
   const {from,to}=pendingExtension;pendingExtension=null;
   for(let i=Math.max(player.idx+1,from-1);i<to;i++){
     if(chartSpawns(n-(to-i))&&!notes.some(nt=>nt.idx===i))
-      notes.push(NBWorkshop.prepareNote({id:noteId++,idx:i,from:i,at:t,pop:t,hp:chartHp(n-(to-i),gapBefore(i))}));
+      notes.push(NBWorkshop.prepareNote({id:noteId++,idx:i,from:i,at:t,pop:t,hp:chartHp(n-(to-i),gapBefore(i)),purple:finishOn()&&chartVal(n-(to-i))===3&&!moveLocked}));
   }
 }
 
@@ -1196,13 +1214,14 @@ function tryRevertLateHit(n, evPerf, handlerPerf, rec){
   const i = recentHits.findIndex(h => h.beat === n && h.perf > evPerf && h.playerIdx === player.idx);
   if (i < 0) return false;
   const h = recentHits.splice(i, 1)[0];
-  hp = h.hpBefore; drawHud(); counts.MISS = Math.max(0, counts.MISS - 1); combo = h.comboBefore;
+  hp = h.hpBefore;if(finishOn()){finishFailureAt=null;hurtGuardUntil=-9;endReason=null;} drawHud(); counts.MISS = Math.max(0, counts.MISS - 1); combo = h.comboBefore;
   notes.push({ ...h.note, idx: player.idx, from: player.idx, at: -9 });
   texts = texts.filter(x => x.s !== 'ダメージ');
   diagEv('damage_reverted', { inputId: rec?.inputId ?? null, noteId: h.note.id, beat: n, damageSeq: h.dmgSeq, pressedBeforeDamageMs: r2(h.perf - evPerf), handlerDelayMs: r2(handlerPerf - evPerf), hpRestored: hp, ...diagCtx() });
   return true;
 }
 function damage(t, reason, nt, inputId, sub){
+  if(finishOn()&&finishFailureAt!==null)return;
   if(isTutorial()){coachOnMiss(t,reason,nt,inputId);return;}
   diagEv('damage', { lifeLoss: true, reason: reason || null, causeInputId: inputId ?? null, noteId: nt?.id ?? null, noteIdx: nt?.idx ?? null, noteHp: nt?.hp ?? null, playerIdx: player.idx, hpBefore: hp, ...diagCtx() });
   hp--; NBSound.play('miss'); drawHud(); damageAt = t; hurtGuardUntil = t + HURT_GUARD_SEC;
@@ -1212,7 +1231,7 @@ function damage(t, reason, nt, inputId, sub){
   texts.push({ s: 'ダメージ', idx: player.idx, t, col: '#ed50aa' });
   showJudge('MISS', sub || '被弾');
   if (navigator.vibrate) navigator.vibrate(60);
-  if (hp <= 0){ if (!endReason) endReason = 'hp'; end(false); }
+  if (hp <= 0){ if (!endReason) endReason = 'hp'; if(finishOn()){finishFailureAt=hurtGuardUntil;moveLocked=false;setLockUI(false);}else end(false); }
 }
 
 // ===== 判定 =====
@@ -1283,8 +1302,13 @@ function freeMove(t, rec, charge=false){
   const stuck = notes.find(x => x.hit && x.idx <= player.idx);
   if (stuck){ texts.push({ s: 'もう1回ブレイク！', idx: player.idx, t, col: '#ff5a5a' }); diagResult(rec, { status: 'invalid', reason: '赤ノーツが残っていて進めない', noteId: stuck.id }); return; }
   if (moveLocked){ texts.push({ s: 'まず1個ブレイク', idx: player.idx, t, col: '#ffffff' }); diagResult(rec, { status: 'invalid', reason: '移動ロック中（最初の1個を壊すまで）' }); return; }
+  if(finishOn()){
+    if(finishFailureAt!==null&&t>=finishFailureAt){end(false);return;}
+    if(player.idx>=NBFinish.limit(finishChart,sourceSongPosition(t))){diagResult(rec,{status:'invalid',reason:'曲に合わせて道が開きます'});return;}
+  }
   if (player.idx >= GOAL_INDEX){ diagResult(rec, { status: 'invalid', reason: 'ゴール位置' }); return; }
-  diagResult(rec, { status: 'moved', reason: '進む（判定なし）', playerFrom: player.idx, playerTo: player.idx + 1 });
+  if(finishOn()&&!charge){const n=nearestBeat(t),diff=t-beatTime(n),word=n<0||Math.abs(diff)>WINDOW?'MISS':judgeOf(diff);showJudge(word,Math.abs(diff)<=.045?'':diff<0?'FAST':'LATE',true);diagEv('finish_move_judge',{judge:word,offsetMs:r2(diff*1000)});}
+  diagResult(rec, { status: 'moved', reason: finishOn()?'進む（タイミング表示）':'進む（判定なし）', playerFrom: player.idx, playerTo: player.idx + 1 });
   fx.push({ type: 'ghost', idx: player.idx, t, d: .13, flip: facesRight(player.idx) });
   player.from = player.idx; player.idx += 1; player.at = t;
   fx.push({ type: 'spark', idx: player.idx, t, d: .2 });
@@ -1307,7 +1331,7 @@ function freeMove(t, rec, charge=false){
   if(charge)NBMeasure.purple();
   tutProgress('move');
   checkHit(t, '進んだ先にノーツがあった', rec?.inputId); // ブロックに突っ込んだらその場で当たり
-  if(speedOn()&&player.idx>=GOAL_INDEX)checkLines(t);
+  if(finishOn()){finishHud();checkLines(t);}else if(speedOn()&&player.idx>=GOAL_INDEX)checkLines(t);
 }
 function flashBtn(id){ const b = document.getElementById(id); b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); setTimeout(() => b.classList.remove('flash'), 160); }
 function setLockUI(on){ const b = document.getElementById('bMove'); b.classList.toggle('locked', on); if (!on) flashBtn('bMove'); }
@@ -1322,7 +1346,7 @@ function rushGuard(t){ return !!rushAnim || t < rushGuardUntil; }
 // エンドレス：被弾したあと少しの間は無敵（連続ブロックで続けてライフを削られないように）。当たるブロックは壊れる
 const HURT_GUARD_SEC = 0.6;
 let hurtGuardUntil = -9;
-function hitGuard(t){ return rushGuard(t) || (speedOn() && t < hurtGuardUntil); }
+function hitGuard(t){ return rushGuard(t) || ((speedOn() || finishOn()) && t < hurtGuardUntil); }
 function blastNote(nt, t){ if(rushGuard(t))NBWorkshop.destroyed(nt,t);const i = notes.indexOf(nt); if (i >= 0) notes.splice(i, 1); spawnShards(nt.idx, t, nt.purple ? 'purple' : (nt.hp || 1) > 1 ? 'hard' : 'pink'); }
 function takeBlown(to){ const b = notes.filter(x => x.idx <= to + 1); for (const nt of b) notes.splice(notes.indexOf(nt), 1); return b.map(nt => ({ id:nt.id,gem:nt.gem,diamond:nt.diamond,hp:nt.hp,maxHp:nt.maxHp,idx: nt.idx, purple: !!nt.purple, hard: (nt.hp || 1) > 1, hit: !!nt.hit })); }
 // 画面上のキャラの位置（発動中は溜め→道を1マスずつ駆け抜ける）
@@ -1585,6 +1609,7 @@ function input(type, e, device){
     return;
   }
   if (type === 'move'){
+    if(finishOn()&&finishFailureAt!==null){freeMove(tNow,rec);return;}
     if (!chargeTarget()){ diagInputEnd(rec, { status: 'immediate', reason: '進むは判定なし・押した瞬間に実行' }); freeMove(tNow, rec); return; } // 進むは拍に関係なく、押した瞬間に動く
     type = 'charge'; if (rec) rec.type = 'charge'; // 紫ノーツへの突進：ブレイクと同じように拍で判定
   }
@@ -1738,7 +1763,7 @@ function captureResult(clear){
   const key=`neon-blade-best-v1:${song.file}:${runDifficulty}`+(scoreOn()?':score':'');
   let previous=0;
   try{const v=Number(localStorage.getItem(key));if(Number.isInteger(v)&&v>=0&&(scoreOn()||v<=SCORE_MAX))previous=v;}catch(e){}
-  result.newBest=clear&&!endlessScoreOn()&&!speedOn()&&result.score>previous; // 距離チャレンジは下で別に保存
+  result.newBest=clear&&!finishOn()&&!endlessScoreOn()&&!speedOn()&&result.score>previous; // 距離チャレンジは下で別に保存
   result.best=result.newBest?result.score:previous;result.previousBest=previous;
   if(result.newBest){try{localStorage.setItem(key,String(result.score));}catch(e){}}
   if(speedOn()){
@@ -1756,6 +1781,10 @@ function captureResult(clear){
     let prev=0;try{const v=Number(localStorage.getItem(ekey));if(Number.isInteger(v)&&v>=0)prev=v;}catch(e){}
     result.newBest=result.score>prev;result.best=result.newBest?result.score:prev;result.previousBest=prev;
     if(result.newBest){try{localStorage.setItem(ekey,String(result.score));}catch(e){}}
+  }
+  if(finishOn()){
+    const score=finishProgress(),prev=NBFinish.save(score);
+    Object.assign(result,{mode:'finish',endless:false,score,unit:'%',best:Math.max(score,prev),previousBest:prev,newBest:score>prev,rank:clear?'CLEAR':'—',badge:clear?'100% COMPLETE':'',endReason,reasonText:END_REASON[endReason]||'',steps:null});
   }
   NBWorkshop.finish(result);
   return result;
@@ -2379,7 +2408,11 @@ function drawChar(t){
 // ラインに着いたか調べる。エンドレスで周回したら true
 function checkLines(t){
   if(NBDiamond.locked())return false;
-  if(state!=='play'||hp<=0)return false;
+  if(state!=='play'||(hp<=0&&!finishOn()))return false;
+  if(finishOn()){
+    if(finishFailureAt!==null&&t>=finishFailureAt){end(false);return false;}
+    if(player.idx>=GOAL_INDEX){endReason='finish';finishHud();end(true);return false;}
+  }
   if(shuttleOn()){
     const previousSection=shuttleSection;
     while(shuttleSection<shuttleGoals.length-1&&player.idx>=shuttleGoals[shuttleSection]){
@@ -2429,18 +2462,20 @@ function loop(){
     while(state==='play'){
       const beforeEpoch=musicEpoch;
       const bt=beatTime(nextBeat),hit=pendingCheck[0]?.checkAt??Infinity;
-      if(Math.min(bt,hit)>(fullSongOn()?Math.min(t,fullSongBeatEnd()):t))break;
+      if(Math.min(bt,hit)>(finishOn()?Math.min(t,finishChart.end):fullSongOn()?Math.min(t,fullSongBeatEnd()):t))break;
       if(hit<=bt){const pc=pendingCheck.shift();checkHit(hit,null,null,pc.n);}
       else{lastBeatLagMs=r2((t-bt)*1000);if(diagRun&&lastBeatLagMs>50)diagEv('beat_late',{beat:nextBeat,lagMs:lastBeatLagMs,frameDtMs});onBeat(nextBeat,bt);if(musicEpoch===beforeEpoch)nextBeat++;}
       if(musicEpoch!==beforeEpoch){t=songTime();break;}
     }
+    if(finishOn()&&sourceSongPosition(t)>=finishChart.end){notes=[];pendingCheck=[];earlyInput=null;}
     if(fullSongOn()&&song.gameplayEnd!=null&&sourceSongPosition(t)>=song.gameplayEnd&&!rushAnim){notes=[];pendingCheck=[];earlyInput=null;}
     NBWorkshop.tick(t);
     const lapped = checkLines(t);
     if(lapped)t=songTime();
     if (isTutorial())coachUpdate(t);
     if (state==='play' && !isTutorial() && !lapped && (fullSongOn()?sourceSongPosition(t)>=songBuf.duration:t>songBuf.duration/rate)){
-      if(fullSongOn()){if(!rushAnim){beginFullSongRest(t);}}
+      if(finishOn()){endReason=hp<=0?'hp':'song_end';end(false);}
+      else if(fullSongOn()){if(!rushAnim){beginFullSongRest(t);}}
       else if(speedOn()){endReason='song_end';end(false);}
       else if(endless&&!isTutorial()){ endReason = 'finish'; end(true); } // 距離チャレンジ：曲が終わったら完走
       else end(scoreOn());
@@ -2451,7 +2486,8 @@ function loop(){
     document.getElementById('roundRestCount').textContent=`次のラウンドまで ${Math.ceil(left)}秒`;
     if(left<=0){restartFullSong();t=songTime();}
   }
-  if(shuttleOn()&&state==='play')updateWarpHud();
+  if(finishOn()&&state==='play')finishHud();
+  else if(shuttleOn()&&state==='play')updateWarpHud();
   else if (state === 'play' && songBuf && !isTutorial()) progFill.style.width = (Math.min(1, Math.max(0, t / (songBuf.duration / rate))) * 100) + '%';
   draw(t);
   if(state==='clear'&&victoryAt>=0)drawVictory();
@@ -2459,7 +2495,7 @@ function loop(){
 
 // ===== 判定診断モード =====
 // 詳細モードは従来どおり任意。軽量の判定履歴は、表示を増やさず全プレイで記録する。
-const APP_VERSION = 'v102', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
+const APP_VERSION = 'v103', DIAG_LOG_VERSION = 1, DIAG_MAX_EVENTS = 2500, DIAG_DROP_CHUNK = 250, DIAG_STORE_KEY = 'neon-blade-diag-last-v1';
 const OUTPUT_LABEL = { unknown: '不明', speaker: 'スピーカー', wired: '有線イヤホン', bluetooth: 'Bluetooth' };
 let diagOn = false, diagOutput = 'unknown', diagRun = null, diagSeq = 0, diagAttempt = 1, diagLastDraw = null, diagLineTimer = null;
 let frameDtMs = null, lastFramePerf = null, lastBeatLagMs = null, resumePerf = -Infinity;
@@ -2602,7 +2638,7 @@ function diagRender(){
   const S = diagSummary(run), v = x => x == null ? '—' : x, ms = x => x == null ? '—' : (x > 0 ? '+' : '') + x + 'ms';
   const rows = list => list.map(g => `<tr><td>${g.k}</td><td>${g.n}</td><td>${ms(g.median)}</td><td>${v(g.sd)}</td><td>${g.P}/${g.G}/${g.D}</td></tr>`).join('') || '<tr><td colspan="5">なし</td></tr>';
   const head = '<tr><th></th><th>数</th><th>中央値</th><th>ばらつき</th><th>P/G/GOOD</th></tr>';
-  body.innerHTML = `<p class="diagNote">${run.song.name}／${({normal:'通常',distance:'距離チャレンジ',endless:'エンドレス',fullsong:'フル曲エンドレス',shuttle:'シャトルラン'})[run.settings.mode] || run.settings.mode}／${String(run.settings.difficulty).toUpperCase()}／音の出力：${run.device.audioOutputLabel}／${run.appVersion}</p>
+  body.innerHTML = `<p class="diagNote">${run.song.name}／${({normal:'通常',distance:'距離チャレンジ',endless:'エンドレス',fullsong:'フル曲エンドレス',shuttle:'シャトルラン',finish:'完走チャレンジ'})[run.settings.mode] || run.settings.mode}／${String(run.settings.difficulty).toUpperCase()}／音の出力：${run.device.audioOutputLabel}／${run.appVersion}</p>
     <table><tr><th>PERFECT</th><th>GREAT</th><th>GOOD</th><th>MISS</th></tr><tr><td style="text-align:left">${S.counts.PERFECT}</td><td>${S.counts.GREAT}</td><td>${S.counts.GOOD}</td><td>${S.counts.MISS}</td></tr></table>
     <p class="diagNote">MISSの内訳：入力MISS（受付時間外・ライフ−1）${S.counts.missTiming}／被弾（ライフ−1）${S.counts.missDamage}</p>
     <table><tr><td>早押し／遅押し／ぴったり</td><td>${S.early}／${S.late}／${S.exact}</td></tr><tr><td>ズレの中央値</td><td>${ms(S.offset.median)}</td></tr><tr><td>ばらつき（標準偏差）</td><td>${v(S.offset.sd)}ms</td></tr><tr><td>ばらつき（四分位範囲）</td><td>${v(S.offset.iqr)}ms</td></tr><tr><td>入力処理待ち（中央値／最大）</td><td>${v(S.delay.median)}ms／${v(S.delayMax)}ms</td></tr><tr><td>無効入力（統計には含めない）</td><td>${S.invalid}</td></tr></table>
@@ -2778,7 +2814,10 @@ function startGame(){
   if(NBMeasure.active()||(['clear','over'].includes(state)&&finishedRun?.measurement))NBMeasure.arm();
   NBWorkshop.stopSongPreview();NBSound.stop(); NBMenu.playing();
   document.querySelectorAll('.overlay').forEach(o=>o.classList.add('hide'));
-  lap=0;rate=song.rate||1;applyRate();
+  lap=0;rate=finishOn()?1:song.rate||1;applyRate();
+  finishChart=finishOn()?NBFinish.create(song,songBuf.duration):null;
+  activeChart=finishChart||chartCache[song.chart]||null;
+  for(const name of ['role','aria-label','aria-valuemin','aria-valuemax','aria-valuenow'])document.getElementById('progress').removeAttribute(name);
   reset();backgroundPosition=0;progFill.style.width='0%';
   updateWarpHud(); // 速度を初期値に戻してから表示を更新
   runSongCorrMs=activeChart?songCorrSetting(song.chart):0;
@@ -2866,6 +2905,7 @@ showTimingValue();
 
 let pickingSong = false;
 async function pickSong(sg, btn){
+  if(playMode==='finish'&&!sg.tutorial&&sg.file!==NBFinish.songFile)return;
   if(!NBWorkshop.ownsSong(sg))return;NBWorkshop.stopSongPreview();
   if(sg.tutorial){startTutorial();return;}
   if (pickingSong) return;

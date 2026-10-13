@@ -110,7 +110,7 @@ window.NBWorkshop = (() => {
   let diamondBlocks=false;
   function setDiamondBlocks(on){diamondBlocks=!!on;const el=$('gemStylePicker');if(el)el.hidden=!diamondBlocks;}
   function prepareNote(note){
-    if(diamondBlocks&&initialized&&run&&!run.finished&&!isTutorial()){NBBlockGems.assign(note,gemCourse);NBDiamond.prepare(note);}
+    if(diamondBlocks&&initialized&&run&&!run.finished&&!isTutorial()&&!finishOn()){NBBlockGems.assign(note,gemCourse);NBDiamond.prepare(note);}
     return note;
   }
   function destroyed(note,t){
@@ -345,12 +345,22 @@ window.NBWorkshop = (() => {
       ov.querySelector('[data-result-foot]').textContent=`ROUND ${result.songLoops+1} ／ 目標${result.goalDistance}マス`;
     }
     if(result.mode==='distance')ov.querySelector('.scoreHelp p').textContent='曲を最後まで聴く間に進んだマス数がSTEPSになります。ワープは条件なし、曲はそのまま続きます。満タンの必殺技はブレイク長押しで発動。ライフがなくなれば終了です。';
+    if(result.mode==='finish'){
+      ov.querySelector('.resultTitle').textContent=result.clear?'100% COMPLETE！':result.newBest?'到達率 更新！':'もう一度、挑戦！';
+      ov.querySelector('.scoreLabel span').textContent='コース到達率';
+      ov.querySelector('[data-result-delta]').textContent=result.newBest&&prev?'ベストから ＋'+fmt(Math.round(delta*10)/10)+'%':result.clear?'最後まで駆け抜けた！':'同じ譜面で、次はもっと先へ';
+      ov.querySelector('[data-result-next]').textContent=result.clear?'完走達成！':'100%まで あと'+fmt(Math.round((100-result.score)*10)/10)+'%';
+      ov.querySelector('[data-result-track]').dataset.target=result.score;
+      ov.querySelector('[data-result-reason]').textContent=result.reasonText;
+      ov.querySelector('[data-result-badge]').textContent='到達率 '+result.score+'%';
+      ov.querySelector('.scoreHelp p').textContent='曲に合わせて開くコースの現在位置を0〜100%で表示。100%でクリア、曲終了までに未到達なら終了。ライフ1。被弾後0.6秒は進め、その間にゴールできればクリア。進むは即時移動し既存の時間幅で判定を表示（移動判定だけではライフは減りません）。固定譜面・等速・ワープなし。既存ミッション達成率とは別の記録です。';
+    }
     if(steps&&result.progression){ov.querySelector('.resultRank small').textContent='PLAYER RANK';ov.querySelector('[data-result-rank]').textContent=result.progression.rank;}
     ov.querySelectorAll('details').forEach(el => el.open = false);
     const rewards = result.rewards || {total: 0, tiles: 0, missions: [], balance: ledger?.state.gems || 0};
     ov.querySelector('[data-result-gems]').textContent = '＋' + rewards.total;
     ov.querySelector('[data-result-balance]').textContent = fmt(rewards.balance);
-    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? [rewards.checkpoints?'15マスごとのダイヤ ＋'+rewards.checkpoints:'',rewards.tiles>(rewards.checkpoints||0)?'ブロックから獲得 ＋'+(rewards.tiles-(rewards.checkpoints||0)):'',rewards.total>rewards.tiles?'ランクアップ ＋'+(rewards.total-rewards.tiles):''].filter(Boolean).join(' ／ ') : ['fullsong','shuttle'].includes(result.mode)?'':isTutorial() ? '本編ではブロックからダイヤが出ます' : 'ダイヤ入りのブロックを壊すと獲得できます';
+    ov.querySelector('[data-result-reward-detail]').textContent = rewards.total ? [rewards.checkpoints?'15マスごとのダイヤ ＋'+rewards.checkpoints:'',rewards.tiles>(rewards.checkpoints||0)?'ブロックから獲得 ＋'+(rewards.tiles-(rewards.checkpoints||0)):'',rewards.total>rewards.tiles?'ランクアップ ＋'+(rewards.total-rewards.tiles):''].filter(Boolean).join(' ／ ') : ['fullsong','shuttle','finish'].includes(result.mode)?'':isTutorial() ? '本編ではブロックからダイヤが出ます' : 'ダイヤ入りのブロックを壊すと獲得できます';
     const gemTypes=ov.querySelector('[data-result-gem-types]');gemTypes.textContent='ダイヤ採掘 ／ '+NBBlockGems.types.filter(type=>result.gemCounts?.[type.id]).map(type=>type.name+' ×'+result.gemCounts[type.id]).join('・');gemTypes.hidden=!Object.values(result.gemCounts||{}).some(Boolean);
     const growth=ov.querySelector('[data-result-growth]');growth.innerHTML='';
     const growthDetail=ov.querySelector('[data-result-growth-detail]');growthDetail.hidden=!result.progression;growthDetail.textContent=result.progression?`ランク ${result.progression.rank} ／ 次のランクまで ${result.progression.need-result.progression.progress} XP${result.progression.unlocked.length?' ／ 新しい曲を解放！':''}`:'';
@@ -436,7 +446,7 @@ window.NBWorkshop = (() => {
   function renderSongs(){
     const list=$('songList');list.replaceChildren();
     for(const sg of SONGS){
-      if(sg===SONGS[0])continue;
+      if(sg===SONGS[0]||(playMode==='finish'&&sg.file!==NBFinish.songFile))continue;
       const item=NBProgression.songs.find(x=>x.id===sg.file),owned=ownsSong(sg),progress=ledger.songProgress(sg.file),total=NBProgression.songMissions.length;
       const completed=NBProgression.songMissions.filter(m=>progress.claimed.includes(m.id)||progress[m.stat]>=m.target).length;
       const ratio=completed/total;
@@ -450,8 +460,12 @@ window.NBWorkshop = (() => {
         const result=ledger.purchase('songs',sg.file);if(result.ok){NBSound.play('unlock');refreshWallet();renderSongs();}else b.querySelector('.songUnlock').textContent=result.reason==='funds'?'ダイヤが足りません':ledger.error;
       });row.appendChild(b);
       const preview=document.createElement('button');preview.className='songPreview';preview.innerHTML=previewIcon('play');preview.setAttribute('aria-label',sg.name+'を試聴');preview.setAttribute('aria-pressed','false');preview.addEventListener('click',()=>previewSong(sg,preview));row.appendChild(preview);
-      const gauge=document.createElement('button');gauge.type='button';gauge.className='songMission';gauge.setAttribute('aria-label',sg.name+'のミッション詳細を見る');gauge.innerHTML=`<span>ミッション達成率 <b>${Math.round(ratio*100)}% <span aria-hidden="true">›</span></b></span><progress max="${total}" value="${completed}" aria-label="${escape(sg.name)}のミッション達成率"></progress>`;gauge.onclick=()=>openSongMissions(sg.file);row.append(gauge);list.append(row);
+      const gauge=document.createElement('button');gauge.type='button';gauge.className='songMission';gauge.setAttribute('aria-label',sg.name+'のミッション詳細を見る');gauge.innerHTML=`<span>ミッション達成率 <b>${Math.round(ratio*100)}% <span aria-hidden="true">›</span></b></span><progress max="${total}" value="${completed}" aria-label="${escape(sg.name)}のミッション達成率"></progress>`;gauge.onclick=()=>openSongMissions(sg.file);row.append(gauge);
+      if(playMode==='finish'){const best=document.createElement('div');best.className='songMission';best.innerHTML=`<span>完走チャレンジ・ベスト到達率 <b>${NBFinish.best()}%</b></span><progress max="100" value="${NBFinish.best()}" aria-label="完走チャレンジのベスト到達率"></progress>`;row.append(best);}
+      list.append(row);
     }
+    $('myPanel').hidden=playMode==='finish';
+    if(playMode==='finish')return;
     const upload=document.createElement('button');upload.className='songBtn';upload.innerHTML='<span>📁 自分の曲をえらぶ</span><small>この端末から</small>';upload.addEventListener('click',()=>{stopSongPreview();if(state==='ready'&&!pickingSong)myFile.click();});list.append(upload);
   }
   function heroLabel(id){const item=NBProgression.heroes.find(h=>h.id===id);return ledger.state.heroes.includes(id)?'このキャラで遊ぶ':`💎 ${item.price} で解放`;}
